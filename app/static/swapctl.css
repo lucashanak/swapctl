@@ -1,0 +1,31 @@
+[x-cloak] { display: none !important; }
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+}
+.htmx-indicator {
+  opacity: 0;
+  transition: opacity 150ms ease-in;
+}
+
+.readme-body { color: #cbd5e1; line-height: 1.55; font-size: 0.9rem; }
+.readme-body h1 { font-size: 1.4rem; font-weight: 600; margin: 1.2rem 0 0.6rem; color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 0.3rem; }
+.readme-body h2 { font-size: 1.15rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #f1f5f9; }
+.readme-body h3 { font-size: 1rem; font-weight: 600; margin: 0.8rem 0 0.4rem; color: #e2e8f0; }
+.readme-body p { margin: 0.5rem 0; }
+.readme-body a { color: #7dd3fc; text-decoration: underline; text-underline-offset: 2px; }
+.readme-body a:hover { color: #bae6fd; }
+.readme-body code { background: #0f172a; color: #fde68a; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }
+.readme-body pre { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 0.75rem; overflow-x: auto; margin: 0.6rem 0; }
+.readme-body pre code { background: transparent; padding: 0; color: #e2e8f0; }
+.readme-body ul, .readme-body ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+.readme-body ul { list-style: disc; }
+.readme-body ol { list-style: decimal; }
+.readme-body li { margin: 0.2rem 0; }
+.readme-body blockquote { border-left: 3px solid #475569; color: #94a3b8; padding-left: 0.8rem; margin: 0.6rem 0; }
+.readme-body table { border-collapse: collapse; margin: 0.6rem 0; font-size: 0.85rem; }
+.readme-body th, .readme-body td { border: 1px solid #334155; padding: 0.3rem 0.6rem; }
+.readme-body th { background: #1e293b; text-align: left; }
+.readme-body img { max-width: 100%; height: auto; border-radius: 4px; margin: 0.5rem 0; }
+.readme-body hr { border: none; border-top: 1px solid #334155; margin: 1rem 0; }

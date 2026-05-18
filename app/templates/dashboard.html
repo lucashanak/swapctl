@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - swapctl{% endblock %}
+{% block main_class %}max-w-[100rem]{% endblock %}
+{% block content %}
+<div hx-get="{{ root_path }}/" hx-trigger="every 10s" hx-select="#dash-content" hx-target="#dash-content" hx-swap="outerHTML"></div>
+<div id="dash-content">
+
+<h1 class="text-2xl font-semibold mb-6">Dashboard</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">Disk /models</div>
+    {% if status.disk_free_gb is not none %}
+      {% set used = status.disk_total_gb - status.disk_free_gb %}
+      {% set pct = (used / status.disk_total_gb * 100) | round(0) | int if status.disk_total_gb else 0 %}
+      <div class="text-xl font-semibold mt-1">{{ status.disk_free_gb }} GB free</div>
+      <div class="mt-2 h-2 rounded-full bg-slate-700 overflow-hidden">
+        <div class="h-full rounded-full {% if pct > 90 %}bg-rose-500{% elif pct > 70 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" style="width:{{ pct }}%"></div>
+      </div>
+      <div class="text-[10px] text-slate-500 mt-1">{{ used }} / {{ status.disk_total_gb }} GB used ({{ pct }}%)</div>
+    {% else %}
+      <div class="text-xl font-semibold mt-1 text-slate-500">unavailable</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">GPU memory</div>
+    {% if status.gpu_total_mb %}
+      {% set gpu_pct = (status.gpu_used_mb / status.gpu_total_mb * 100) | round(0) | int %}
+      <div class="text-xl font-semibold mt-1">{{ '%.1f' | format(status.gpu_used_mb / 1024) }} / {{ '%.0f' | format(status.gpu_total_mb / 1024) }} GiB</div>
+      <div class="mt-2 h-2 rounded-full bg-slate-700 overflow-hidden">
+        <div class="h-full rounded-full {% if gpu_pct > 90 %}bg-rose-500{% elif gpu_pct > 70 %}bg-amber-500{% else %}bg-sky-500{% endif %}" style="width:{{ gpu_pct }}%"></div>
+      </div>
+      <div class="text-[10px] text-slate-500 mt-1">{{ gpu_pct }}% used (GTT+VRAM)</div>
+    {% else %}
+      <div class="text-xl font-semibold mt-1 text-slate-500">n/a</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">llama-swap</div>
+    <div class="text-xl font-semibold mt-1 flex items-center gap-2">
+      <span class="inline-block w-2.5 h-2.5 rounded-full {% if status.swap_active %}bg-emerald-400{% else %}bg-rose-500{% endif %}"></span>
+      {% if status.swap_active %}running{% else %}stopped{% endif %}
+    </div>
+    {% if status.swap_running %}
+      <div class="text-xs text-emerald-300 mt-2">Loaded: {{ status.swap_running | join(", ") }}</div>
+    {% else %}
+      <div class="text-xs text-slate-500 mt-2">no model loaded</div>
+    {% endif %}
+    {% if status.swap_configured %}
+      <div class="text-[10px] text-slate-500 mt-1">{{ status.swap_configured | length }} configured</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">Models</div>
+    <div class="text-xl font-semibold mt-1">{{ status.installed_count }}</div>
+    <div class="text-xs text-slate-500 mt-2">
+      {% set tested = leaderboard | selectattr('iq') | list | length %}
+      {{ tested }} tested · {{ status.installed_count - tested }} pending
+    </div>
+    {% if active_jobs %}
+    <div class="text-xs text-indigo-300 mt-1 animate-pulse">{{ active_jobs | length }} job(s) running</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if leaderboard %}
+<div class="bg-slate-800 rounded-lg shadow overflow-x-auto" x-data="{ init() { colorizeColumns(this.$refs.tbody, [{col:'speed'},{col:'iq'},{col:'eff'}]); } }">
+  <div class="px-4 py-3 border-b border-slate-700">
+    <h2 class="font-semibold">Model Leaderboard</h2>
+  </div>
+  <table class="w-full text-sm">
+    <thead class="text-left text-slate-400 text-xs uppercase bg-slate-900/50">
+      <tr>
+        <th class="px-4 py-2 w-8 text-center">#</th>
+        <th class="px-4 py-2">Model</th>
+        <th class="px-4 py-2 hidden md:table-cell">Size</th>
+        <th class="px-4 py-2 text-center">Speed</th>
+        <th class="px-4 py-2 text-center">IQ</th>
+        <th class="px-4 py-2 text-center">Efficiency</th>
+        <th class="px-4 py-2 text-right">Status</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-700" x-ref="tbody">
+      {% for m in leaderboard %}
+      <tr data-model="{{ m.model_id }}" data-speed="{{ m.speed }}" data-iq="{{ m.iq }}" data-eff="{{ m.eff }}">
+        <td class="px-4 py-2 text-center text-slate-500 text-xs">{{ loop.index }}</td>
+        <td class="px-4 py-2">
+          <div class="font-mono text-xs">{{ m.model_id }}</div>
+          {% if m.mmproj or m.tags %}
+          <div class="flex flex-wrap gap-1 mt-1">
+            {% if m.mmproj %}<span class="text-[9px] px-1 py-0.5 rounded bg-fuchsia-900/60 text-fuchsia-300">vision</span>{% endif %}
+            {% if 'moe' in (m.tags or []) %}<span class="text-[9px] px-1 py-0.5 rounded bg-cyan-900/60 text-cyan-300">MoE</span>{% endif %}
+            {% if 'hybrid' in (m.tags or []) %}<span class="text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-300">hybrid</span>{% endif %}
+          </div>
+          {% endif %}
+        </td>
+        <td class="px-4 py-2 text-slate-300 text-xs hidden md:table-cell">{% if m.size_gb %}{{ m.size_gb }} GB{% else %}-{% endif %}</td>
+        <td class="px-4 py-2 text-center whitespace-nowrap">
+          {% if m.speed %}
+          <span class="font-mono text-xs text-slate-300" data-color="speed">{{ m.speed }} <span class="text-slate-500 text-[10px]">t/s</span></span>
+          {% if m.backend == 'vulkan' %}
+            <span class="text-[9px] ml-1 px-1 py-0.5 rounded bg-emerald-900/60 text-emerald-300">VK</span>
+          {% elif m.backend == 'rocm' %}
+            <span class="text-[9px] ml-1 px-1 py-0.5 rounded bg-sky-900/60 text-sky-300">ROCm</span>
+          {% endif %}
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-4 py-2 text-center whitespace-nowrap">
+          {% if m.iq %}
+          <span class="font-mono text-xs text-slate-300" data-color="iq">{{ m.iq }}%</span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-4 py-2 text-center whitespace-nowrap">
+          {% if m.eff %}
+          <span class="font-mono text-xs text-slate-300" data-color="eff">{{ m.eff }}</span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-4 py-2 text-right">
+          {% if m.loaded %}
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-900 text-emerald-200">loaded</span>
+          {% else %}
+            <button hx-post="{{ root_path }}/api/load/{{ m.model_id }}"
+                    hx-swap="none"
+                    hx-indicator="closest tr"
+                    class="text-xs px-2 py-1 rounded bg-sky-900 hover:bg-sky-800 text-sky-200"
+                    title="Load model into GPU memory">
+              Load
+            </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-slate-800 rounded-lg shadow p-8 text-center text-slate-400">
+  <p class="text-sm">No test results yet.</p>
+  <a href="{{ root_path }}/testing" class="inline-block mt-3 text-sm text-sky-400 hover:text-sky-300">Go to Testing &rarr;</a>
+</div>
+{% endif %}
+
+{% if active_jobs %}
+<div class="mt-6 bg-slate-800 rounded-lg shadow">
+  <div class="px-4 py-3 border-b border-slate-700">
+    <h2 class="font-semibold">Active Jobs</h2>
+  </div>
+  <div class="divide-y divide-slate-700">
+    {% for j in active_jobs %}
+    <div class="px-4 py-3 flex items-center gap-4">
+      <span class="font-mono text-xs">{{ j.model_id or '' }}</span>
+      <span class="text-xs text-slate-400">{{ j.test_type }}</span>
+      {% if j.status == 'running' %}
+        <span class="text-xs px-2 py-0.5 rounded bg-indigo-900 text-indigo-200 animate-pulse">running</span>
+      {% else %}
+        <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">queued</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

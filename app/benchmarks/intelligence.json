@@ -1,0 +1,2006 @@
+{
+  "version": 7,
+  "description": "swapctl intelligence benchmark v7 — 200 questions, 10 categories. Designed for meaningful model spread: good models 50-70%, mediocre 20-40%. Sources: custom, GSM8K-inspired, MMLU-inspired, IFEval-inspired.",
+  "categories": {
+    "math": {
+      "weight": 1.0,
+      "description": "Modular arithmetic, number theory, combinatorics, probability, multi-step word problems with traps"
+    },
+    "reasoning": {
+      "weight": 1.0,
+      "description": "Multi-person logic puzzles, spatial reasoning, counterfactual chains, syllogism traps"
+    },
+    "code": {
+      "weight": 1.0,
+      "description": "Python closures, C undefined behavior, race conditions, tricky recursion, amortized complexity"
+    },
+    "coding": {
+      "weight": 1.0,
+      "description": "Algorithm implementation, async error handling, edge cases, regex patterns, data structures"
+    },
+    "knowledge": {
+      "weight": 1.0,
+      "description": "OS internals, distributed systems, networking edge cases, compiler concepts, CAP theorem"
+    },
+    "czech": {
+      "weight": 1.0,
+      "description": "Morphological edge cases, complex conditionals, semantic ambiguity, idiomatic expressions"
+    },
+    "instruction": {
+      "weight": 1.0,
+      "description": "Contradictory constraints, tight character counts, multi-step transformations, precise counting"
+    },
+    "summarization": {
+      "weight": 1.0,
+      "description": "Dense multi-paragraph passages, author bias detection, identifying omissions, specific data extraction"
+    },
+    "structured": {
+      "weight": 1.0,
+      "description": "Deeply nested JSON, YAML anchors, format conversion, mixed types, null/empty edge cases"
+    },
+    "sysadmin": {
+      "weight": 1.0,
+      "description": "Kernel OOM, MTU issues, TLS chains, nftables, cgroup debugging, ZFS/LVM scenarios"
+    }
+  },
+  "questions": [
+    {
+      "id": "math_01",
+      "category": "math",
+      "difficulty": "easy",
+      "prompt": "A train travels at 90 km/h. How many minutes does it take to travel 45 km? Reply with just the number.",
+      "expected": "30",
+      "match": "regex",
+      "regex": "\\b30\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "math_02",
+      "category": "math",
+      "difficulty": "medium",
+      "prompt": "A store sells apples for $1.20 each and oranges for $0.80 each. Alice buys twice as many oranges as apples. She spends exactly $11.20 in total. How many apples did she buy? Reply with just the number.",
+      "expected": "4",
+      "match": "regex",
+      "regex": "\\b4\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "math_03",
+      "category": "math",
+      "difficulty": "medium",
+      "prompt": "How many distinct ways can you arrange the letters in the word MISSISSIPPI? Reply with just the number.",
+      "expected": "34650",
+      "match": "regex",
+      "regex": "\\b34650\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "math_04",
+      "category": "math",
+      "difficulty": "medium",
+      "prompt": "A bag contains 4 red and 6 blue marbles. Two marbles are drawn without replacement. What is the probability both are red? Reply as a simplified fraction.",
+      "expected": "2/15",
+      "match": "regex",
+      "regex": "\\b2/15\\b|\\b2⁄15\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "math_05",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "What is 7^100 mod 13? Reply with just the number.\n\nHint: use Fermat's little theorem.",
+      "expected": "9",
+      "match": "regex",
+      "regex": "\\b9\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_06",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "A company has 12 employees. They need to form a committee of 4 people. However, two specific employees (call them A and B) refuse to serve together. How many valid committees are possible? Reply with just the number.",
+      "expected": "450",
+      "match": "regex",
+      "regex": "\\b450\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_07",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "A disease affects 1% of the population. A test has 95% sensitivity (true positive rate) and 90% specificity (true negative rate). If you test positive, what is the probability you actually have the disease? Round to one decimal place and reply with just the percentage (e.g. '8.7').",
+      "expected": "8.7",
+      "match": "regex",
+      "regex": "\\b8\\.[5-9]\\b|\\b9\\.[0-2]\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "math_08",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "Find the sum of all positive integers less than 100 that are divisible by 3 or 5 (or both). Reply with just the number.",
+      "expected": "2318",
+      "match": "regex",
+      "regex": "\\b2318\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_09",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "How many integers from 1 to 1000 inclusive are NOT divisible by any of 2, 3, or 5? Reply with just the number.",
+      "expected": "266",
+      "match": "regex",
+      "regex": "\\b266\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "math_10",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "A fair six-sided die is rolled repeatedly until a 6 appears. What is the expected number of rolls? Reply with just the number.",
+      "expected": "6",
+      "match": "regex",
+      "regex": "\\b6\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_11",
+      "category": "math",
+      "difficulty": "medium",
+      "prompt": "Find the smallest positive integer x such that x ≡ 2 (mod 3), x ≡ 3 (mod 5), and x ≡ 2 (mod 7). Reply with just the number.",
+      "expected": "23",
+      "match": "regex",
+      "regex": "\\b23\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_12",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "How many derangements (permutations with no fixed points) exist for 5 elements? Reply with just the number.",
+      "expected": "44",
+      "match": "regex",
+      "regex": "\\b44\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_13",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "Compute Euler's totient function φ(360). That is, how many integers from 1 to 360 are coprime to 360? Reply with just the number.",
+      "expected": "96",
+      "match": "regex",
+      "regex": "\\b96\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_14",
+      "category": "math",
+      "difficulty": "hard",
+      "prompt": "What is the exact value of the infinite series sum_{n=1}^{infinity} n / 2^n? Reply with just the number.",
+      "expected": "2",
+      "match": "regex",
+      "regex": "\\b2\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "math_15",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "How many trailing zeros does 200! (200 factorial) have? Reply with just the number.",
+      "expected": "49",
+      "match": "regex",
+      "regex": "\\b49\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "math_16",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "How many non-negative integer solutions are there to x1 + x2 + x3 + x4 = 20 with the constraint that each xi <= 8? Reply with just the number.",
+      "expected": "375",
+      "match": "regex",
+      "regex": "\\b375\\b",
+      "max_tokens": 600
+    },
+    {
+      "id": "math_17",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "Compute the Stirling number of the second kind S(6,3) — the number of ways to partition a set of 6 elements into exactly 3 non-empty subsets. Reply with just the number.",
+      "expected": "90",
+      "match": "regex",
+      "regex": "\\b90\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "math_18",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "What are the last three digits of 2^1000? (Equivalently, compute 2^1000 mod 1000.) Reply with just the three-digit number.",
+      "expected": "376",
+      "match": "regex",
+      "regex": "\\b376\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "math_19",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "Compute the permanent of the matrix [[1,2,3],[4,5,6],[7,8,9]]. Note: the permanent is like the determinant but with all positive signs. Reply with just the number.",
+      "expected": "450",
+      "match": "regex",
+      "regex": "\\b450\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "math_20",
+      "category": "math",
+      "difficulty": "expert",
+      "prompt": "Let f(n) = sum of φ(d) over all positive divisors d of n, where φ is Euler's totient function. What is f(30)? Reply with just the number.",
+      "expected": "30",
+      "match": "regex",
+      "regex": "\\b30\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "reason_01",
+      "category": "reasoning",
+      "difficulty": "easy",
+      "prompt": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in cents? Reply with just the number.",
+      "expected": "5",
+      "match": "regex",
+      "regex": "\\b5\\b",
+      "max_tokens": 200
+    },
+    {
+      "id": "reason_02",
+      "category": "reasoning",
+      "difficulty": "medium",
+      "prompt": "If all roses are flowers, and some flowers fade quickly, can we conclude that some roses fade quickly? Answer 'yes' or 'no' and explain in one sentence why.",
+      "expected": "no",
+      "match": "regex",
+      "regex": "(?i)\\bno\\b",
+      "max_tokens": 200
+    },
+    {
+      "id": "reason_03",
+      "category": "reasoning",
+      "difficulty": "medium",
+      "prompt": "Alice, Bob, Carol, and Dave each have a different favorite color: red, blue, green, yellow.\n- Alice does not like red or blue.\n- Bob likes green.\n- Carol does not like yellow.\n\nWhat color does Dave like? Reply with just the color.",
+      "expected": "red",
+      "match": "regex",
+      "regex": "(?i)\\bred\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_04",
+      "category": "reasoning",
+      "difficulty": "medium",
+      "prompt": "A says 'B is lying'. B says 'C is lying'. C says 'A and B are both lying'. If exactly one person is telling the truth, who is it? Reply with just the name (A, B, or C).",
+      "expected": "B",
+      "match": "regex",
+      "regex": "\\bB\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "reason_05",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "Five people (Ann, Ben, Cal, Dee, Eve) sit in a row of 5 seats.\n- Ann and Ben must sit next to each other.\n- Cal and Dee must NOT sit next to each other.\n\nHow many valid seating arrangements are there? Reply with just the number.",
+      "expected": "36",
+      "match": "regex",
+      "regex": "\\b36\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "reason_06",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "There are 3 boxes. One contains only apples, one only oranges, one both. All labels are wrong. You may pull one fruit from one box (without looking inside). You pull from the box labeled 'Both' and get an apple. What does the box labeled 'Oranges' contain? Answer with one word.",
+      "expected": "both",
+      "match": "contains_ci",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_07",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "You are in a room with two doors. One leads to freedom, one to death. There are two guards — one always lies, one always tells the truth, but you don't know which is which. You can ask exactly ONE question to ONE guard. What single yes/no question guarantees you find the door to freedom? Reply with the question.",
+      "expected": "other guard",
+      "match": "regex",
+      "regex": "(?i)(other guard|other one|the other|would the other)",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_08",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "A counterfeit coin weighs slightly more than a real coin. You have 9 coins, at most one of which is counterfeit. You have a balance scale with no weights. What is the minimum number of weighings needed to guarantee identifying whether there is a counterfeit coin, and if so which one? Reply with just the number.",
+      "expected": "2",
+      "match": "regex",
+      "regex": "\\b2\\b",
+      "max_tokens": 400
+    },
+    {
+      "id": "reason_09",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "100 prisoners are each assigned a unique number 1–100. In a room there are 100 boxes, each containing a random number 1–100 (each number in exactly one box). Each prisoner may open up to 50 boxes. They win collectively only if EVERY prisoner finds their own number. Prisoners may not communicate after starting. What strategy gives them approximately a 31% chance of winning? Describe it in one sentence.",
+      "expected": "cycle",
+      "match": "regex",
+      "regex": "(?i)(cycle|loop|follow|chain|permut)",
+      "max_tokens": 400
+    },
+    {
+      "id": "reason_10",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "A perfectly rational agent knows that a bomb will explode in 10 minutes unless it receives a 4-digit PIN. The agent correctly deduces that a known adversary would set the PIN to the adversary's own birth year. The adversary was born in 1987. However, the lock has a 3-attempt limit before it permanently disables. The agent has no other information. What is the rational first action?\nA) Enter 1987\nB) Try to find more information first\nC) Enter 0000\nD) Enter 9999\nReply with just the letter.",
+      "expected": "A",
+      "match": "mcq",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_11",
+      "category": "reasoning",
+      "difficulty": "medium",
+      "prompt": "A drawer contains 10 red socks, 10 blue socks, 10 green socks, and 10 black socks. The room is completely dark. What is the minimum number of socks you must draw to guarantee you have a matching pair? Reply with just the number.",
+      "expected": "5",
+      "match": "regex",
+      "regex": "\\b5\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_12",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "Four people (A, B, C, D) are each either a knight (always tells truth) or a knave (always lies).\n- A says: \"B is a knight.\"\n- B says: \"C is a knave.\"\n- C says: \"A and D are different types (one knight, one knave).\"\n- D says: \"B is a knave.\"\n\nList all the knights. Reply with just the letter(s), separated by commas if multiple (e.g. 'C, D').",
+      "expected": "C, D",
+      "match": "regex",
+      "regex": "(?i)\\bC\\b.*\\bD\\b|\\bD\\b.*\\bC\\b",
+      "max_tokens": 600
+    },
+    {
+      "id": "reason_13",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "Three people (A, B, C) stand in a line. A can see B's and C's hats. B can see only C's hat. C sees no hats. There are 3 white hats and 2 black hats. Each person is given one hat from these five.\n\nA says: \"I don't know my hat color.\"\nB says: \"I don't know my hat color.\"\nC says: \"I know my hat color.\"\n\nWhat color is C's hat? Reply with just the color.",
+      "expected": "white",
+      "match": "regex",
+      "regex": "(?i)\\bwhite\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "reason_14",
+      "category": "reasoning",
+      "difficulty": "hard",
+      "prompt": "There are 4 doors, 1 with a car and 3 with goats. You pick door 1. The host (who knows what's behind each door) opens 2 other doors, both revealing goats, and offers you to switch to the remaining unopened door. What is the probability of winning the car if you switch? Reply as a simplified fraction.",
+      "expected": "3/4",
+      "match": "regex",
+      "regex": "\\b3/4\\b|\\b3⁄\\b|0\\.75",
+      "max_tokens": 400
+    },
+    {
+      "id": "reason_15",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "Three people (A, B, C) are a Knight (always truth), a Knave (always lies), and a Spy (can say either), one of each.\n- A says: \"I am the spy.\"\n- B says: \"A is telling the truth.\"\n- C says: \"I am not the spy.\"\n\nWho is the spy? Reply with just the letter.",
+      "expected": "B",
+      "match": "regex",
+      "regex": "\\bB\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "reason_16",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "Five classes (Math, English, Science, History, Art) must be scheduled into 5 consecutive time slots (1 through 5). The constraints are:\n- Math must be before Science.\n- English cannot be in slot 1 or slot 5.\n- History must be immediately after Math.\n- Art must not be in a slot adjacent to Science.\n\nHow many valid schedules exist? Reply with just the number.",
+      "expected": "4",
+      "match": "regex",
+      "regex": "\\b4\\b",
+      "max_tokens": 600
+    },
+    {
+      "id": "reason_17",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "Five events (A, B, C, D, E) have these temporal constraints:\n- A happens before B\n- B happens before C\n- D happens after A but before C\n- E happens after C\n\nGiven only these constraints, must D happen before B? Answer 'yes' or 'no' and explain in one sentence.",
+      "expected": "no",
+      "match": "regex",
+      "regex": "(?i)\\bno\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_18",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "A drawer contains 10 red socks, 10 blue socks, 10 green socks, and 10 black socks. The room is completely dark. What is the minimum number of socks you must draw to guarantee you have at least 3 socks of the same color? Reply with just the number.",
+      "expected": "9",
+      "match": "regex",
+      "regex": "\\b9\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "reason_19",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "You have a 3-gallon jug and a 5-gallon jug. Neither has markings. You need exactly 4 gallons. What is the minimum number of pour/fill/empty operations needed? Count each fill-from-tap, empty-to-drain, and pour-from-one-to-other as one operation. Reply with just the number.",
+      "expected": "6",
+      "match": "regex",
+      "regex": "\\b6\\b",
+      "max_tokens": 500
+    },
+    {
+      "id": "reason_20",
+      "category": "reasoning",
+      "difficulty": "expert",
+      "prompt": "Alice, Bob, Charlie, Diana, and Eve each live in a different city (New York, London, Paris, Tokyo, Sydney) and own a different pet (dog, cat, fish, bird, snake).\n- Eve lives in Sydney.\n- The person in London owns the cat.\n- The person in Sydney owns the bird.\n- The person in Tokyo owns the dog.\n- Diana owns the fish.\n- Charlie does not live in New York or Paris.\n- Alice does not live in Tokyo or Sydney.\n- Bob does not live in Paris.\n- Alice does not own the snake.\n\nWho owns the snake? Reply with just the name.",
+      "expected": "Bob",
+      "match": "regex",
+      "regex": "(?i)\\bBob\\b",
+      "max_tokens": 600
+    },
+    {
+      "id": "code_01",
+      "category": "code",
+      "difficulty": "easy",
+      "prompt": "What does this Python expression evaluate to?\n\n    sum(1 for x in range(20) if x % 4 == 0)\n\nReply with just the number.",
+      "expected": "5",
+      "match": "regex",
+      "regex": "\\b5\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "code_02",
+      "category": "code",
+      "difficulty": "medium",
+      "prompt": "What does this Python code print?\n\n    def make_adder(n):\n        def adder(x):\n            return x + n\n        return adder\n    \n    add5 = make_adder(5)\n    n = 100\n    print(add5(3))\n\nReply with just the number.",
+      "expected": "8",
+      "match": "regex",
+      "regex": "\\b8\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "code_03",
+      "category": "code",
+      "difficulty": "medium",
+      "prompt": "What does this JavaScript code log to the console?\n\n    for (var i = 0; i < 3; i++) {\n      setTimeout(() => console.log(i), 0);\n    }\n\nList all three logged values separated by spaces.",
+      "expected": "3 3 3",
+      "match": "regex",
+      "regex": "3[,\\s]+3[,\\s]+3",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_04",
+      "category": "code",
+      "difficulty": "medium",
+      "prompt": "What is the amortized time complexity per operation for appending to a dynamic array (like Python's list) that doubles in size when full? Reply in Big-O notation only.",
+      "expected": "O(1)",
+      "match": "regex",
+      "regex": "O\\(1\\)",
+      "max_tokens": 150
+    },
+    {
+      "id": "code_05",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "What does this Python code print?\n\n    x = []\n    for i in range(3):\n        x.append(lambda: i)\n    print([f() for f in x])\n\nReply with the exact output.",
+      "expected": "[2, 2, 2]",
+      "match": "regex",
+      "regex": "\\[2,\\s*2,\\s*2\\]",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_06",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "In C, what is the output of this code on a typical x86-64 system? Explain why it's undefined behavior in one sentence.\n\n    #include <stdio.h>\n    int main() {\n        int a = 1;\n        printf(\"%d %d\\n\", a++, a++);\n        return 0;\n    }\n\nAnswer the question about why it's undefined behavior — what rule does it violate?",
+      "expected": "sequence point",
+      "match": "regex",
+      "regex": "(?i)(sequence point|unspecified|undefined|order of evaluation|multiple modification|side effect|between sequence points)",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_07",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "This Go code has a race condition. Identify the exact problem in one sentence.\n\n    var counter int\n    var wg sync.WaitGroup\n    for i := 0; i < 1000; i++ {\n        wg.Add(1)\n        go func() {\n            defer wg.Done()\n            counter++\n        }()\n    }\n    wg.Wait()\n    fmt.Println(counter)",
+      "expected": "counter",
+      "match": "regex",
+      "regex": "(?i)(race condition|concurrent|atomic|mutex|lock|shared.*without|unsynchronized|data race|counter.*not.*safe|not.*thread.safe|multiple goroutines.*counter)",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_08",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "What is the time complexity of this algorithm? Give Big-O and explain.\n\n    def mystery(n):\n        if n <= 1:\n            return n\n        return mystery(n // 2) + mystery(n // 2) + n\n\nReply with just the Big-O notation (e.g. O(n log n)).",
+      "expected": "O(n log n)",
+      "match": "regex",
+      "regex": "O\\(n\\s*log\\s*n\\)|O\\(n\\s*lg\\s*n\\)|O\\(n\\s*\\*\\s*log\\s*n\\)",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_09",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    class Meta(type):\n        def __new__(mcs, name, bases, ns):\n            ns['x'] = ns.get('x', 0) + 10\n            return super().__new__(mcs, name, bases, ns)\n    \n    class A(metaclass=Meta):\n        x = 5\n    \n    class B(A):\n        pass\n    \n    print(A.x, B.x)\n\nReply with just the two numbers separated by a space.",
+      "expected": "15 10",
+      "match": "regex",
+      "regex": "\\b15\\s+10\\b",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_10",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "This Python generator function has a subtle bug. What does it actually yield?\n\n    def gen():\n        data = [1, 2, 3]\n        yield from (x * 2 for x in data)\n        data.append(4)\n    \n    result = list(gen())\n    print(result)\n\nReply with the exact printed output.",
+      "expected": "[2, 4, 6]",
+      "match": "regex",
+      "regex": "\\[2,\\s*4,\\s*6\\]",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_11",
+      "category": "code",
+      "difficulty": "medium",
+      "prompt": "What does this Python code print?\n\n    class Node:\n        def __init__(self, val, children=[]):\n            self.val = val\n            self.children = children\n    \n    a = Node(1)\n    b = Node(2)\n    a.children.append('x')\n    print(b.children)\n    print(a.children is b.children)\n\nReply with the exact two lines of output.",
+      "expected": "['x']\nTrue",
+      "match": "regex",
+      "regex": "\\['x'\\].*True",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_12",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "What does this Python code print?\n\n    class Base:\n        name = \"Base\"\n        \n        @classmethod\n        def greet(cls):\n            return f\"Hello from {cls.name}\"\n        \n        @staticmethod\n        def static_greet():\n            return f\"Hello from {Base.name}\"\n    \n    class Child(Base):\n        name = \"Child\"\n    \n    print(Child.greet())\n    print(Child.static_greet())\n\nReply with the exact two lines of output.",
+      "expected": "Hello from Child\nHello from Base",
+      "match": "regex",
+      "regex": "Hello from Child.*Hello from Base",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_13",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "What does this Python code print?\n\n    class Tricky:\n        def __init__(self):\n            self.real = 42\n        def __getattr__(self, name):\n            return f\"missing:{name}\"\n        def __getattribute__(self, name):\n            if name == \"trap\":\n                raise AttributeError(\"nope\")\n            return super().__getattribute__(name)\n    \n    t = Tricky()\n    print(t.real)\n    print(t.fake)\n    print(t.trap)\n\nReply with the exact three lines of output.",
+      "expected": "42\nmissing:fake\nmissing:trap",
+      "match": "regex",
+      "regex": "42.*missing:fake.*missing:trap",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_14",
+      "category": "code",
+      "difficulty": "hard",
+      "prompt": "What does this Python code print?\n\n    import asyncio\n    \n    async def main():\n        results = []\n        \n        async def a():\n            results.append(1)\n            await asyncio.sleep(0)\n            results.append(2)\n        \n        async def b():\n            results.append(3)\n            await asyncio.sleep(0)\n            results.append(4)\n        \n        task_a = asyncio.create_task(a())\n        task_b = asyncio.create_task(b())\n        results.append(5)\n        await task_a\n        await task_b\n        return results\n    \n    print(asyncio.run(main()))\n\nReply with the exact output.",
+      "expected": "[5, 1, 3, 2, 4]",
+      "match": "regex",
+      "regex": "\\[5,\\s*1,\\s*3,\\s*2,\\s*4\\]",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_15",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    def outer():\n        x = 10\n        def middle():\n            x = 20\n            def inner():\n                nonlocal x\n                x = 30\n                return x\n            inner()\n            return x\n        return middle()\n    \n    print(outer())\n\nReply with just the number.",
+      "expected": "30",
+      "match": "regex",
+      "regex": "\\b30\\b",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_16",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    results = [y := x + 1 for x in range(5) if (y := x * 2) > 3]\n    print(results)\n\nReply with the exact output.",
+      "expected": "[3, 4, 5]",
+      "match": "regex",
+      "regex": "\\[3,\\s*4,\\s*5\\]",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_17",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    class D(type):\n        def __new__(mcs, name, bases, ns):\n            for k, v in list(ns.items()):\n                if isinstance(v, int):\n                    ns[k] = v * 2\n            return super().__new__(mcs, name, bases, ns)\n    \n    class Config(metaclass=D):\n        x = 3\n        y = 5\n        z = \"hello\"\n    \n    print(Config.x, Config.y, Config.z)\n\nReply with the exact output.",
+      "expected": "6 10 hello",
+      "match": "regex",
+      "regex": "6\\s+10\\s+hello",
+      "max_tokens": 300
+    },
+    {
+      "id": "code_18",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    class Plugin:\n        registry = []\n        def __init_subclass__(cls, **kwargs):\n            super().__init_subclass__(**kwargs)\n            Plugin.registry.append(cls.__name__)\n    \n    class Auth(Plugin): pass\n    class Cache(Plugin): pass\n    class Auth2(Auth): pass\n    \n    print(Plugin.registry)\n\nReply with the exact output.",
+      "expected": "['Auth', 'Cache', 'Auth2']",
+      "match": "regex",
+      "regex": "\\['Auth',\\s*'Cache',\\s*'Auth2'\\]",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_19",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    it = iter([1, 2, 3])\n    a = list(it)\n    b = list(it)\n    c = sum(it)\n    print(a, b, c)\n\nReply with the exact output.",
+      "expected": "[1, 2, 3] [] 0",
+      "match": "regex",
+      "regex": "\\[1,\\s*2,\\s*3\\]\\s*\\[\\]\\s*0",
+      "max_tokens": 200
+    },
+    {
+      "id": "code_20",
+      "category": "code",
+      "difficulty": "expert",
+      "prompt": "What does this Python code print?\n\n    class A:\n        def method(self):\n            return ['A']\n    \n    class B(A):\n        def method(self):\n            return ['B'] + super().method()\n    \n    class C(A):\n        def method(self):\n            return ['C'] + super().method()\n    \n    class D(B, C):\n        def method(self):\n            return ['D'] + super().method()\n    \n    print(D().method())\n\nReply with the exact output.",
+      "expected": "['D', 'B', 'C', 'A']",
+      "match": "regex",
+      "regex": "\\['D',\\s*'B',\\s*'C',\\s*'A'\\]",
+      "max_tokens": 300
+    },
+    {
+      "id": "coding_01",
+      "category": "coding",
+      "difficulty": "easy",
+      "prompt": "Write a Python function `is_palindrome(s)` that returns True if the string is a palindrome (case-insensitive, ignoring non-alphanumeric characters). Handle empty strings (return True). Just the function, no explanation.",
+      "expected": "def is_palindrome",
+      "match": "regex",
+      "regex": "def is_palindrome.*return.*==|def is_palindrome.*\\[::\\s*-1\\]|def is_palindrome.*reversed",
+      "max_tokens": 300
+    },
+    {
+      "id": "coding_02",
+      "category": "coding",
+      "difficulty": "medium",
+      "prompt": "Write a Python function `group_by(items, key_fn)` that groups a list of items by the result of key_fn, returning a dict mapping each key to a list of items. Preserve insertion order within each group. Just the function.",
+      "expected": "def group_by",
+      "match": "regex",
+      "regex": "def group_by.*key_fn.*dict|def group_by.*defaultdict|def group_by.*setdefault",
+      "max_tokens": 300
+    },
+    {
+      "id": "coding_03",
+      "category": "coding",
+      "difficulty": "medium",
+      "prompt": "Write a Python function `flatten(lst)` that recursively flattens a nested list of arbitrary depth. The input `[1, [2, [3, [4]], 5]]` should return `[1, 2, 3, 4, 5]`. Just the function.",
+      "expected": "def flatten",
+      "match": "regex",
+      "regex": "def flatten.*(extend|\\+=|yield from|yield).*flatten|def flatten.*isinstance.*list",
+      "max_tokens": 300
+    },
+    {
+      "id": "coding_04",
+      "category": "coding",
+      "difficulty": "medium",
+      "prompt": "Write a JavaScript function `debounce(fn, ms)` that returns a debounced version of fn. Calling the debounced function resets the timer. Just the function.",
+      "expected": "debounce",
+      "match": "regex",
+      "regex": "(?i)(function debounce|const debounce|let debounce).*clearTimeout.*setTimeout|clearTimeout.*setTimeout|setTimeout.*clearTimeout",
+      "max_tokens": 300
+    },
+    {
+      "id": "coding_05",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Implement Dijkstra's shortest-path algorithm in Python. Function signature: `dijkstra(graph, start)` where graph is a dict of dicts: `{node: {neighbor: weight, ...}, ...}`. Return a dict of shortest distances from start to all reachable nodes. Use a priority queue. Just the function.",
+      "expected": "def dijkstra",
+      "match": "regex",
+      "regex": "def dijkstra.*heapq|import heapq.*def dijkstra|heappush|heappop",
+      "max_tokens": 600
+    },
+    {
+      "id": "coding_06",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Write a Python class `Trie` that supports three methods: `insert(word)`, `search(word) -> bool`, and `starts_with(prefix) -> bool`. Use a dictionary-based node structure. Just the class.",
+      "expected": "class Trie",
+      "match": "regex",
+      "regex": "class Trie.*def insert.*def search|def insert.*def search.*def starts_with|class Trie.*children",
+      "max_tokens": 500
+    },
+    {
+      "id": "coding_07",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Write a Python async function `fetch_all(urls: list[str]) -> list[str]` that fetches all URLs concurrently using aiohttp. If a request fails for any reason, return the string 'ERROR' for that URL. Use `asyncio.gather`. Just the function (include necessary imports).",
+      "expected": "async def fetch_all",
+      "match": "regex",
+      "regex": "async def fetch_all.*asyncio\\.gather|asyncio\\.gather.*async def fetch_all|async def fetch_all.*aiohttp",
+      "max_tokens": 500
+    },
+    {
+      "id": "coding_08",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Write a TypeScript function with this exact signature:\n\n    function groupBy<T, K extends keyof T>(items: T[], key: K): Map<T[K], T[]>\n\nIt should group items by the value at key, returning a Map. Just the function.",
+      "expected": "function groupBy",
+      "match": "regex",
+      "regex": "function groupBy\\s*<|const groupBy\\s*=\\s*<",
+      "max_tokens": 400
+    },
+    {
+      "id": "coding_09",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `lru_cache(maxsize: int)` that returns a decorator implementing a Least Recently Used cache. Do NOT use functools. Use collections.OrderedDict. The decorated function should have a `.cache_clear()` method. Just the function.",
+      "expected": "def lru_cache",
+      "match": "regex",
+      "regex": "def lru_cache.*(OrderedDict|move_to_end|popitem).*def wrapper|def lru_cache.*def decorator.*OrderedDict|OrderedDict.*move_to_end",
+      "max_tokens": 700
+    },
+    {
+      "id": "coding_10",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `parse_csv_line(line: str) -> list[str]` that correctly parses a single CSV line, handling: (1) quoted fields with embedded commas, (2) escaped quotes inside quoted fields (doubled quotes), (3) fields with leading/trailing spaces outside quotes are NOT trimmed. Do NOT use the csv module. Just the function.",
+      "expected": "def parse_csv_line",
+      "match": "regex",
+      "regex": "def parse_csv_line.*quote|def parse_csv_line.*state|def parse_csv_line.*\\\"\\\"",
+      "max_tokens": 600
+    },
+    {
+      "id": "coding_11",
+      "category": "coding",
+      "difficulty": "medium",
+      "prompt": "Write a Python function `merge_sorted(a: list[int], b: list[int]) -> list[int]` that merges two already-sorted lists into one sorted list in O(n+m) time. Do NOT use built-in sort. Handle empty lists. Just the function.",
+      "expected": "def merge_sorted",
+      "match": "regex",
+      "regex": "def merge_sorted.*while.*len|def merge_sorted.*while.*<|def merge_sorted.*i.*j.*while|def merge_sorted.*extend|def merge_sorted.*\\+",
+      "max_tokens": 500
+    },
+    {
+      "id": "coding_12",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Write a Python function `topological_sort(graph: dict[str, list[str]]) -> list[str]` using Kahn's algorithm (BFS-based). The graph is an adjacency list: {node: [successors]}. If a cycle exists, raise ValueError('cycle detected'). Return one valid topological ordering. Just the function.",
+      "expected": "def topological_sort",
+      "match": "regex",
+      "regex": "def topological_sort.*(in_degree|indegree|in_deg|degree).*(deque|queue|pop).*ValueError|def topological_sort.*ValueError.*(cycle|circular)",
+      "max_tokens": 800
+    },
+    {
+      "id": "coding_13",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Write a Python function `consistent_hash(key: str, nodes: list[str], replicas: int = 150) -> str` that implements consistent hashing. Use MD5 to hash both keys and virtual nodes. Each physical node gets `replicas` virtual nodes on the ring. Return the node responsible for the given key. Just the function (include imports).",
+      "expected": "def consistent_hash",
+      "match": "regex",
+      "regex": "def consistent_hash.*(md5|hashlib|bisect|sorted).*virtual|def consistent_hash.*bisect.*(ring|circle|hash)|def consistent_hash.*hashlib.*bisect",
+      "max_tokens": 800
+    },
+    {
+      "id": "coding_14",
+      "category": "coding",
+      "difficulty": "hard",
+      "prompt": "Write a Python function `rate_limiter(max_calls: int, period: float)` that returns a decorator implementing a sliding window rate limiter. If the decorated function is called more than `max_calls` times within `period` seconds, raise RuntimeError('rate limited'). Use time.monotonic(). Thread-safety is NOT required. Just the function (include imports).",
+      "expected": "def rate_limiter",
+      "match": "regex",
+      "regex": "def rate_limiter.*(deque|\\[\\]|list).*monotonic.*RuntimeError|def rate_limiter.*monotonic.*(deque|append).*rate.limited|def rate_limiter.*time\\.monotonic",
+      "max_tokens": 700
+    },
+    {
+      "id": "coding_15",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `serialize_graph(root: 'Node') -> str` and `deserialize_graph(data: str) -> 'Node'` for a directed graph where each Node has `val: int` and `neighbors: list[Node]`. Nodes may form cycles. Multiple nodes may point to the same neighbor (shared references must be preserved). Use a node ID scheme to handle cycles. Class: `class Node: def __init__(self, val, neighbors=None)`. Just the two functions and the class.",
+      "expected": "def serialize_graph",
+      "match": "regex",
+      "regex": "def serialize_graph.*def deserialize_graph.*(visited|seen|id|memo)|def serialize_graph.*(id\\(|node_id|visited).*def deserialize_graph",
+      "max_tokens": 1200
+    },
+    {
+      "id": "coding_16",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `eval_rpn(tokens: list[str]) -> float` that evaluates a Reverse Polish Notation expression. Support operators +, -, *, / and unary negation (negative numbers like '-3'). Division is true division (not integer). Handle division by zero by raising ValueError. Handle malformed expressions (too many/few operators) by raising ValueError. Just the function.",
+      "expected": "def eval_rpn",
+      "match": "regex",
+      "regex": "def eval_rpn.*(stack|pop).*ValueError.*(division|zero|malform|invalid)|def eval_rpn.*stack.*\\+.*-.*\\*.*\\/",
+      "max_tokens": 700
+    },
+    {
+      "id": "coding_17",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python class `BloomFilter` with methods `add(item: str)` and `might_contain(item: str) -> bool`. Constructor takes `size: int` (bit array size) and `num_hashes: int`. Use double hashing: h_i(x) = (h1(x) + i * h2(x)) % size, where h1 and h2 are derived from MD5 and SHA256 respectively. Use a bytearray as the bit array. Just the class (include imports).",
+      "expected": "class BloomFilter",
+      "match": "regex",
+      "regex": "class BloomFilter.*(md5|hashlib).*(sha256|sha).*(bytearray|bitarray)|class BloomFilter.*def add.*def might_contain.*(hashlib|md5)",
+      "max_tokens": 900
+    },
+    {
+      "id": "coding_18",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `find_median_streams(stream1: Iterator[int], stream2: Iterator[int]) -> float` that finds the median of two sorted streams (iterators) without loading all elements into memory. You may assume both streams are sorted in ascending order and finite. Use O(1) extra space (no lists). Hint: interleave-merge and count. Just the function (include imports).",
+      "expected": "def find_median_streams",
+      "match": "regex",
+      "regex": "def find_median_streams.*(next|__next__|heapq|merge|StopIteration)|def find_median_streams.*(count|total|mid|median)",
+      "max_tokens": 900
+    },
+    {
+      "id": "coding_19",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `interval_merge(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]` that merges overlapping intervals AND a function `interval_subtract(intervals: list[tuple[int, int]], remove: tuple[int, int]) -> list[tuple[int, int]]` that removes a range from a set of non-overlapping sorted intervals, splitting if necessary. Intervals are inclusive [start, end]. Just the two functions.",
+      "expected": "def interval_merge",
+      "match": "regex",
+      "regex": "def interval_merge.*sort.*def interval_subtract|def interval_merge.*merged.*def interval_subtract.*(split|result|append)",
+      "max_tokens": 900
+    },
+    {
+      "id": "coding_20",
+      "category": "coding",
+      "difficulty": "expert",
+      "prompt": "Write a Python function `aho_corasick(text: str, patterns: list[str]) -> dict[str, list[int]]` that implements the Aho-Corasick multi-pattern string matching algorithm. Build a trie with failure links, then scan the text once. Return a dict mapping each pattern to a list of starting indices where it occurs in the text. Just the function.",
+      "expected": "def aho_corasick",
+      "match": "regex",
+      "regex": "def aho_corasick.*(fail|failure|suffix).*trie|def aho_corasick.*(trie|goto|queue|deque).*(fail|failure|suffix)|def aho_corasick.*class.*Node.*(fail|children)",
+      "max_tokens": 1500
+    },
+    {
+      "id": "know_01",
+      "category": "knowledge",
+      "difficulty": "easy",
+      "prompt": "In a CPU, what is the role of the TLB (Translation Lookaside Buffer)?\nA) It caches recently used virtual-to-physical address translations\nB) It stores the L1 instruction cache\nC) It manages branch prediction\nD) It buffers write operations to main memory\nReply with just the letter.",
+      "expected": "A",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_02",
+      "category": "knowledge",
+      "difficulty": "medium",
+      "prompt": "Which page replacement algorithm is provably optimal (lowest page fault rate) but cannot be implemented in practice because it requires future knowledge?\nA) LRU (Least Recently Used)\nB) FIFO (First In First Out)\nC) OPT / Bélády's algorithm\nD) Clock algorithm\nReply with just the letter.",
+      "expected": "C",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_03",
+      "category": "knowledge",
+      "difficulty": "medium",
+      "prompt": "In the CAP theorem, a distributed system can guarantee at most two of: Consistency, Availability, Partition tolerance. During a network partition, a CP system does what?\nA) Returns stale data to remain available\nB) Refuses requests or returns errors to preserve consistency\nC) Repairs the partition automatically\nD) Elects a new leader and serves all requests\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_04",
+      "category": "knowledge",
+      "difficulty": "medium",
+      "prompt": "What does the TCP Nagle algorithm do, and when is it problematic?\nA) Buffers small packets to reduce overhead; problematic for latency-sensitive apps like games or SSH\nB) Retransmits lost packets; problematic when bandwidth is plentiful\nC) Limits connection rate; problematic for high-concurrency servers\nD) Fragments large packets; problematic for jumbo frames\nReply with just the letter.",
+      "expected": "A",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_05",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "In a compiler, what is the difference between a 'LL parser' and a 'LR parser'?\nA) LL parsers handle left recursion natively; LR parsers cannot\nB) LL parsers read input left-to-right and expand leftmost nonterminal; LR parsers read left-to-right and reduce rightmost nonterminal\nC) LR parsers require more memory but parse fewer grammars\nD) LL parsers use a stack; LR parsers use a queue\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_06",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "What is a 'thundering herd' problem in server systems?\nA) A memory leak that compounds exponentially\nB) When many idle processes/threads simultaneously wake and compete for the same resource, causing CPU spikes\nC) Network congestion caused by bursty traffic\nD) A deadlock involving more than two processes\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_07",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "In TCP, what is the difference between 'congestion control' and 'flow control'?\nA) They are the same mechanism with different names\nB) Flow control prevents the sender from overwhelming the RECEIVER's buffer; congestion control prevents overwhelming the NETWORK\nC) Congestion control operates at layer 2; flow control at layer 4\nD) Flow control uses ACKs; congestion control uses NACKs\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_08",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "What is 'copy-on-write' (COW) in the context of Linux fork()?\nA) The child process copies all parent memory immediately at fork\nB) Parent and child share the same physical pages until either writes; only the written page is then copied\nC) The kernel writes a log of all memory changes for rollback\nD) The parent pauses while the child copies its address space\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_09",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "In a distributed database using optimistic concurrency control (OCC), what are the three phases of a transaction, in order?\nA) Lock, Execute, Commit\nB) Read, Validate, Write\nC) Begin, Serialize, Commit\nD) Acquire, Modify, Release\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_10",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "What is the key insight behind the 'false sharing' performance problem in multi-core CPUs?\nA) Two threads share incorrect data due to a synchronization bug\nB) Two threads modify different variables that happen to reside on the same cache line, causing constant cache invalidations\nC) A CPU branch predictor incorrectly shares state between hyperthreads\nD) Two NUMA nodes share a memory bus, causing latency\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_11",
+      "category": "knowledge",
+      "difficulty": "medium",
+      "prompt": "In the MESI cache coherence protocol, what are the four states a cache line can be in, and what does the 'E' (Exclusive) state specifically mean?\nA) The line is dirty and shared across multiple caches\nB) The line has been evicted and is in a transition state\nC) The line is clean and present in exactly this one cache; main memory is up-to-date\nD) The line is locked for atomic operations\nReply with just the letter.",
+      "expected": "C",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_12",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "In the Raft consensus algorithm, what specifically happens when a follower's log conflicts with a new leader's AppendEntries RPC (i.e., the follower has an entry at the same index but different term)?\nA) The follower keeps its own entry and rejects the leader\nB) The follower deletes its conflicting entry and all entries after it, then appends the leader's entries\nC) The leader adopts the follower's entry if the follower's term is higher\nD) Both nodes enter a special reconciliation phase\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_13",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "What is the precise difference between linearizability and serializability?\nA) They are the same concept applied to different layers (hardware vs. software)\nB) Serializability is strictly stronger than linearizability\nC) Linearizability applies only to distributed systems; serializability only to databases\nD) Linearizability is about single operations appearing atomic and respecting real-time order; serializability is about transactions being equivalent to some serial execution (not necessarily respecting real-time order)\nReply with just the letter.",
+      "expected": "D",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_14",
+      "category": "knowledge",
+      "difficulty": "hard",
+      "prompt": "Linux io_uring uses submission and completion queues shared between user space and the kernel. What is the key advantage of this design over epoll for high-throughput I/O?\nA) io_uring supports more file descriptor types\nB) io_uring avoids system call overhead per I/O operation by batching submissions and completions through shared ring buffers\nC) io_uring uses less memory than epoll\nD) io_uring automatically parallelizes I/O across CPU cores\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_15",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "In a CmRDT (operation-based CRDT) OR-Set (Observed-Remove Set), how is the 'add wins over concurrent remove' semantic implemented?\nA) Add operations have higher Lamport timestamps by convention\nB) A central coordinator resolves add/remove conflicts\nC) Each add generates a globally unique tag; remove only deletes specific observed tags, not future ones\nD) Remove operations are delayed until all concurrent adds are delivered\nReply with just the letter.",
+      "expected": "C",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_16",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "In the Linux kernel, what is the difference between a softirq and a tasklet?\nA) Softirqs are statically allocated at compile time and can run concurrently on multiple CPUs; tasklets are built on softirqs but are serialized (a given tasklet cannot run on two CPUs simultaneously)\nB) Tasklets have higher priority than softirqs\nC) Softirqs run in process context; tasklets run in interrupt context\nD) Tasklets are deprecated in favor of softirqs since Linux 5.0\nReply with just the letter.",
+      "expected": "A",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_17",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "What is the ABA problem in lock-free programming, and which mechanism solves it?\nA) Two threads deadlock when both attempt atomic operations on values A and B. Solved by lock ordering\nB) A thread reads value A, another thread changes it to B then back to A; the first thread's CAS succeeds incorrectly. Solved by tagged/versioned pointers (adding a counter to each CAS)\nC) A compare-and-swap fails spuriously on ARM. Solved by using LL/SC instead\nD) Memory is freed and reallocated at the same address. Solved by garbage collection only\nReply with just the letter.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_18",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "In a distributed database using Multi-Version Concurrency Control (MVCC), a long-running read transaction T1 started at timestamp 10. A write transaction T2 commits at timestamp 15, modifying row X. When T1 later reads row X, what does it see and why?\nA) T1 sees T2's new value because T2 committed before T1 read the row\nB) T1 is aborted due to a write-read conflict\nC) T1 sees T2's value but is flagged for potential anomalies\nD) T1 sees the version of X from before T2's commit, because T1's snapshot is at timestamp 10 and MVCC provides snapshot isolation\nReply with just the letter.",
+      "expected": "D",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_19",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "What is the write amplification problem in LSM-tree based storage engines (like RocksDB/LevelDB), and what causes it?\nA) Each write requires updating an on-disk B-tree index, causing random I/O\nB) Writes are duplicated across replicas, amplifying network bandwidth\nC) Data is written once to the WAL and then multiple times during compaction as SSTables are merged across levels, so the total bytes written to disk can be 10-30x the original write\nD) The filesystem journal doubles every write operation\nReply with just the letter.",
+      "expected": "C",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "know_20",
+      "category": "knowledge",
+      "difficulty": "expert",
+      "prompt": "In TCP, what is the purpose of the TIME_WAIT state, and how long does it last on most systems?\nA) It buffers data for retransmission; it lasts until all ACKs are received\nB) It prevents SYN flood attacks; it lasts 30 seconds\nC) It allows the kernel to reclaim socket memory; it lasts 10 seconds\nD) It ensures delayed segments from the old connection are not interpreted as belonging to a new connection on the same port; it lasts 2*MSL (typically 60 seconds)\nReply with just the letter.",
+      "expected": "D",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_01",
+      "category": "czech",
+      "difficulty": "easy",
+      "prompt": "Přelož do češtiny přirozeně: 'It's raining cats and dogs.' Napiš ekvivalentní českou frázi (ne doslovný překlad).",
+      "expected": "liják",
+      "match": "regex",
+      "regex": "(?i)(leje jako z konve|padají trakaře|hustý déšť|průtrž|liják|záplava|prudce prší|lije jako z konve)",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_02",
+      "category": "czech",
+      "difficulty": "medium",
+      "prompt": "Doplň správný tvar slovesa v podmínce: 'Kdybych _______ (vědět) o té schůzce, určitě bych přišel.' Napiš jen chybějící tvar slovesa.",
+      "expected": "věděl",
+      "match": "regex",
+      "regex": "(?i)věděl[ai]?",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_03",
+      "category": "czech",
+      "difficulty": "medium",
+      "prompt": "Vysvětli jednou větou rozdíl mezi 'být' a 'bývat' v češtině (kdy se používá iterativum 'bývat').",
+      "expected": "opakovaně",
+      "match": "regex",
+      "regex": "(?i)(opakov|opakuj|habit|frequent|used to|zvyk|pravid|iterativ|recurring|repeat|obvykle|zpravidla)",
+      "max_tokens": 200
+    },
+    {
+      "id": "czech_04",
+      "category": "czech",
+      "difficulty": "medium",
+      "prompt": "Které skloňování (vzor) patří podstatné jméno 'předseda'?\nA) pán\nB) hrad\nC) žena\nD) soudce\nOdpověz jen písmenem.",
+      "expected": "D",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_05",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Napiš správný tvar slova 'přítel' v instrumentálu plurálu. (Vzor věty: 'Šel jsem s ...'). Odpověz jen tím jedním tvarem.",
+      "expected": "přáteli",
+      "match": "contains_ci",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_06",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Přelož do angličtiny: 'Kdyby bývala přišla dříve, byli bychom to stihli.' Odpověz jednou větou v angličtině.",
+      "expected": "had",
+      "match": "regex",
+      "regex": "(?i)(had.*come|if she had|would have made it|could have made it|would have caught it)",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_07",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Jaký je správný přechodník přítomný od slovesa 'číst' (mužský rod)?\nA) čtoucí\nB) čta\nC) čteje\nD) čtíc\nOdpověz jen písmenem.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_08",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Slovo 'software' se v češtině skloňuje. Napiš genitiv singuláru: 'Instalace nového _______ trvala hodinu.' Odpověz jen chybějícím tvarem.",
+      "expected": "softwaru",
+      "match": "regex",
+      "regex": "(?i)software?u",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_09",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Věta 'Starý mlynář říkal, že mlýn mele.' obsahuje vedlejší větu. Jaká je funkce slova 'že' v této větě?\nA) Vztažné zájmeno\nB) Podřadicí spojka uvozující větu předmětnou\nC) Souřadicí spojka\nD) Příslovce\nOdpověz jen písmenem.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_10",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Vysvětli sémantický rozdíl mezi těmito dvěma větami v jedné větě:\n1. 'Zavřel dveře, aby nevnikl vítr.'\n2. 'Zavřel dveře, takže nevnikl vítr.'\nJaký je klíčový rozdíl?",
+      "expected": "záměr",
+      "match": "regex",
+      "regex": "(?i)(záměr|úmysl|cíl|intentional|purpose|důsledek|výsledek|kauzál|aby.*účel|takže.*příčina|result|cause|effect|consequence|intentional|purposeful|final|aby.*aim)",
+      "max_tokens": 200
+    },
+    {
+      "id": "czech_11",
+      "category": "czech",
+      "difficulty": "medium",
+      "prompt": "Jaký je správný genitiv plurálu slova 'přítel'? Doplňte: 'Nemám mnoho _______.' Odpovězte jen chybějícím tvarem.",
+      "expected": "přátel",
+      "match": "contains_ci",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_12",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Jaký je správný přechodník minulý od slovesa 'přijít' (mužský rod, jednotné číslo)? Příklad: '_______ domů, svlékl si kabát.' Odpovězte jen chybějícím tvarem.",
+      "expected": "přišed",
+      "match": "regex",
+      "regex": "(?i)přišed",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_13",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Jaký vid (aspekt) má sloveso 'vídávat'? A jaký je jeho dokonavý protějšek nejbližší v základním tvaru?\nA) Nedokonavé; dokonavý protějšek: uvidět\nB) Nedokonavé (iterativum); dokonavý protějšek: vidět\nC) Nedokonavé (iterativum); nemá přímý dokonavý protějšek — je to frekventativum od 'vídat'\nD) Dokonavé; nedokonavý protějšek: vídat\nOdpovězte jen písmenem.",
+      "expected": "C",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_14",
+      "category": "czech",
+      "difficulty": "hard",
+      "prompt": "Slovo 'muzeum' je v češtině středního rodu. Jaký je jeho lokál singuláru? Doplňte: 'Byli jsme v _______.' Odpovězte jen chybějícím tvarem (bez předložky).",
+      "expected": "muzeu",
+      "match": "regex",
+      "regex": "(?i)^\\s*muzeu\\s*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_15",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Určete druh vedlejší věty: 'Kdo se bojí, nesmí do lesa.'\nA) Věta vztažná\nB) Věta podmětná\nC) Věta podmínková\nD) Věta předmětná\nOdpovězte jen písmenem.",
+      "expected": "B",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_16",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Jaký je etymologický původ českého slova 'brýle'?\nA) Z francouzského 'briller' (zářit)\nB) Ze slovanského kořene 'bry-' (brvit, chránit)\nC) Z italského 'brillante' (briliantní)\nD) Z německého 'Brille' (které pochází z latiny 'beryllus' — druh kamene používaný pro čočky)\nOdpovězte jen písmenem.",
+      "expected": "D",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_17",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Jaký je správný tvar v dativu plurálu: 'Děkuji všem svým _______' (kolega, mužský rod životný). Odpovězte jen chybějícím tvarem v dativu plurálu.",
+      "expected": "kolegům",
+      "match": "contains_ci",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_18",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Jaký je rozdíl mezi 'přijít s něčím' a 'přijít na něco'? Vysvětlete sémantický rozdíl jednou větou česky.",
+      "expected": "přijít na",
+      "match": "regex",
+      "regex": "(?i)(přijít s.*přinést|přijít na.*objevit|přijít na.*vymyslet|napad|předlož|přijít s.*návrh|přijít na.*řešení|přinést.*objevit|nápad.*návrh|discover.*propose|bring.*figure out)",
+      "max_tokens": 200
+    },
+    {
+      "id": "czech_19",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "V češtině existuje jev zvaný 'zvratná pasivizace' (reflexivní pasivum). Převeďte tuto větu do zvratného pasiva: 'Dělníci stavějí dům.' Napište jen výslednou větu.",
+      "expected": "staví",
+      "match": "regex",
+      "regex": "(?i)dům se staví",
+      "max_tokens": 150
+    },
+    {
+      "id": "czech_20",
+      "category": "czech",
+      "difficulty": "expert",
+      "prompt": "Jaký je nominativ plurálu slova 'oko' ve významu 'orgán zraku' (nikoli 'oko na punčoše')? A jaký je nominativ plurálu slova 'ucho' ve stejném anatomickém významu? Napište oba tvary oddělené čárkou.",
+      "expected": "oči, uši",
+      "match": "regex",
+      "regex": "(?i)oči.*uši|uši.*oči",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_01",
+      "category": "instruction",
+      "difficulty": "easy",
+      "prompt": "Write a single sentence about the sky. The sentence must end with the word 'blue'.",
+      "expected": "blue",
+      "match": "regex",
+      "regex": "(?i)blue[.!?]?\\s*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_02",
+      "category": "instruction",
+      "difficulty": "medium",
+      "prompt": "List exactly 4 prime numbers between 10 and 50, separated by commas, in ascending order. No other text.",
+      "expected": "11, 13, 17, 19",
+      "match": "regex",
+      "regex": "^\\s*(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)\\s*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_03",
+      "category": "instruction",
+      "difficulty": "medium",
+      "prompt": "Write exactly 3 sentences about water. Each sentence must contain the word 'water'. Number each sentence (1. 2. 3.). No other text before or after.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)1[.\\):].*water.*\\n.*2[.\\):].*water.*\\n.*3[.\\):].*water",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_04",
+      "category": "instruction",
+      "difficulty": "medium",
+      "prompt": "Reply in ALL CAPS. Name three planets in our solar system, separated by commas.",
+      "expected": "",
+      "match": "regex",
+      "regex": "^[^a-z]*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_05",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "Without using any letter 'e' (uppercase or lowercase), write one complete sentence about programming. The sentence must be at least 8 words long.",
+      "expected": "",
+      "match": "regex",
+      "regex": "^[^eE]*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_06",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "Count the number of letter 'a' (case-insensitive) in the word 'abracadabra'. Reply with ONLY the integer.",
+      "expected": "5",
+      "match": "regex",
+      "regex": "\\b5\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_07",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "This instruction is impossible to follow literally: write a sentence that is both exactly 5 words long AND exactly 10 words long. Explain in exactly one word why you cannot do it.",
+      "expected": "impossible",
+      "match": "regex",
+      "regex": "(?i)^\\s*(impossible|contradiction|paradox|conflicting|contradictory)\\s*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_08",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "Output ONLY a valid JSON object with two keys: 'reversed' containing the string 'hello world' reversed, and 'length' containing the number of characters in 'hello world' (including the space). No explanation, no markdown.",
+      "expected": "dlrow olleh",
+      "match": "regex",
+      "regex": "\"reversed\"\\s*:\\s*\"dlrow olleh\".*\"length\"\\s*:\\s*11|\"length\"\\s*:\\s*11.*\"reversed\"\\s*:\\s*\"dlrow olleh\"",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_09",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Write the word 'hello' using only characters from the NATO phonetic alphabet names (Alpha, Bravo, Charlie...). Spell out each letter of 'hello' using the corresponding NATO word. Output only the 5 NATO words, one per line.",
+      "expected": "Hotel",
+      "match": "regex",
+      "regex": "(?i)hotel\\s*\\n\\s*echo\\s*\\n\\s*lima\\s*\\n\\s*lima\\s*\\n\\s*oscar",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_10",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Create an acrostic where: (1) the poem has exactly 5 lines, (2) the first letter of each line spells APPLE from top to bottom, (3) each line must contain exactly 6 words, (4) no line may contain the word 'apple'. Output only the poem.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)^\\s*A\\w*.*\\n\\s*P\\w*.*\\n\\s*P\\w*.*\\n\\s*L\\w*.*\\n\\s*E\\w*",
+      "max_tokens": 200
+    },
+    {
+      "id": "instr_11",
+      "category": "instruction",
+      "difficulty": "medium",
+      "prompt": "Write exactly 5 words where each word starts with the next letter of the alphabet starting from F. So the first word starts with F, second with G, third with H, fourth with I, fifth with J. Output only the 5 words separated by spaces.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)^\\s*[Ff]\\w*\\s+[Gg]\\w*\\s+[Hh]\\w*\\s+[Ii]\\w*\\s+[Jj]\\w*\\s*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_12",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "Write a sentence about cats that is exactly 7 words long, contains no letter 'a' (uppercase or lowercase), and ends with a period. Output only the sentence.",
+      "expected": "",
+      "match": "regex",
+      "regex": "^[^aA]*\\.$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_13",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "Output the numbers 1 through 15. For multiples of 3 output 'Fizz' instead of the number. For multiples of 5 output 'Buzz'. For multiples of both 3 and 5 output 'FizzBuzz'. Separate all entries with commas, no spaces. Output only the sequence.",
+      "expected": "1,2,Fizz,4,Buzz,Fizz,7,8,Fizz,Buzz,11,Fizz,13,14,FizzBuzz",
+      "match": "regex",
+      "regex": "1,2,Fizz,4,Buzz,Fizz,7,8,Fizz,Buzz,11,Fizz,13,14,FizzBuzz",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_14",
+      "category": "instruction",
+      "difficulty": "hard",
+      "prompt": "Count the number of times the letter 'e' (case-insensitive) appears in the following sentence: 'Peter Piper picked a peck of pickled peppers beside the deep green hedge.' Reply with ONLY the count as a single integer.",
+      "expected": "17",
+      "match": "regex",
+      "regex": "\\b17\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_15",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Output a 4x4 grid of characters where:\n- Row 1 is: X O X O\n- Row 2 is: O X O X\n- Row 3 is: X O X O\n- Row 4 is: O X O X\nBUT: reverse the order of characters in every even-numbered row (rows 2 and 4). Each row on its own line, characters separated by spaces. Output only the grid.",
+      "expected": "",
+      "match": "regex",
+      "regex": "X O X O\\s*\\n\\s*X O X O\\s*\\n\\s*X O X O\\s*\\n\\s*X O X O",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_16",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Without using any of the letters in the word 'PYTHON' (P, Y, T, H, O, N — case insensitive), write a grammatically correct English sentence of at least 10 words about a database. Output only the sentence.",
+      "expected": "",
+      "match": "regex",
+      "regex": "^[^pPyYtThHoOnN]+$",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_17",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Take the string 'artificial intelligence' and perform these transformations in order:\n1. Reverse the entire string\n2. Convert to uppercase\n3. Replace every space with an underscore\n4. Take only the first 10 characters of the result\nOutput ONLY the final 10-character string, nothing else.",
+      "expected": "ECNEGILLET",
+      "match": "regex",
+      "regex": "ECNEGILLET",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_18",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Output a JSON object where every key is a single digit from '0' to '9' (as strings), and each value is that digit's English name spelled backwards. For example, '0' should map to 'orez'. Output only the JSON, no markdown.",
+      "expected": "0,1,2,3,4,5,6,7,8,9",
+      "match": "json_valid",
+      "max_tokens": 250
+    },
+    {
+      "id": "instr_19",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "How many characters (including spaces and punctuation) are in the following string? Count very carefully.\n\n'She sells sea-shells by the sea-shore.'\n\nReply with ONLY the integer count.",
+      "expected": "38",
+      "match": "regex",
+      "regex": "\\b38\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "instr_20",
+      "category": "instruction",
+      "difficulty": "expert",
+      "prompt": "Output exactly 3 lines. Line 1 must have exactly 3 words. Line 2 must have exactly 1 word. Line 3 must have exactly 5 words. Every word across all lines must start with the letter 'S'. No word may be repeated. Output only the 3 lines.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)^\\s*[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s*\\n\\s*[Ss]\\w*\\s*\\n\\s*[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s*$",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_01",
+      "category": "summarization",
+      "difficulty": "easy",
+      "prompt": "Read the following and answer the question:\n\n\"The Doppler effect occurs when a wave source moves relative to an observer, causing a perceived change in frequency. When the source approaches, the observed frequency increases (the waves are compressed). When it moves away, the frequency decreases. This is why a passing ambulance siren sounds higher-pitched as it approaches and lower-pitched as it drives away.\"\n\nWhat happens to the observed frequency when the source moves away from the observer? Answer in 5 words or fewer.",
+      "expected": "decreases",
+      "match": "regex",
+      "regex": "(?i)(decreas|lower|reduc|drops|falls|goes down)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_02",
+      "category": "summarization",
+      "difficulty": "medium",
+      "prompt": "Read this passage and answer: which model scored higher on HumanEval, and by exactly how many percentage points?\n\n\"In a 2024 benchmark comparison, Model A achieved 86.4% on MMLU, 67.0% on HumanEval, and 52.9% on MATH. Model B scored 84.0% on MMLU, 72.5% on HumanEval, and 44.9% on MATH. The study noted that while Model A leads in general knowledge, Model B shows clear advantages in code generation tasks.\"\n\nReply in one sentence naming the model and the exact difference.",
+      "expected": "Model B",
+      "match": "regex",
+      "regex": "(?i)model b.*(5\\.5|5\\.4|5\\.6)|5\\.5.*model b|model b.*better.*human|model b.*higher",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_03",
+      "category": "summarization",
+      "difficulty": "medium",
+      "prompt": "Read this passage and identify what is NOT mentioned:\n\n\"Rust's ownership system eliminates entire classes of memory bugs at compile time. The borrow checker ensures references never outlive the data they point to, preventing dangling pointers. Rust also guarantees no data races in concurrent code because the type system enforces that mutable data cannot be accessed from multiple threads simultaneously. These guarantees come at the cost of a steep learning curve — the compiler enforces rules that programmers must explicitly satisfy.\"\n\nWhich of these does the passage NOT mention?\nA) Memory safety\nB) Concurrency safety\nC) The borrow checker\nD) Garbage collection\nReply with just the letter.",
+      "expected": "D",
+      "match": "mcq",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_04",
+      "category": "summarization",
+      "difficulty": "medium",
+      "prompt": "Summarize this passage in exactly 2 sentences. Your summary MUST include: (1) the specific speed figure and (2) the reason for the improvement.\n\n\"Modern NVMe SSDs using PCIe 5.0 can achieve sequential read speeds exceeding 14,000 MB/s, roughly 70 times faster than a typical 7200 RPM hard drive. The performance gap comes from two sources: parallelism, as NVMe drives contain thousands of flash memory cells operating simultaneously, and the elimination of mechanical seek time — hard drives must physically move a read head to the correct track before reading, a process that takes milliseconds. Flash memory has no moving parts and can begin reading any cell in nanoseconds.\"\n\nYour 2-sentence summary:",
+      "expected": "14,000",
+      "match": "regex",
+      "regex": "(?i)(14.?000|14k).*(parallel|mechanical|flash|seek|moving|simultaneous)|(parallel|mechanical|flash|seek|moving|simultaneous).*(14.?000|14k)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_05",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read this passage carefully and identify the author's implicit bias:\n\n\"Remote work has transformed the modern office. Employees report higher satisfaction and better work-life balance. Productivity metrics from several tech companies show output increased 15% during the pandemic-era remote period. Critics argue that collaboration suffers, but video conferencing tools have largely addressed this concern. The 'in-office' crowd clings to outdated notions of presenteeism, confusing presence with productivity. Forward-thinking companies are now permanent-remote.\"\n\nWhat is the author's bias? Answer in one sentence.",
+      "expected": "remote",
+      "match": "regex",
+      "regex": "(?i)(pro.remote|favor.*(remote|work from home)|biased.*remote|remote.*bias|against.*office|office.*negative|dismissive.*office|remote.*advocate|anti.office|positive.*remote)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_06",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read this technical passage and extract exactly three numerical figures with their context:\n\n\"The experiment ran 10,000 trials. In the control group (n=450), the error rate was 2.3%. In the treatment group (n=430), the error rate dropped to 0.8%. The improvement was statistically significant (p < 0.01). However, the treatment increased processing latency from 12ms to 47ms on average — a 292% increase that may be unacceptable for real-time applications.\"\n\nList the three most important numbers and what they represent, as a numbered list.",
+      "expected": "292",
+      "match": "regex",
+      "regex": "(?i)(292|2\\.3|0\\.8|47|12|10.?000|0\\.01)",
+      "max_tokens": 200
+    },
+    {
+      "id": "summ_07",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read this passage and answer: what important caveat does the author mention that qualifies the main finding?\n\n\"A 10-year longitudinal study tracked 50,000 adults and found that those who exercised at least 150 minutes per week had a 34% lower risk of cardiovascular disease. The association held after controlling for diet, smoking, and socioeconomic status. Participants were recruited from urban fitness centers and gyms, which may not represent the general population. The researchers concluded that regular moderate exercise is strongly protective against heart disease.\"\n\nState the caveat in one sentence.",
+      "expected": "fitness center",
+      "match": "regex",
+      "regex": "(?i)(fitness center|gym|urban|not represent|selection bias|self.select|recruit|representative|generaliz|population|biased sample|urban bias)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_08",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read the following passage and identify what the author claims but does NOT provide evidence for:\n\n\"Microservices architectures have become the dominant pattern for large-scale web applications. Teams can deploy individual services independently, reducing release friction. Netflix and Amazon famously decomposed their monoliths into thousands of microservices. Some engineers argue this creates excessive operational complexity, but these concerns are overblown — modern Kubernetes tooling makes managing hundreds of services straightforward. Organizations that resist microservices will fall behind competitively.\"\n\nIdentify the unsupported claim in one sentence.",
+      "expected": "Kubernetes",
+      "match": "regex",
+      "regex": "(?i)(kubernetes.*straightforward|kubernetes.*simple|manageable|easy|overblown|concerns.*overblown|competitive.*claim|fall behind|no evidence|unsupported.*kubernetes|k8s.*easy|modern tool)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_09",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read this passage and answer: the two researchers disagree on one specific technical claim. What is it?\n\n\"Dr. Chen argues that the new sorting algorithm runs in O(n log log n) average case, which she demonstrated on uniformly random inputs. Dr. Patel disputes this, stating that the analysis assumes integer keys with bounded range, and that for general comparison-based sorting, the theoretical lower bound of O(n log n) cannot be beaten. Dr. Chen does not disagree that comparison sorts have this lower bound, but notes her algorithm uses radix operations, not comparisons. Both agree the algorithm is impractical for n < 10,000.\"\n\nWhat specific technical claim is disputed? Answer in one sentence.",
+      "expected": "lower bound",
+      "match": "regex",
+      "regex": "(?i)(lower bound|comparison.based|radix|integer key|bounded range|n log n.*lower|O\\(n log log n\\)|applies|whether the)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_10",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Summarize the causal chain in this passage in exactly 2 sentences. Both sentences must be present and the summary must preserve the logical order: cause → intermediate effects → final outcome.\n\n\"When central banks raise interest rates, borrowing costs increase for businesses and consumers. Businesses defer expansion and cut hiring as capital becomes expensive. Consumers reduce spending on credit-financed goods like housing and vehicles. Falling demand forces businesses to reduce output and lay off workers. As unemployment rises, consumer spending falls further — a self-reinforcing contraction. This sequence, if severe, is classified as a recession.\"\n\nYour 2-sentence summary must mention 'interest rates', an intermediate effect, and 'recession'.",
+      "expected": "recession",
+      "match": "regex",
+      "regex": "(?i)interest rate.*(borrow|spend|employ|demand|output).*recession|recession.*(interest rate|borrowing|spending|employment)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_11",
+      "category": "summarization",
+      "difficulty": "medium",
+      "prompt": "Read this passage and answer: what is the TOTAL number of participants across both studies?\n\n\"A 2023 meta-analysis combined two landmark studies on sleep deprivation. Study Alpha (n=1,200) found that participants sleeping fewer than 6 hours per night had a 23% higher rate of metabolic syndrome. Study Beta (n=3,800) found a 31% higher rate of hypertension in the same sleep-deprived group. Both studies controlled for age, BMI, and smoking status. The combined analysis confirmed that chronic sleep deprivation is an independent risk factor for cardiometabolic disease.\"\n\nReply with just the number.",
+      "expected": "5000",
+      "match": "regex",
+      "regex": "\\b5[,.]?000\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_12",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read this passage carefully. The passage contains one internal contradiction. Identify it in one sentence.\n\n\"The new battery technology uses solid-state lithium cells that eliminate the risk of thermal runaway. The cells operate at temperatures between 20°C and 80°C, well within safe limits. In laboratory testing, 3 out of 50 cells experienced thermal runaway events during rapid charging cycles above 60°C. The company's CEO stated that the technology represents a breakthrough in battery safety, with zero risk of fire under any operating conditions.\"\n\nWhat is the contradiction?",
+      "expected": "thermal runaway",
+      "match": "regex",
+      "regex": "(?i)(thermal runaway.*eliminat|eliminat.*thermal runaway|zero risk.*3 out of|3 out of.*zero|claim.*safe.*but.*thermal|contradict|occurred.*despite|experienced.*despite|despite claim|says.*no risk.*but|claims.*eliminat.*but.*3)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_13",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read the passage. Two percentages are mentioned for different metrics. Calculate the absolute difference between them and state which metric has the higher percentage.\n\n\"In Q3 2024, CloudCorp's infrastructure division reported 99.97% uptime across all regions, missing their 99.99% SLA target. Customer satisfaction surveys showed 87.3% of enterprise clients rated the service as 'excellent' or 'good', down from 91.1% the previous quarter. The churn rate remained stable at 2.1%. The CTO attributed the uptime shortfall to a cascading failure in the EU-West region lasting 47 minutes.\"\n\nWhat is the absolute difference between the uptime percentage and the customer satisfaction percentage? Reply with the number rounded to two decimal places.",
+      "expected": "12.67",
+      "match": "regex",
+      "regex": "\\b12\\.6[5-9]\\b|\\b12\\.7\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_14",
+      "category": "summarization",
+      "difficulty": "hard",
+      "prompt": "Read this passage. There is a key detail that undermines the study's main conclusion. Identify it.\n\n\"Researchers at Northern University conducted a double-blind study on a new cognitive enhancement drug, NeuroPlex. The treatment group (n=200) showed a statistically significant 18% improvement in memory recall tests compared to the control group (n=200). The p-value was 0.003. The study was funded entirely by NeuroPlex Pharmaceuticals, the manufacturer of the drug. The researchers declared no conflicts of interest. The authors recommend NeuroPlex for widespread clinical use based on these results.\"\n\nWhat detail undermines the conclusion? Answer in one sentence.",
+      "expected": "funded",
+      "match": "regex",
+      "regex": "(?i)(fund|manufacturer|NeuroPlex Pharmaceuticals|conflict of interest|pharma.*company|company.*fund|bias.*fund|financial|sponsor|paid for|drug maker)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_15",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read this passage and answer: how many distinct factual claims does Person A make that Person B does NOT dispute?\n\n\"Person A claims: (1) The bridge was built in 1923, (2) it cost $4.2 million to construct, (3) it spans 820 meters, (4) it was designed by engineer Karl Hoffman, and (5) it has been retrofitted twice since original construction. Person B responds: 'The construction cost was actually $3.8 million according to city records, the span is 820 meters, and Hoffman only supervised — the lead designer was Maria Torres. I agree on the construction date and the two retrofits.'\"\n\nHow many of A's claims does B NOT dispute? Reply with just the number.",
+      "expected": "3",
+      "match": "regex",
+      "regex": "\\b3\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_16",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read this passage. Identify the logical fallacy the author commits and name it precisely.\n\n\"Finland's education system consistently ranks among the top in the world. Finnish schools have shorter days, less homework, and no standardized testing until age 16. Finland also has a population of only 5.5 million, universal healthcare, low income inequality, and extensive social safety nets. Clearly, if the United States simply eliminated standardized testing and shortened school days, American students would achieve the same results as Finnish students.\"\n\nName the specific logical fallacy in 1-3 words.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)(false cause|oversimplif|single cause|causal oversimplif|post hoc|false equivalen|hasty generali|cherry pick|ignoring.*confound|confounding|false analog|cum hoc|correlation.*causation|ecological fallacy|omitted variable)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_17",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read the passage and compute the answer.\n\n\"DataCorp's Q2 report showed revenue of $12.4 million, up 15% from Q1. Operating expenses were 62% of Q2 revenue. The company paid $1.1 million in taxes and $0.3 million in interest. Net income is calculated as revenue minus operating expenses minus taxes minus interest.\"\n\nWhat was DataCorp's Q2 net income in millions of dollars? Round to two decimal places. Reply as a number like '3.31'.",
+      "expected": "3.31",
+      "match": "regex",
+      "regex": "\\b3\\.3[01]\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_18",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read the passage and answer: which specific recommendation does the author make that is NOT supported by any data or evidence presented in the passage?\n\n\"A survey of 500 software developers found that 73% prefer remote work, 18% prefer hybrid, and 9% prefer fully in-office. Developers working remotely reported 22% fewer interruptions per day. However, remote developers also reported 15% more hours worked per week on average. The survey was conducted among employees of companies with over 1,000 staff. Based on these findings, we recommend that all companies, regardless of size, immediately transition to fully remote work and eliminate physical offices entirely.\"\n\nIdentify the unsupported leap in one sentence.",
+      "expected": "all companies",
+      "match": "regex",
+      "regex": "(?i)(all companies|regardless of size|eliminate.*office|only.*large|over 1.?000|small|generali|sample.*only|extrapolat|survey.*only|cannot.*extend|doesn.*apply)",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_19",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read the passage carefully. Count the number of DISTINCT named individuals mentioned.\n\n\"Professor Williams reviewed Dr. Sarah Chen's paper on quantum entanglement. Chen had collaborated with James Okafor and Dr. Williams on the experimental design. Maria Torres provided statistical analysis. The acknowledgments thanked Chen's PhD advisor, Professor Nakamura, and lab technician Alex Torres. Maria Torres and Alex Torres are siblings.\"\n\nHow many distinct named individuals are mentioned? Reply with just the number.",
+      "expected": "6",
+      "match": "regex",
+      "regex": "\\b6\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "summ_20",
+      "category": "summarization",
+      "difficulty": "expert",
+      "prompt": "Read the passage. The passage describes a timeline. List every event in strict chronological order by assigning them letters A-E in the order they ACTUALLY occurred (not the order presented in the text).\n\n\"The server crashed at 3:15 PM (Event D). Investigation revealed that a config change was deployed at 2:50 PM (Event B) which triggered a memory leak. The memory leak was first detected by monitoring at 3:05 PM (Event C). The config change had been approved in the morning standup at 9:00 AM (Event A). Service was restored at 4:30 PM (Event E).\"\n\nList the events in chronological order using their letter labels, separated by commas. No spaces.",
+      "expected": "A,B,C,D,E",
+      "match": "regex",
+      "regex": "A,B,C,D,E",
+      "max_tokens": 150
+    },
+    {
+      "id": "struct_01",
+      "category": "structured",
+      "difficulty": "easy",
+      "prompt": "Output a valid JSON object with exactly these keys and values:\n- \"hostname\": \"web-01\"\n- \"port\": 8080\n- \"tls\": false\n\nOutput only the JSON, no explanation, no markdown fences.",
+      "expected": "hostname,port,tls",
+      "match": "json_valid",
+      "max_tokens": 150
+    },
+    {
+      "id": "struct_02",
+      "category": "structured",
+      "difficulty": "medium",
+      "prompt": "Output a valid JSON object for a blog post with this structure:\n- \"title\": string\n- \"tags\": array of at least 2 strings\n- \"published\": boolean (true)\n- \"views\": integer greater than 0\n- \"metadata\": object with keys \"author\" (string) and \"created_at\" (string in ISO 8601 format)\n\nUse realistic values. Output only the JSON, no markdown fences.",
+      "expected": "title,tags,metadata",
+      "match": "json_valid",
+      "max_tokens": 250
+    },
+    {
+      "id": "struct_03",
+      "category": "structured",
+      "difficulty": "medium",
+      "prompt": "Convert this JSON to equivalent YAML. Output only the YAML, no explanation.\n\n{\"service\": \"api\", \"port\": 3000, \"env\": \"production\", \"features\": [\"auth\", \"logging\"]}",
+      "expected": "service",
+      "match": "regex",
+      "regex": "(?i)service:\\s*(api|'api'|\"api\").*\\n.*port:\\s*3000|port:\\s*3000.*\\n.*env:",
+      "max_tokens": 150
+    },
+    {
+      "id": "struct_04",
+      "category": "structured",
+      "difficulty": "medium",
+      "prompt": "Output a CSV with a header row and exactly 3 data rows. Columns: id (integer), name (string), score (float), active (true/false). Use realistic data. Output only the CSV, no markdown fences.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)(id|name|score|active).*\\n.*[0-9]+.*,.*[0-9].*,.*[0-9].*,.*\\n.*[0-9]",
+      "max_tokens": 150
+    },
+    {
+      "id": "struct_05",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Output a valid JSON object representing a nested file system tree. The structure must be:\n- root/ (directory)\n  - src/ (directory)\n    - main.py (file, size: 2048)\n    - utils/ (directory)\n      - helpers.py (file, size: 512)\n  - README.md (file, size: 1024)\n\nEach node: {\"name\": string, \"type\": \"file\"|\"directory\", and either \"size\": number (files) or \"children\": array (directories)}.\n\nOutput only the JSON, no markdown fences.",
+      "expected": "children",
+      "match": "json_valid",
+      "max_tokens": 400
+    },
+    {
+      "id": "struct_06",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Parse this log line into a JSON object with keys: timestamp, level, service, message, request_id.\n\n[2024-11-03T09:17:42Z] WARN payment-service: Retry attempt 3 for request tx-789-xyz\n\nOutput only the JSON object, no markdown fences. Null is acceptable for any field not present.",
+      "expected": "timestamp,level,service,message,request_id",
+      "match": "json_valid",
+      "max_tokens": 200
+    },
+    {
+      "id": "struct_07",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Output a YAML document using an anchor and alias. Define an anchor named 'defaults' with keys: timeout: 30, retries: 3, log_level: info. Then create two services 'api' and 'worker' that both inherit from 'defaults' using an alias, but 'worker' overrides timeout to 120.\n\nOutput only the YAML.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?i)(&defaults|&default|&base).*\\n.*timeout.*\\n.*retries.*\\n.*(<<|\\*defaults|\\*default|\\*base)|\\*defaults|\\*default|\\*base",
+      "max_tokens": 250
+    },
+    {
+      "id": "struct_08",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Output a valid JSON object where:\n- The key \"data\" contains an array of mixed types: the integer 1, the string \"two\", null, true, and the object {\"x\": 3}\n- The key \"empty\" contains an empty array []\n- The key \"nested\" contains an object with key \"a\" whose value is an object with key \"b\" whose value is an object with key \"c\" whose value is 42\n\nOutput only the JSON, no markdown fences.",
+      "expected": "data,empty,nested",
+      "match": "json_valid",
+      "max_tokens": 250
+    },
+    {
+      "id": "struct_09",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "A string contains CSV with quoted fields. Parse this single line into a JSON array of strings. Each field may contain commas or escaped quotes (\"\" means a literal \").\n\nInput: 10,\"Smith, John\",\"He said \"\"hello\"\"\",active\n\nOutput only the JSON array.",
+      "expected": "",
+      "match": "regex",
+      "regex": "\\[\\s*\"10\"\\s*,\\s*\"Smith,\\s*John\"\\s*,\\s*\"He said \\\\?\"hello\\\\?\"\"\\s*,\\s*\"active\"\\s*\\]|\\[\\s*\"10\"\\s*,\\s*\"Smith, John\"\\s*,\\s*\"He said .hello.\"\\s*,\\s*\"active\"\\s*\\]",
+      "max_tokens": 200
+    },
+    {
+      "id": "struct_10",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Convert this YAML to equivalent JSON. Output only the JSON, compact (no extra whitespace), no markdown fences.\n\nserver:\n  host: localhost\n  ports:\n    - 8080\n    - 8443\n  options:\n    debug: true\n    max_connections: null",
+      "expected": "",
+      "match": "regex",
+      "regex": "\"server\"\\s*:\\s*\\{.*\"host\"\\s*:\\s*\"localhost\".*\"ports\"\\s*:\\s*\\[.*8080.*8443.*\\].*\"options\"\\s*:\\s*\\{.*\"debug\"\\s*:\\s*true.*\"max_connections\"\\s*:\\s*null",
+      "max_tokens": 200
+    },
+    {
+      "id": "struct_11",
+      "category": "structured",
+      "difficulty": "medium",
+      "prompt": "Output a valid JSON array containing exactly 5 objects. Each object must have keys \"id\" (integer, 1-5), \"name\" (string), and \"active\" (boolean). Objects with odd id should have active=true, even id should have active=false. Output only the JSON, no markdown fences.",
+      "expected": "",
+      "match": "regex",
+      "regex": "\"id\"\\s*:\\s*1.*\"active\"\\s*:\\s*true.*\"id\"\\s*:\\s*2.*\"active\"\\s*:\\s*false.*\"id\"\\s*:\\s*3.*\"active\"\\s*:\\s*true",
+      "max_tokens": 350
+    },
+    {
+      "id": "struct_12",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Output a valid JSON object conforming to this JSON Schema:\n\n{\"type\":\"object\",\"required\":[\"users\"],\"properties\":{\"users\":{\"type\":\"array\",\"minItems\":2,\"items\":{\"type\":\"object\",\"required\":[\"name\",\"age\",\"roles\"],\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\",\"minimum\":18},\"roles\":{\"type\":\"array\",\"minItems\":1,\"items\":{\"type\":\"string\",\"enum\":[\"admin\",\"editor\",\"viewer\"]}}}}}}}\n\nOutput only the JSON, no markdown fences.",
+      "expected": "users",
+      "match": "json_valid",
+      "max_tokens": 300
+    },
+    {
+      "id": "struct_13",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Convert this CSV data into a JSON array of objects. Preserve types: integers stay integers, 'true'/'false' become booleans, 'null' becomes null.\n\nid,name,score,verified\n1,Alice,95,true\n2,Bob,null,false\n3,Carol,87,true\n\nOutput only the JSON array, no markdown fences.",
+      "expected": "",
+      "match": "regex",
+      "regex": "\"id\"\\s*:\\s*1.*\"name\"\\s*:\\s*\"Alice\".*\"score\"\\s*:\\s*95.*\"verified\"\\s*:\\s*true.*\"id\"\\s*:\\s*2.*\"score\"\\s*:\\s*null.*\"verified\"\\s*:\\s*false.*\"id\"\\s*:\\s*3.*\"score\"\\s*:\\s*87",
+      "max_tokens": 350
+    },
+    {
+      "id": "struct_14",
+      "category": "structured",
+      "difficulty": "hard",
+      "prompt": "Output valid TOML (not JSON, not YAML) representing a server configuration with:\n- [server] section: host = \"0.0.0.0\", port = 8443\n- [server.tls] section: cert = \"/etc/ssl/cert.pem\", key = \"/etc/ssl/key.pem\", enabled = true\n- [database] section: url = \"postgres://localhost:5432/app\", pool_size = 25\n- [[database.replicas]] array of tables with 2 entries, each having host (string) and priority (integer)\n\nOutput only the TOML.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?s)\\[server\\].*host\\s*=.*0\\.0\\.0\\.0.*port\\s*=\\s*8443.*\\[server\\.tls\\].*cert\\s*=.*\\[database\\].*pool_size\\s*=\\s*25.*\\[\\[database\\.replicas\\]\\].*host.*priority.*\\[\\[database\\.replicas\\]\\]",
+      "max_tokens": 400
+    },
+    {
+      "id": "struct_15",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Output a valid JSON object representing a recursive tree structure. The root node has value \"A\" and two children \"B\" and \"C\". Node \"B\" has children \"D\" and \"E\". Node \"C\" has one child \"F\". Node \"E\" has one child \"G\". All leaf nodes have \"children\": []. Every node has exactly two keys: \"value\" (string) and \"children\" (array).\n\nOutput only the JSON, no markdown fences.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?s)\"value\"\\s*:\\s*\"A\".*\"value\"\\s*:\\s*\"B\".*\"value\"\\s*:\\s*\"D\".*\"children\"\\s*:\\s*\\[\\].*\"value\"\\s*:\\s*\"E\".*\"value\"\\s*:\\s*\"G\".*\"children\"\\s*:\\s*\\[\\].*\"value\"\\s*:\\s*\"C\".*\"value\"\\s*:\\s*\"F\".*\"children\"\\s*:\\s*\\[\\]",
+      "max_tokens": 500
+    },
+    {
+      "id": "struct_16",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Output a valid JSON object where all string values must contain at least one special character that needs JSON escaping. Required structure:\n- \"path\": a Windows file path with backslashes (e.g., C:\\\\Users\\\\...)\n- \"quote\": a string containing a literal double quote\n- \"tabs\": a string containing a literal tab character\n- \"unicode\": a string containing the text 'price: 5€'\n- \"newline\": a string containing a literal newline\n\nOutput only the JSON, no markdown fences.",
+      "expected": "path,quote,tabs,unicode,newline",
+      "match": "json_valid",
+      "max_tokens": 250
+    },
+    {
+      "id": "struct_17",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Given this GraphQL query, output the exact JSON response that a server would return. Use realistic but deterministic values.\n\nquery {\n  user(id: \"42\") {\n    name\n    email\n    posts(first: 2) {\n      edges {\n        node {\n          title\n          commentCount\n        }\n        cursor\n      }\n      pageInfo {\n        hasNextPage\n      }\n    }\n  }\n}\n\nThe response must follow the standard GraphQL JSON response format with a top-level \"data\" key. Output only the JSON, no markdown fences.",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?s)\"data\"\\s*:\\s*\\{.*\"user\"\\s*:\\s*\\{.*\"name\".*\"email\".*\"posts\"\\s*:\\s*\\{.*\"edges\"\\s*:\\s*\\[.*\"node\".*\"title\".*\"commentCount\".*\"cursor\".*\"pageInfo\".*\"hasNextPage\"",
+      "max_tokens": 500
+    },
+    {
+      "id": "struct_18",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Output a valid JSON object representing a state machine for a traffic light. Requirements:\n- Key \"states\" is an object with keys \"red\", \"yellow\", \"green\"\n- Each state has \"duration_seconds\" (integer) and \"transitions\" (object mapping event names to next state names)\n- \"red\" transitions to \"green\" on event \"timer\", duration 30\n- \"green\" transitions to \"yellow\" on event \"timer\", duration 25\n- \"yellow\" transitions to \"red\" on event \"timer\", duration 5\n- All states transition to \"red\" on event \"emergency\"\n- Key \"initial\" is \"red\"\n\nOutput only the JSON, no markdown fences.",
+      "expected": "states,initial",
+      "match": "json_valid",
+      "max_tokens": 400
+    },
+    {
+      "id": "struct_19",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Convert this nested JSON to a flat JSON object using dot notation for keys. Arrays use numeric indices. Output only the flat JSON.\n\nInput: {\"a\":{\"b\":1,\"c\":[10,20,{\"d\":30}]},\"e\":\"hello\"}\n\nExpected key format: \"a.b\", \"a.c.0\", \"a.c.1\", \"a.c.2.d\", \"e\"",
+      "expected": "",
+      "match": "regex",
+      "regex": "(?s)\"a\\.b\"\\s*:\\s*1.*\"a\\.c\\.0\"\\s*:\\s*10.*\"a\\.c\\.1\"\\s*:\\s*20.*\"a\\.c\\.2\\.d\"\\s*:\\s*30.*\"e\"\\s*:\\s*\"hello\"",
+      "max_tokens": 200
+    },
+    {
+      "id": "struct_20",
+      "category": "structured",
+      "difficulty": "expert",
+      "prompt": "Output a valid JSON object that is its own JSON Schema. That is, the object must be a valid JSON Schema (with \"type\", \"properties\", \"required\" keys), AND the object itself must validate against its own schema.\n\nThe schema should describe an object with:\n- \"type\" (required, string)\n- \"properties\" (required, object)\n- \"required\" (required, array of strings)\n\nOutput only the JSON, no markdown fences.",
+      "expected": "type,properties,required",
+      "match": "json_valid",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_01",
+      "category": "sysadmin",
+      "difficulty": "easy",
+      "prompt": "What command shows all listening TCP and UDP ports with the process name on Linux (using ss)? Reply with just the command.",
+      "expected": "ss",
+      "match": "regex",
+      "regex": "\\bss\\b.*-[a-z]*[tlup][a-z]*|-[a-z]*[tlup][a-z]*.*\\bss\\b",
+      "max_tokens": 150
+    },
+    {
+      "id": "sysadm_02",
+      "category": "sysadmin",
+      "difficulty": "medium",
+      "prompt": "Write a minimal systemd unit file for a service named 'myapp' that: runs /usr/local/bin/myapp as user 'myapp', starts after network.target, restarts on failure with 5s delay, and is enabled at boot. Output only the unit file contents.",
+      "expected": "[Unit]",
+      "match": "regex",
+      "regex": "(?i)\\[Unit\\].*\\[Service\\]|User=myapp|RestartSec=5|Restart=on-failure|WantedBy=multi-user",
+      "max_tokens": 250
+    },
+    {
+      "id": "sysadm_03",
+      "category": "sysadmin",
+      "difficulty": "medium",
+      "prompt": "A Linux server's root filesystem is at 95% usage. Name 3 specific commands with flags you'd run to find large files or directories consuming space. Be precise.",
+      "expected": "du",
+      "match": "regex",
+      "regex": "(?i)(du -[sha]|find.*-size|journalctl.*vacuum|ncdu|df -[hHi]|lsof.*deleted)",
+      "max_tokens": 250
+    },
+    {
+      "id": "sysadm_04",
+      "category": "sysadmin",
+      "difficulty": "medium",
+      "prompt": "Explain in 2 sentences what happens when a Linux process touches a new memory page that has been allocated with mmap() but not yet physically mapped (a page fault). What does the kernel do?",
+      "expected": "page fault",
+      "match": "regex",
+      "regex": "(?i)(page fault|page table|physical page|allocat|map|kernel.*handle|trap|interrupt|demand pag|COW|copy.on.write|zero.fill)",
+      "max_tokens": 200
+    },
+    {
+      "id": "sysadm_05",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "A server is experiencing intermittent TCP connection timeouts to a remote host on port 443. ping works, but connections hang. Describe 3 specific diagnostic steps with exact commands, focusing on MTU/MSS issues as a possible cause.",
+      "expected": "MTU",
+      "match": "regex",
+      "regex": "(?i)(MTU|MSS|ping.*M|ping.*df|tracepath|traceroute|ip link|mtu|path MTU|pmtud|tcpdump|ip route|clamp)",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_06",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "Write an nftables rule set (not iptables) that: (1) drops all incoming traffic by default, (2) allows established/related connections, (3) allows SSH (port 22) from 10.0.0.0/8 only, (4) allows HTTP and HTTPS from anywhere. Output only the nftables configuration.",
+      "expected": "nftables",
+      "match": "regex",
+      "regex": "(?i)(table|chain|nftables|hook input|policy drop|ct state|established|related|tcp dport|22|80|443|10\\.0\\.0\\.0/8)",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_07",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "A production container keeps getting OOM-killed by the Linux kernel. You cannot change the container memory limit right now. Describe 3 diagnostic steps to understand memory usage inside the container, using specific commands.",
+      "expected": "OOM",
+      "match": "regex",
+      "regex": "(?i)(dmesg|oom.killer|/proc/[0-9]*/status|smaps|pmap|top|htop|cat /proc|memory.stat|cgroup|/sys/fs/cgroup|memory\\.usage|memleak|valgrind|heaptrack)",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_08",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "You need to extend a Linux LVM logical volume '/dev/vg0/data' (currently mounted at /data) online without unmounting it. The volume group has 50GB of free space. Write the exact sequence of commands to add 20GB to the logical volume and resize the ext4 filesystem.",
+      "expected": "lvextend",
+      "match": "regex",
+      "regex": "(?i)lvextend.*-L.*\\+20G|lvextend.*-l.*\\+.*FREE|resize2fs.*/dev/vg0/data",
+      "max_tokens": 300
+    },
+    {
+      "id": "sysadm_09",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "A TLS handshake is failing between a client and server. `openssl s_client -connect host:443` shows: 'verify error:num=20:unable to get local issuer certificate'. Explain what this means and list 3 specific things to check, with commands where applicable.",
+      "expected": "certificate chain",
+      "match": "regex",
+      "regex": "(?i)(intermediate cert|chain|issuer|CA bundle|trust store|openssl verify|openssl s_client|cat.*pem|cert.*chain|missing.*cert|incomplete.*chain|fullchain|bundle)",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_10",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "You suspect a cgroup v2 memory limit is throttling a Java application causing latency spikes, but no OOM events appear in dmesg. Describe the exact files to inspect under /sys/fs/cgroup and what values indicate memory pressure or throttling. Include at least 2 specific file paths.",
+      "expected": "memory.pressure",
+      "match": "regex",
+      "regex": "(?i)(/sys/fs/cgroup.*memory\\.(pressure|events|stat|current|high|max)|memory\\.pressure|memory\\.events|memory\\.stat|memory\\.high|psi|pressure stall)",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_11",
+      "category": "sysadmin",
+      "difficulty": "medium",
+      "prompt": "Write the exact command to create a ZFS pool named 'tank' as a RAIDZ1 using three drives: /dev/sda, /dev/sdb, /dev/sdc. Reply with just the command.",
+      "expected": "zpool create",
+      "match": "regex",
+      "regex": "(?i)zpool\\s+create\\s+tank\\s+raidz1?\\s+/dev/sd[abc]\\s+/dev/sd[abc]\\s+/dev/sd[abc]",
+      "max_tokens": 150
+    },
+    {
+      "id": "sysadm_12",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "A Linux server has a process stuck in D state (uninterruptible sleep). Explain what D state means, why you cannot kill it with SIGKILL, and give 2 specific diagnostic commands to investigate the cause. Be precise.",
+      "expected": "uninterruptible",
+      "match": "regex",
+      "regex": "(?i)(uninterruptible.*sleep|D state|waiting.*I/O|kernel.*space|cannot.*signal|SIGKILL.*D state|wchan|/proc/.*/stack|cat /proc/.*/wchan|echo w > /proc/sysrq|sysrq|perf|blktrace|dmesg|hung_task)",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_13",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "You need to set up a Linux bridge 'br0' with two interfaces eth0 and eth1, assign IP 10.0.0.1/24 to the bridge, and bring it up. Write the exact sequence of 'ip' commands (not brctl, not nmcli). List each command on its own line.",
+      "expected": "ip link add",
+      "match": "regex",
+      "regex": "(?i)ip link add.*br0.*type bridge.*ip link set.*eth[01].*master br0.*ip addr add.*10\\.0\\.0\\.1/24.*dev br0|ip link add.*br0.*bridge.*ip link set.*master.*ip link set.*master.*ip addr.*10\\.0\\.0\\.1",
+      "max_tokens": 300
+    },
+    {
+      "id": "sysadm_14",
+      "category": "sysadmin",
+      "difficulty": "hard",
+      "prompt": "Write the exact systemd-networkd .network file contents to configure interface eth0 with:\n- Static IP 192.168.1.100/24\n- Gateway 192.168.1.1\n- DNS servers 1.1.1.1 and 8.8.8.8\n- VLAN 100 on this interface\n\nOutput only the file contents.",
+      "expected": "[Match]",
+      "match": "regex",
+      "regex": "(?si)\\[Match\\].*Name\\s*=\\s*eth0.*\\[Network\\].*Address\\s*=\\s*192\\.168\\.1\\.100/24.*Gateway\\s*=\\s*192\\.168\\.1\\.1.*DNS\\s*=\\s*1\\.1\\.1\\.1",
+      "max_tokens": 300
+    },
+    {
+      "id": "sysadm_15",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "You have two ZFS pools: 'source' and 'target' on different machines. 'source' has dataset 'source/data' with snapshots @snap1 and @snap2 (snap2 is newer). Write the exact commands to:\n1. Send an incremental stream from snap1 to snap2\n2. Pipe it over SSH to the remote machine 'backup-host'\n3. Receive it into 'target/data' on the remote\n\nReply with the single pipeline command.",
+      "expected": "zfs send",
+      "match": "regex",
+      "regex": "(?i)zfs send.*-[iI]\\s+(@?snap1|source/data@snap1)\\s+(source/data@snap2).*\\|.*ssh.*backup.host.*zfs rec[ev]|zfs send.*-[iI].*snap1.*snap2.*ssh.*zfs rec",
+      "max_tokens": 200
+    },
+    {
+      "id": "sysadm_16",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "A Kubernetes pod is stuck in Pending state. The events show 'FailedScheduling' with message '0/5 nodes are available: 2 node(s) had taint {gpu=true:NoSchedule}, 3 node(s) had insufficient memory.' The pod needs a GPU and 8Gi memory. Write the exact YAML snippet for the pod spec that adds:\n1. A toleration for the gpu=true:NoSchedule taint\n2. A resource request for 8Gi memory\n3. A nodeSelector to target nodes with label 'accelerator: nvidia'\n\nOutput only the relevant pod spec YAML (not the full pod manifest).",
+      "expected": "tolerations",
+      "match": "regex",
+      "regex": "(?si)tolerations.*key.*gpu.*operator.*(Equal|Exists).*effect.*NoSchedule.*resources.*requests.*memory.*8Gi|tolerations.*gpu.*NoSchedule.*nodeSelector.*accelerator.*nvidia",
+      "max_tokens": 400
+    },
+    {
+      "id": "sysadm_17",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "Write an eBPF-compatible bpftrace one-liner that traces all TCP retransmissions on a Linux system, printing the timestamp, source IP, destination IP, and destination port for each retransmission event. Reply with just the command.",
+      "expected": "bpftrace",
+      "match": "regex",
+      "regex": "(?i)bpftrace.*(-e\\s+['\"]|--unsafe).*tcp.*retransmit|bpftrace.*tracepoint:tcp:tcp_retransmit_skb|bpftrace.*kprobe:tcp_retransmit_skb",
+      "max_tokens": 200
+    },
+    {
+      "id": "sysadm_18",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "A systemd service 'app.service' has these dependencies:\n- Requires=postgresql.service redis.service\n- After=postgresql.service redis.service network-online.target\n- BindsTo=postgresql.service\n\nAnswer these questions:\n1. If postgresql.service stops, what happens to app.service?\n2. If redis.service fails to start, what happens to app.service?\n3. If app.service starts before network-online.target is reached, will it work?\n\nAnswer each question in one sentence, numbered 1-3.",
+      "expected": "stop",
+      "match": "regex",
+      "regex": "(?i)(BindsTo.*stop|app.*stop.*postgres|postgres.*stop.*app|will also stop|stopped as well|brought down|1.*stop|app.*also.*stop)",
+      "max_tokens": 300
+    },
+    {
+      "id": "sysadm_19",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "You are debugging a split-brain scenario in an etcd cluster. The 3-node cluster (node1, node2, node3) lost connectivity between node1 and the other two. Both partitions think they are the leader.\n\nAnswer precisely:\n1. Can the {node2, node3} partition still achieve quorum? (yes/no)\n2. Can the {node1} partition achieve quorum? (yes/no)\n3. What is the minimum number of nodes needed for quorum in a 3-node etcd cluster?\n4. What specific etcd command would you run to check cluster health from node1?\n\nReply as 4 numbered answers.",
+      "expected": "yes",
+      "match": "regex",
+      "regex": "(?i)1[.):]*\\s*yes.*2[.):]*\\s*no.*3[.):]*\\s*(2|two).*4[.):].*(etcdctl.*endpoint.*health|etcdctl.*cluster-health|etcdctl.*member list|ETCDCTL_API)",
+      "max_tokens": 300
+    },
+    {
+      "id": "sysadm_20",
+      "category": "sysadmin",
+      "difficulty": "expert",
+      "prompt": "Write a complete SELinux policy module (in .te file format) called 'myapp' that allows a custom domain 'myapp_t' to:\n1. Read files in /var/lib/myapp/ (labeled myapp_data_t)\n2. Bind to TCP port 8080\n3. Connect to TCP port 5432 (PostgreSQL)\n4. Write to its own log file /var/log/myapp.log (labeled myapp_log_t)\n\nOutput the .te file contents. Include the module declaration and require block.",
+      "expected": "module myapp",
+      "match": "regex",
+      "regex": "(?si)module\\s+myapp.*require\\s*\\{.*\\}.*allow\\s+myapp_t.*myapp_data_t.*read|module\\s+myapp.*allow.*myapp_t.*tcp_socket|policy_module\\(myapp",
+      "max_tokens": 500
+    }
+  ]
+}

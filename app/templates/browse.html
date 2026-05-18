@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Browse - swapctl{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Browse Hugging Face</h1>
+
+<form class="bg-slate-800 rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-12 gap-4"
+      hx-post="{{ root_path }}/browse/search"
+      hx-target="#results"
+      hx-swap="innerHTML"
+      hx-trigger="submit, change from:select[name=sort]"
+      x-data="browseForm()" @submit="save()">
+  <div class="md:col-span-5">
+    <label class="block text-xs text-slate-400 mb-1">Search</label>
+    <input type="text" name="q" placeholder="qwen, llama, gemma..."
+           class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sky-500">
+  </div>
+  <div class="md:col-span-2">
+    <label class="block text-xs text-slate-400 mb-1">Max size GB</label>
+    <input type="number" name="max_size_gb" min="0" step="5" placeholder="∞"
+           title="Hide repos whose smallest GGUF exceeds this size (adds ~2s per search when set)"
+           class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sky-500">
+  </div>
+  <div class="md:col-span-3">
+    <label class="block text-xs text-slate-400 mb-1">Sort</label>
+    <select name="sort" class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sky-500">
+      {% for value, label in sorts %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+      <option value="size_asc">Min size asc</option>
+      <option value="size_desc">Min size desc</option>
+    </select>
+  </div>
+  <div class="md:col-span-2 flex items-end gap-2">
+    <button type="submit" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white rounded-md px-4 py-2 text-sm font-medium">Search</button>
+    <button type="button" @click="reset()" class="px-3 py-2 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm" title="Clear search">Reset</button>
+  </div>
+  <div class="md:col-span-12">
+    <label class="block text-xs text-slate-400 mb-2">Authors</label>
+    <div class="flex flex-wrap gap-3">
+      {% for a in authors %}
+      <label class="inline-flex items-center gap-2 text-sm bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 cursor-pointer hover:bg-slate-700">
+        <input type="checkbox" name="author" value="{{ a }}" class="accent-sky-500">
+        <span>{{ a }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <input type="hidden" name="page" value="1">
+</form>
+
+<div id="results" class="text-slate-400 text-sm">
+  Enter a query and click Search.
+</div>
+
+<script>
+function browseForm() {
+  const KEY = 'swapctl_browse';
+  return {
+    init() {
+      const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+      if (!saved) return;
+      const form = this.$el;
+      const q = form.querySelector('[name=q]');
+      const sz = form.querySelector('[name=max_size_gb]');
+      const sort = form.querySelector('[name=sort]');
+      if (q) q.value = saved.q || '';
+      if (sz && saved.max_size_gb) sz.value = saved.max_size_gb;
+      if (sort && saved.sort) sort.value = saved.sort;
+      (saved.authors || []).forEach(a => {
+        const cb = form.querySelector('input[name=author][value="' + a + '"]');
+        if (cb) cb.checked = true;
+      });
+      if (saved.q || (saved.authors && saved.authors.length)) {
+        this.$nextTick(() => htmx.trigger(form, 'submit'));
+      }
+    },
+    save() {
+      const fd = new FormData(this.$el);
+      sessionStorage.setItem(KEY, JSON.stringify({
+        q: fd.get('q'), max_size_gb: fd.get('max_size_gb'),
+        sort: fd.get('sort'), authors: fd.getAll('author'),
+      }));
+    },
+    reset() {
+      sessionStorage.removeItem(KEY);
+      this.$el.reset();
+      document.getElementById('results').innerHTML = '<div class="text-slate-400 text-sm">Enter a query and click Search.</div>';
+    }
+  };
+}
+</script>
+{% endblock %}

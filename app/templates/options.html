@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Options - swapctl{% endblock %}
+{% block content %}
+
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-lg sm:text-2xl font-semibold mb-4 sm:mb-6">Options</h1>
+
+  {# ── Parallel slots ── #}
+  <div class="bg-slate-800 rounded-lg shadow border border-slate-700 p-4 sm:p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm sm:text-base font-semibold">Parallel slots</h2>
+      <span class="text-[10px] text-slate-500">currently {{ parallel_slots }}</span>
+    </div>
+    <p class="text-xs text-slate-400 mb-4">
+      Number of concurrent requests llama-server handles per model (continuous batching).
+      Higher = more total throughput when serving multiple users or batched tests.
+      KV cache is split across slots, so per-slot context = total ctx / slots.
+      Changing this rebuilds the llama-swap config and restarts the service.
+    </p>
+    <form hx-post="{{ root_path }}/api/parallel-slots" hx-swap="none" class="flex items-center gap-3">
+      <select name="slots" class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm">
+        {% for n in [1, 2, 3, 4, 6, 8] %}
+        <option value="{{ n }}" {% if parallel_slots == n %}selected{% endif %}>{{ n }} slot{{ 's' if n > 1 else '' }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white">Apply</button>
+    </form>
+
+    <div class="mt-4 pt-4 border-t border-slate-700">
+      <form hx-post="{{ root_path }}/api/iq-parallel" hx-swap="none">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" {% if iq_parallel %}checked{% endif %}
+                 onchange="this.form.requestSubmit()"
+                 class="w-4 h-4 rounded accent-amber-500">
+          <span class="text-sm">Use parallel slots for IQ tests</span>
+        </label>
+        <p class="text-[10px] text-slate-500 mt-1">
+          Sends multiple questions concurrently (faster but may give different results due to
+          KV cache slot sharing). Off by default — sequential testing is more reliable.
+        </p>
+      </form>
+    </div>
+  </div>
+
+  {# ── Auto-update ── #}
+  <div class="bg-slate-800 rounded-lg shadow border border-slate-700 p-4 sm:p-6 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm sm:text-base font-semibold">Auto-update models</h2>
+      <span class="text-[10px] text-slate-500">{{ models_with_repo_count }} models with HF repo</span>
+    </div>
+    <p class="text-xs text-slate-400 mb-4">
+      Periodically check Hugging Face for new revisions and download them in the background.
+      The current model keeps running until the download completes; then llama-swap restarts to apply.
+    </p>
+
+    <form hx-post="{{ root_path }}/api/auto-update" hx-swap="none" class="space-y-3">
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" name="enabled" value="1" {% if auto_update.enabled %}checked{% endif %}
+               class="w-4 h-4 rounded accent-emerald-500">
+        <span class="text-sm">Enable auto-update</span>
+      </label>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="text-xs text-slate-400">Check every</label>
+        <select name="interval_hours" class="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm">
+          {% for h, label in [(1, '1 hour'), (6, '6 hours'), (12, '12 hours'), (24, '1 day'), (72, '3 days'), (168, '1 week')] %}
+          <option value="{{ h }}" {% if auto_update.interval_hours == h %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white">Save</button>
+        <button type="button" hx-post="{{ root_path }}/api/auto-update/run-now" hx-swap="none"
+                class="px-3 py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Check now</button>
+      </div>
+    </form>
+
+    {% if auto_update.last_check %}
+    <div class="mt-4 pt-4 border-t border-slate-700">
+      <div class="text-[10px] uppercase text-slate-500 mb-1">Last check</div>
+      <div class="text-xs font-mono text-slate-300">{{ auto_update.last_check }}</div>
+      {% if auto_update.last_run_results %}
+      <div class="text-[10px] uppercase text-slate-500 mt-3 mb-1">Last run results</div>
+      <ul class="text-xs font-mono space-y-0.5">
+        {% for r in auto_update.last_run_results %}
+        <li class="{% if r.status == 'queued' %}text-emerald-300{% else %}text-rose-300{% endif %}">
+          {{ r.model_id }} — {{ r.status }}{% if r.error %}: {{ r.error }}{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="text-xs text-slate-500 mt-2">No updates were available.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

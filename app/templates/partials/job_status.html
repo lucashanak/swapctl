@@ -1,0 +1,35 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between text-sm">
+    <div>
+      <span class="text-slate-400">Status:</span>
+      {% if status == 'done' %}
+        <span class="ml-1 text-emerald-400 font-medium">complete</span>
+      {% elif status == 'error' %}
+        <span class="ml-1 text-rose-400 font-medium">error</span>
+      {% else %}
+        <span class="ml-1 text-sky-400 font-medium">{{ status }}</span>
+      {% endif %}
+    </div>
+    <div class="text-slate-400 text-xs font-mono">
+      {% if bytes_total %}
+        {{ (bytes_done / 1024 / 1024) | round(1) }} / {{ (bytes_total / 1024 / 1024) | round(1) }} MB
+      {% else %}
+        {{ (bytes_done / 1024 / 1024) | round(1) }} MB
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="w-full h-3 rounded-full bg-slate-700 overflow-hidden">
+    <div class="h-full bg-sky-500 transition-all" style="width: {{ [percent, 100] | min }}%"></div>
+  </div>
+
+  <div class="text-center text-2xl font-semibold font-mono">{{ percent }}%</div>
+
+  {% if error %}
+  <div class="p-3 rounded-md bg-red-900/50 border border-red-700 text-red-200 text-sm">{{ error }}</div>
+  {% endif %}
+
+  {% if status == 'done' %}
+  <div class="text-sm text-slate-400">Redirecting to installed models...</div>
+  {% endif %}
+</div>

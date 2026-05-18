@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sign in - swapctl</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="text-2xl font-semibold tracking-tight">swapctl</div>
+      <div class="text-xs text-slate-400 mt-1">GGUF lifecycle for llama-swap</div>
+    </div>
+    <form method="post" action="{{ root_path }}/login" class="bg-slate-800 rounded-lg shadow p-6 space-y-4">
+      {% if error %}
+      <div class="p-3 rounded-md bg-red-900/50 border border-red-700 text-red-200 text-sm">{{ error }}</div>
+      {% endif %}
+      <label class="block">
+        <span class="text-xs uppercase text-slate-400 tracking-wide">Password</span>
+        <input type="password" name="password" required autofocus autocomplete="current-password"
+               class="mt-1 block w-full rounded-md bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+      </label>
+      <button type="submit"
+              class="w-full rounded-md bg-sky-600 hover:bg-sky-500 text-white font-medium py-2">Sign in</button>
+    </form>
+    <div class="text-center text-xs text-slate-500 mt-4">LAN admin tool — put TLS + proxy in front for public exposure.</div>
+  </div>
+</body>
+</html>

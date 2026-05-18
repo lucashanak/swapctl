@@ -1,0 +1,54 @@
+{% if runs %}
+{% set iq_runs = runs | selectattr('test_type', 'equalto', 'intelligence') | list %}
+{% if iq_runs %}
+{% set scores = iq_runs | map(attribute='score') | select | list %}
+{% if scores %}
+<div class="text-xs text-slate-400 mb-2">
+  IQ runs: {{ scores | length }} ·
+  min {{ scores | min }} ·
+  max {{ scores | max }} ·
+  avg {{ "%.1f" | format(scores | sum / scores | length) }} ·
+  range {{ "%.1f" | format(scores | max - scores | min) }}
+</div>
+{% endif %}
+{% endif %}
+<div class="overflow-x-auto">
+  <table class="text-[11px] w-full">
+    <thead class="text-slate-500 border-b border-slate-700">
+      <tr>
+        <th class="text-left px-2 py-1">When</th>
+        <th class="text-left px-2 py-1">Type</th>
+        <th class="text-right px-2 py-1">Score</th>
+        <th class="text-right px-2 py-1">Dur</th>
+        <th class="text-left px-2 py-1">Settings</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr class="border-b border-slate-800">
+        <td class="px-2 py-1 text-slate-300 whitespace-nowrap">{{ r.ts[:19].replace('T',' ') }}</td>
+        <td class="px-2 py-1 text-slate-400">
+          {% if r.test_type == 'intelligence' %}IQ{% elif r.test_type == 'speed' %}{{ r.backend or 'spd' }}{% else %}{{ r.test_type }}{% endif %}
+        </td>
+        <td class="px-2 py-1 text-right font-mono text-emerald-300">
+          {% if r.test_type == 'intelligence' %}{{ r.score }}%{% elif r.tg_speed %}{{ r.tg_speed }} t/s{% endif %}
+        </td>
+        <td class="px-2 py-1 text-right text-slate-500">{% if r.duration %}{{ r.duration }}s{% endif %}</td>
+        <td class="px-2 py-1 text-slate-400 font-mono text-[10px]">
+          {% set s = r.settings or {} %}
+          {% if s.reasoning_effort %}eff={{ s.reasoning_effort }} {% endif %}
+          {% if s.reasoning_format %}rf={{ s.reasoning_format }} {% endif %}
+          {% if s.temp is defined %}t={{ s.temp }}{% endif %}
+          {% if s.top_k is defined %}/{{ s.top_k }}{% endif %}
+          {% if s.top_p is defined %}/{{ s.top_p }}{% endif %}
+          {% if s.min_p is defined %}/{{ s.min_p }}{% endif %}
+          {% if s.system_prompt %} sp={{ s.system_prompt[:30] }}{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-xs text-slate-500">No history yet. Run a test to start collecting.</div>
+{% endif %}

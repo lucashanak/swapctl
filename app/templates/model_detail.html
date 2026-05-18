@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}{{ repo_id }} - swapctl{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <a href="{{ root_path }}/browse" class="text-sm text-sky-400 hover:text-sky-300">&larr; Back to browse</a>
+</div>
+<h1 class="text-2xl font-semibold mb-2 break-all">{{ repo_id }}</h1>
+<a href="https://huggingface.co/{{ repo_id }}" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-slate-200">View on Hugging Face</a>
+
+{% if error %}
+<div class="mt-4 p-3 rounded-md bg-red-900/50 border border-red-700 text-red-200 text-sm">{{ error }}</div>
+{% endif %}
+
+{% if readme_html %}
+<details class="mt-6 bg-slate-800 rounded-lg shadow" open>
+  <summary class="px-4 py-3 border-b border-slate-700 cursor-pointer select-none font-semibold">Description <span class="text-xs text-slate-400 font-normal">(README from repo)</span></summary>
+  <div class="p-5 readme-body max-h-[70vh] overflow-y-auto">{{ readme_html | safe }}</div>
+</details>
+{% endif %}
+
+<div class="mt-6 bg-slate-800 rounded-lg shadow"
+     x-data='modelDetail({{ groups | tojson | safe }}, {{ mmproj_groups | tojson | safe }}, {{ gpu_total_gb }})'>
+
+  <div class="px-4 py-3 border-b border-slate-700 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">Installable quants</h2>
+      <p class="text-xs text-slate-400 mt-0.5">
+        <span x-text="filtered.length"></span> / <span x-text="groups.length"></span> shown; total GPU budget <span class="font-mono text-slate-300" x-text="budgetGb + ' GB'"></span>
+      </p>
+    </div>
+    <div class="flex items-center flex-wrap gap-3 text-xs">
+      <label class="flex items-center gap-1.5">
+        <span class="text-slate-400">Max size (GB):</span>
+        <input type="number" x-model.number="maxGb" min="0" step="5" placeholder="∞"
+               class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs">
+        <button type="button" @click="maxGb = Math.round(budgetGb * 0.9)"
+                class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">fit my GPU</button>
+        <button type="button" @click="maxGb = 0"
+                class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">all</button>
+      </label>
+      <label class="flex items-center gap-1.5">
+        <span class="text-slate-400">Sort:</span>
+        <select x-model="sortKey"
+                class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs">
+          <option value="quality">Quality (default)</option>
+          <option value="size_asc">Size ascending</option>
+          <option value="size_desc">Size descending</option>
+          <option value="name">Filename</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <template x-if="filtered.length === 0">
+    <div class="p-6 text-slate-400 text-sm">
+      <template x-if="groups.length === 0"><span>No .gguf files found in this repo.</span></template>
+      <template x-if="groups.length > 0"><span>No quants match the current filter — uncheck "Fits my GPU" or raise Max GB.</span></template>
+    </div>
+  </template>
+
+  <template x-if="filtered.length > 0">
+    <table class="w-full text-sm">
+      <thead class="text-left text-slate-400 text-xs uppercase">
+        <tr>
+          <th class="px-4 py-2">Quant</th>
+          <th class="px-4 py-2">File(s)</th>
+          <th class="px-4 py-2">Size</th>
+          <th class="px-4 py-2">Fit</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-700">
+        <template x-for="g in filtered" :key="g.primary_filename">
+          <tr>
+            <td class="px-4 py-2 whitespace-nowrap">
+              <template x-if="g.quant">
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-100 font-mono" x-text="g.quant"></span>
+              </template>
+              <template x-if="!g.quant">
+                <span class="text-xs text-slate-500">-</span>
+              </template>
+              <template x-if="g.part_count > 1">
+                <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 border border-amber-700 text-amber-200"
+                      x-text="g.part_count + ' parts'"></span>
+              </template>
+            </td>
+            <td class="px-4 py-2 font-mono text-xs text-slate-300 break-all">
+              <span x-text="g.primary_filename"></span>
+              <template x-if="g.part_count > 1">
+                <div class="text-[10px] text-slate-500 mt-0.5" x-text="'+ ' + (g.part_count - 1) + ' more part' + ((g.part_count - 1) === 1 ? '' : 's')"></div>
+              </template>
+            </td>
+            <td class="px-4 py-2 text-slate-300 whitespace-nowrap" x-text="g.total_gb + ' GB'"></td>
+            <td class="px-4 py-2 whitespace-nowrap">
+              <template x-if="fits(g)">
+                <span class="text-xs px-2 py-0.5 rounded bg-emerald-900 text-emerald-200">fits</span>
+              </template>
+              <template x-if="!fits(g)">
+                <span class="text-xs px-2 py-0.5 rounded bg-rose-900 text-rose-200">too big</span>
+              </template>
+            </td>
+            <td class="px-4 py-2 text-right">
+              <button type="button"
+                      @click="pick(g)"
+                      class="bg-sky-600 hover:bg-sky-500 text-white rounded-md px-3 py-1 text-xs font-medium">
+                Install
+              </button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </template>
+
+  <template x-if="mmprojs.length > 0">
+    <div class="px-4 py-3 border-t border-slate-700 text-xs text-slate-400">
+      mmproj available (<span x-text="mmprojs.length"></span>): default <span class="font-mono text-slate-200" x-text="mmprojs[0].primary_filename"></span>
+    </div>
+  </template>
+
+  <div x-show="open" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+       @keydown.escape.window="open=false">
+    <form class="bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 border border-slate-700"
+          hx-post="{{ root_path }}/api/install"
+          hx-swap="none">
+      <div class="px-5 py-4 border-b border-slate-700">
+        <h3 class="font-semibold">Install model</h3>
+        <p class="text-xs text-slate-400 mt-1 font-mono break-all" x-text="picked && picked.primary_filename"></p>
+        <p class="text-xs text-amber-300 mt-1" x-show="picked && picked.part_count > 1">
+          Split model — <span x-text="picked && picked.part_count"></span> parts will be downloaded.
+        </p>
+        <p class="text-xs" :class="picked && fits(picked) ? 'text-emerald-300' : 'text-rose-300'"
+           x-show="picked">
+          <span x-text="picked && picked.total_gb + ' GB'"></span> — <span x-text="picked && (fits(picked) ? 'fits in GPU budget' : 'exceeds GPU budget (may OOM)')"></span>
+        </p>
+      </div>
+      <div class="p-5 space-y-4">
+        <input type="hidden" name="repo_id" value="{{ repo_id }}">
+        <input type="hidden" name="filename" :value="picked && picked.primary_filename">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Model ID</label>
+          <input type="text" name="model_id" x-model="modelId" required
+                 class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-sky-500">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Context size</label>
+          <input type="number" name="ctx_size" x-model.number="ctx" min="1024" max="524288" step="1024"
+                 class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sky-500">
+        </div>
+        <template x-if="mmprojs.length > 0">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" x-model="useMmproj" class="accent-sky-500">
+            <span>Also download mmproj (<span class="font-mono text-xs" x-text="mmprojs[0].primary_filename"></span>)</span>
+          </label>
+        </template>
+        <input type="hidden" name="mmproj_filename" :value="mmprojs.length && useMmproj ? mmprojs[0].primary_filename : ''">
+      </div>
+      <div class="px-5 py-3 border-t border-slate-700 flex justify-end gap-2">
+        <button type="button" @click="open=false" class="px-3 py-1.5 text-sm text-slate-300 hover:text-white">Cancel</button>
+        <button type="submit" class="px-4 py-1.5 text-sm bg-sky-600 hover:bg-sky-500 text-white rounded-md">Start download</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function modelDetail(groups, mmprojs, gpuTotalGb) {
+  return {
+    groups: groups,
+    mmprojs: mmprojs,
+    budgetGb: gpuTotalGb,
+    maxGb: Math.max(10, Math.round(gpuTotalGb * 0.9)),
+    sortKey: 'quality',
+    open: false,
+    picked: null,
+    ctx: {{ ctx_default }},
+    useMmproj: true,
+    modelId: '{{ suggested_model_id }}',
+    fits(g) {
+      return g.total_gb <= (this.budgetGb * 0.9);
+    },
+    pick(g) {
+      this.picked = g;
+      const cleanQ = (g.quant || 'gguf').toLowerCase().replace(/[_\/]/g, '-');
+      this.modelId = '{{ suggested_model_id }}-' + cleanQ;
+      this.open = true;
+    },
+    get filtered() {
+      let out = this.groups.slice();
+      if (this.maxGb > 0) out = out.filter(g => g.total_gb <= this.maxGb);
+      switch (this.sortKey) {
+        case 'size_asc':  out.sort((a,b) => a.total_bytes - b.total_bytes); break;
+        case 'size_desc': out.sort((a,b) => b.total_bytes - a.total_bytes); break;
+        case 'name':      out.sort((a,b) => a.primary_filename.localeCompare(b.primary_filename)); break;
+      }
+      return out;
+    }
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <div>
+      <h3 class="font-semibold text-lg">{{ model_id }}</h3>
+      <p class="text-xs text-slate-400 mt-0.5">Tested {{ iq.tested_at[:10] if iq.tested_at else '—' }}</p>
+    </div>
+    <div class="text-right">
+      <div class="text-2xl font-mono {% if iq.score >= 80 %}text-emerald-300{% elif iq.score >= 60 %}text-amber-300{% else %}text-rose-300{% endif %}">
+        {{ iq.score }}%
+      </div>
+      <div class="text-xs text-slate-400">{{ iq.passed }}/{{ iq.total }} passed</div>
+    </div>
+  </div>
+
+  {% if iq.difficulties %}
+  <div class="flex gap-3">
+    {% for diff in ['easy', 'medium', 'hard'] %}
+      {% set v = iq.difficulties.get(diff, {}) %}
+      {% if v %}
+      <div class="flex-1 text-center px-2 py-1.5 rounded bg-slate-900 border border-slate-700">
+        <div class="text-[10px] uppercase tracking-wide {% if diff == 'easy' %}text-emerald-400{% elif diff == 'medium' %}text-amber-400{% else %}text-rose-400{% endif %}">{{ diff }}</div>
+        <div class="text-sm font-mono {% if v.score >= 80 %}text-emerald-300{% elif v.score >= 60 %}text-amber-300{% else %}text-rose-300{% endif %}">{{ v.score }}%</div>
+        <div class="text-[10px] text-slate-500">{{ v.passed }}/{{ v.total }}</div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="space-y-2">
+    <h4 class="text-xs uppercase text-slate-400 tracking-wide">Categories</h4>
+    {% for cat, v in iq.categories.items() %}
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-slate-300 w-20 shrink-0">{{ cat }}</span>
+      <div class="flex-1 h-4 bg-slate-900 rounded overflow-hidden">
+        <div class="h-full rounded {% if v.score >= 80 %}bg-emerald-600{% elif v.score >= 60 %}bg-amber-600{% else %}bg-rose-600{% endif %} transition-all"
+             style="width: {{ v.score }}%"></div>
+      </div>
+      <span class="text-xs font-mono w-16 text-right {% if v.score >= 80 %}text-emerald-300{% elif v.score >= 60 %}text-amber-300{% else %}text-rose-300{% endif %}">
+        {{ v.score }}%
+      </span>
+      <span class="text-[10px] text-slate-500 w-10 text-right">{{ v.passed }}/{{ v.total }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if iq.details %}
+  <details class="mt-2">
+    <summary class="text-xs text-slate-400 cursor-pointer select-none hover:text-slate-300">
+      Individual questions ({{ iq.details | length }})
+    </summary>
+    <div class="mt-2 space-y-1 max-h-72 overflow-y-auto">
+      {% for d in iq.details %}
+      <div class="flex items-start gap-2 px-2 py-1.5 rounded {% if d.passed %}bg-emerald-900/20{% else %}bg-rose-900/20{% endif %}">
+        <span class="shrink-0 mt-0.5 text-xs {% if d.passed %}text-emerald-400{% else %}text-rose-400{% endif %}">
+          {% if d.passed %}✓{% else %}✗{% endif %}
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-slate-500 font-mono">{{ d.id }}</span>
+            {% if d.difficulty %}
+            <span class="text-[9px] px-1 py-0.5 rounded {% if d.difficulty == 'easy' %}bg-emerald-900/40 text-emerald-400{% elif d.difficulty == 'medium' %}bg-amber-900/40 text-amber-400{% else %}bg-rose-900/40 text-rose-400{% endif %}">{{ d.difficulty }}</span>
+            {% endif %}
+            {% if d.judge %}
+            <span class="text-[9px] px-1 py-0.5 rounded {% if d.judge == 'pass' %}bg-sky-900/40 text-sky-400{% else %}bg-slate-700 text-slate-400{% endif %}">judge:{{ d.judge }}</span>
+            {% endif %}
+          </div>
+          {% if d.response %}
+            <div class="text-xs text-slate-300 mt-0.5 break-words font-mono whitespace-pre-wrap">{{ d.response[:150] }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+</div>

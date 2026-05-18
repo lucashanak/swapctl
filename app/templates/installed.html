@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Installed - swapctl{% endblock %}
+{% block main_class %}max-w-[100rem]{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-semibold">Installed models</h1>
+  <a href="{{ root_path }}/installed?refresh=1"
+     class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200"
+     title="Re-check Hugging Face for newer revisions, bypassing 30-min cache">
+    Check for updates
+  </a>
+</div>
+
+<div class="bg-slate-800 rounded-lg shadow overflow-x-auto" x-data="sortTable()">
+  {% if installed %}
+  <table class="w-full text-xs">
+    <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
+      <tr>
+        <th class="px-3 py-2 cursor-pointer select-none hover:text-slate-200" @click="sort('model')">Model <span x-text="indicator('model')"></span></th>
+        <th class="px-2 py-2 hidden md:table-cell">Repo</th>
+        <th class="px-2 py-2 cursor-pointer select-none hover:text-slate-200" @click="sort('quant')">Quant <span x-text="indicator('quant')"></span></th>
+        <th class="px-2 py-2 cursor-pointer select-none hover:text-slate-200" @click="sort('size')">Size <span x-text="indicator('size')"></span></th>
+        <th class="px-2 py-2 hidden lg:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('ctx')">Ctx <span x-text="indicator('ctx')"></span></th>
+        <th class="px-2 py-2 hidden lg:table-cell">Updated</th>
+        <th class="px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('speed')">Speed <span x-text="indicator('speed')"></span></th>
+        <th class="px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('iq')">IQ <span x-text="indicator('iq')"></span></th>
+        <th class="px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('eff')">Eff <span x-text="indicator('eff')"></span></th>
+        <th class="px-2 py-2 hidden md:table-cell text-center">Status</th>
+        <th class="px-2 py-2 text-right">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-700/50" x-ref="tbody">
+      {% for m in installed %}
+      {% include "partials/installed_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="p-8 text-center text-slate-400">
+    <p class="text-sm">No models installed yet.</p>
+    <a href="{{ root_path }}/browse" class="inline-block mt-3 text-sm text-sky-400 hover:text-sky-300">Browse Hugging Face &rarr;</a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function sortTable() {
+  const KEY = 'swapctl_sort_installed';
+  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+  return {
+    col: saved?.col || 'eff',
+    asc: saved?.asc ?? false,
+    indicator(c) { return this.col === c ? (this.asc ? '▲' : '▼') : ''; },
+    _apply() {
+      const tbody = this.$refs.tbody;
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('tr[data-model]'));
+      const isNum = ['size','speed','iq','eff','ctx'].includes(this.col);
+      const col = this.col, asc = this.asc;
+      rows.sort((a, b) => {
+        let va = a.dataset[col] || '', vb = b.dataset[col] || '';
+        if (isNum) { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; }
+        else { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+        if (va < vb) return asc ? -1 : 1;
+        if (va > vb) return asc ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+      colorizeColumns(tbody, [{col:'speed'},{col:'iq'},{col:'eff'}]);
+    },
+    sort(c) {
+      if (this.col === c) { this.asc = !this.asc; } else { this.col = c; this.asc = c === 'model' || c === 'quant'; }
+      localStorage.setItem(KEY, JSON.stringify({col: this.col, asc: this.asc}));
+      this._apply();
+    },
+    init() {
+      this._apply();
+      document.body.addEventListener('htmx:afterSwap', () => this.$nextTick(() => this._apply()));
+    }
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% block title %}NPU - swapctl{% endblock %}
+{% block main_class %}max-w-[100rem]{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">NPU</h1>
+
+{% if npu %}
+{# ── Device info cards ─────────────────────────────────── #}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">Device</div>
+    <div class="text-xl font-semibold mt-1 flex items-center gap-2">
+      <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+      {{ npu.device }}
+    </div>
+    {% if npu.columns %}
+      <div class="text-xs text-slate-500 mt-2">{{ npu.columns }} AI columns</div>
+    {% endif %}
+    {% if npu.power_mode %}
+      <div class="text-xs text-slate-500 mt-1">Power: {{ npu.power_mode }}</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">Firmware</div>
+    <div class="text-xl font-semibold mt-1">{{ npu.firmware or 'unknown' }}</div>
+    {% if npu.driver %}
+      <div class="text-xs text-slate-500 mt-2">Driver: {{ npu.driver }}</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">XRT</div>
+    <div class="text-xl font-semibold mt-1">{{ npu.xrt_version or 'not installed' }}</div>
+    <div class="text-xs text-slate-500 mt-2">Xilinx Runtime</div>
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-4">
+    <div class="text-xs uppercase text-slate-400 tracking-wide">FastFlowLM</div>
+    <div class="text-xl font-semibold mt-1">{{ npu.flm_version or 'not installed' }}</div>
+    <div class="text-xs text-slate-500 mt-2">NPU LLM Runtime</div>
+  </div>
+</div>
+
+{% if npu.flm_version %}
+
+{# ── Serve control ─────────────────────────────────────── #}
+<div class="bg-slate-800 rounded-lg shadow p-6 mb-8" x-data="{ serveModel: '', servePort: 8199 }">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold">NPU Server</h2>
+    {% if serve %}
+      <div class="flex items-center gap-3">
+        <span class="flex items-center gap-2 text-sm">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-mono text-emerald-300">{{ serve.model }}</span>
+          <span class="text-slate-500">port {{ serve.port }}</span>
+        </span>
+        <button type="button"
+                hx-post="{{ root_path }}/api/npu/stop"
+                hx-swap="none"
+                class="px-3 py-1.5 text-xs bg-rose-700 hover:bg-rose-600 text-white rounded-md">
+          Stop
+        </button>
+      </div>
+    {% else %}
+      <span class="text-xs text-slate-500">Not running</span>
+    {% endif %}
+  </div>
+
+  {% if not serve %}
+  {% set installed = npu.flm_models | selectattr('installed') | list %}
+  {% if installed %}
+  <form class="flex items-end gap-3"
+        hx-post="{{ root_path }}/api/npu/serve"
+        hx-swap="none">
+    <label class="flex-1">
+      <span class="text-xs uppercase text-slate-400">Model</span>
+      <select name="model" x-model="serveModel"
+              class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+        <option value="" disabled selected>Select model...</option>
+        {% for m in installed %}
+        <option value="{{ m.name }}">{{ m.name }} ({{ m.params }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span class="text-xs uppercase text-slate-400">Port</span>
+      <input type="number" name="port" x-model="servePort" value="8199"
+             class="mt-1 w-24 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+    </label>
+    <button type="submit" :disabled="!serveModel"
+            class="px-4 py-2 text-sm bg-emerald-700 hover:bg-emerald-600 text-white rounded-md disabled:opacity-40 disabled:cursor-not-allowed">
+      Start Server
+    </button>
+  </form>
+  {% else %}
+  <p class="text-sm text-slate-500">Download a model first to start the server.</p>
+  {% endif %}
+  {% endif %}
+
+  {% if serve %}
+  <div class="mt-4 text-xs text-slate-500">
+    OpenAI-compatible API at <code class="bg-slate-900 px-1.5 py-0.5 rounded">http://&lt;host&gt;:{{ serve.port }}/v1/chat/completions</code>
+    &mdash; add this URL as an OpenAI connection in Open WebUI to use NPU models.
+  </div>
+  {% endif %}
+</div>
+
+{# ── Pull jobs ─────────────────────────────────────────── #}
+{% if pull_jobs %}
+<div class="bg-slate-800 rounded-lg shadow p-6 mb-8"
+     hx-get="{{ root_path }}/npu"
+     hx-trigger="every 3s"
+     hx-select="#npu-jobs"
+     hx-target="#npu-jobs"
+     hx-swap="outerHTML">
+  <div id="npu-jobs">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Downloads</h2>
+      <button type="button"
+              hx-post="{{ root_path }}/api/npu/jobs/clear"
+              hx-swap="none"
+              class="text-xs text-slate-500 hover:text-slate-300">
+        Clear finished
+      </button>
+    </div>
+    <div class="space-y-3">
+      {% for j in pull_jobs %}
+      <div class="flex items-center justify-between bg-slate-900 rounded-md px-4 py-3">
+        <div>
+          <span class="font-mono text-sm">{{ j.model }}</span>
+          <span class="ml-2 text-xs
+            {% if j.status == 'done' %}text-emerald-400
+            {% elif j.status == 'error' %}text-rose-400
+            {% elif j.status == 'running' %}text-sky-400
+            {% else %}text-slate-500{% endif %}">{{ j.status }}</span>
+          {% if j.error %}
+            <span class="ml-2 text-xs text-rose-300">{{ j.error }}</span>
+          {% endif %}
+        </div>
+        {% if j.status in ('running', 'queued') %}
+        <button type="button"
+                hx-post="{{ root_path }}/api/npu/jobs/{{ j.job_id }}/cancel"
+                hx-swap="none"
+                class="text-xs px-2 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white">
+          Cancel
+        </button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Model catalog ─────────────────────────────────────── #}
+<div class="bg-slate-800 rounded-lg shadow p-6 mb-8"
+     x-data="{ filter: 'all', confirmRemove: null }">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold">NPU Models</h2>
+    <div class="flex gap-2 text-xs">
+      <button @click="filter='all'" :class="filter==='all' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'"
+              class="px-2.5 py-1 rounded-md">All ({{ npu.flm_models | length }})</button>
+      <button @click="filter='installed'" :class="filter==='installed' ? 'bg-emerald-700 text-white' : 'text-slate-400 hover:text-white'"
+              class="px-2.5 py-1 rounded-md">Installed ({{ npu.flm_models | selectattr('installed') | list | length }})</button>
+      <button @click="filter='available'" :class="filter==='available' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'"
+              class="px-2.5 py-1 rounded-md">Available</button>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="text-sm w-full">
+      <thead>
+        <tr class="text-left text-slate-400 border-b border-slate-700">
+          <th class="py-2 pr-4">Model</th>
+          <th class="py-2 pr-4">Params</th>
+          <th class="py-2 pr-4">Quant</th>
+          <th class="py-2 pr-4 text-right">Size</th>
+          <th class="py-2 pr-4 text-right">Context</th>
+          <th class="py-2 pr-4">Labels</th>
+          <th class="py-2 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-700/50">
+        {% for m in npu.flm_models %}
+        <tr x-show="filter === 'all' || (filter === 'installed' && {{ 'true' if m.installed else 'false' }}) || (filter === 'available' && {{ 'false' if m.installed else 'true' }})"
+            class="{{ 'opacity-60' if not m.installed }}">
+          <td class="py-2.5 pr-4 font-mono text-sm">
+            {% if m.installed %}
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5"></span>
+            {% endif %}
+            {{ m.name }}
+          </td>
+          <td class="py-2.5 pr-4 text-slate-300">{{ m.params }}</td>
+          <td class="py-2.5 pr-4 font-mono text-xs text-slate-400">{{ m.quant }}</td>
+          <td class="py-2.5 pr-4 text-right text-slate-300">{{ "%.1f"|format(m.size_gb) }} GB</td>
+          <td class="py-2.5 pr-4 text-right font-mono text-xs text-slate-400">{{ "{:,}".format(m.ctx) }}</td>
+          <td class="py-2.5 pr-4">
+            {% for l in m.labels %}
+              <span class="inline-block text-xs px-1.5 py-0.5 rounded mr-0.5
+                {% if l == 'vision' %}bg-violet-900/70 text-violet-300
+                {% elif l == 'reasoning' %}bg-amber-900/70 text-amber-300
+                {% elif l == 'embeddings' %}bg-cyan-900/70 text-cyan-300
+                {% elif l == 'audio' or l == 'transcription' %}bg-rose-900/70 text-rose-300
+                {% elif l == 'tool-calling' %}bg-emerald-900/70 text-emerald-300
+                {% else %}bg-slate-700 text-slate-300{% endif %}">{{ l }}</span>
+            {% endfor %}
+          </td>
+          <td class="py-2.5 text-right whitespace-nowrap">
+            {% if m.installed %}
+              <button type="button"
+                      @click="confirmRemove = '{{ m.name }}'"
+                      class="text-xs px-2.5 py-1 rounded bg-rose-900/50 hover:bg-rose-700 text-rose-300 hover:text-white">
+                Delete
+              </button>
+            {% else %}
+              <form class="inline"
+                    hx-post="{{ root_path }}/api/npu/pull"
+                    hx-swap="none">
+                <input type="hidden" name="model" value="{{ m.name }}">
+                <button type="submit"
+                        class="text-xs px-2.5 py-1 rounded bg-sky-900/50 hover:bg-sky-700 text-sky-300 hover:text-white">
+                  Download
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Remove confirmation modal #}
+  <div x-show="confirmRemove" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+       @keydown.escape.window="confirmRemove = null">
+    <div class="bg-slate-800 rounded-lg shadow-xl w-full max-w-sm mx-4 border border-slate-700">
+      <div class="px-5 py-4 border-b border-slate-700">
+        <h3 class="font-semibold">Remove NPU model</h3>
+      </div>
+      <div class="p-5 text-sm text-slate-300">
+        Delete <span class="font-mono" x-text="confirmRemove"></span> from the NPU?
+      </div>
+      <div class="px-5 py-3 border-t border-slate-700 flex justify-end gap-2">
+        <button type="button" @click="confirmRemove = null"
+                class="px-3 py-1.5 text-sm text-slate-400 hover:text-white">Cancel</button>
+        <button type="button"
+                @click="htmx.ajax('POST', '{{ root_path }}/api/npu/remove/' + confirmRemove, {swap:'none'}); confirmRemove = null"
+                class="px-4 py-1.5 text-sm bg-rose-600 hover:bg-rose-500 text-white rounded-md">
+          Remove
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Integration info ──────────────────────────────────── #}
+<div class="bg-slate-800 rounded-lg shadow p-6">
+  <h2 class="text-lg font-semibold mb-4">Integration</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+      <h3 class="text-sm font-medium text-slate-300 mb-2">Open WebUI</h3>
+      <div class="text-sm text-slate-400 space-y-2">
+        <p>Start the NPU server above, then add it in Open WebUI:</p>
+        <div class="bg-slate-900 rounded p-3 font-mono text-xs text-slate-300 space-y-1">
+          <div>Settings &rarr; Connections &rarr; Add OpenAI</div>
+          <div>URL: <span class="text-sky-300">http://&lt;host&gt;:8199/v1</span></div>
+          <div>Key: <span class="text-slate-500">(any value)</span></div>
+        </div>
+        <p class="text-xs text-slate-500">NPU models run independently from GPU &mdash; both can serve simultaneously.</p>
+      </div>
+    </div>
+    <div>
+      <h3 class="text-sm font-medium text-slate-300 mb-2">CLI</h3>
+      <div class="bg-slate-900 rounded p-3 font-mono text-xs text-slate-300 space-y-1">
+        <div><span class="text-slate-500">$</span> flm pull qwen3:4b</div>
+        <div><span class="text-slate-500">$</span> flm run qwen3:4b</div>
+        <div><span class="text-slate-500">$</span> flm serve qwen3:4b --port 8199</div>
+        <div class="text-slate-500 mt-2"># OpenAI-compatible API</div>
+        <div><span class="text-slate-500">$</span> curl http://localhost:8199/v1/chat/completions \</div>
+        <div class="pl-4">-d '{"model":"qwen3:4b","messages":[...]}'</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+{# FLM not installed #}
+<div class="bg-slate-800 rounded-lg shadow p-6">
+  <h2 class="text-lg font-semibold mb-2">FastFlowLM not installed</h2>
+  <p class="text-sm text-slate-400">
+    Install FLM to run LLM inference on the NPU:
+  </p>
+  <div class="mt-3 bg-slate-900 rounded p-3 font-mono text-xs text-slate-300">
+    <div>wget https://github.com/FastFlowLM/FastFlowLM/releases/latest/download/fastflowlm_*_ubuntu24.04_amd64.deb</div>
+    <div>sudo apt install ./fastflowlm_*.deb</div>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+{# NPU not detected #}
+<div class="bg-slate-800 rounded-lg shadow p-6">
+  <div class="flex items-center gap-3">
+    <span class="inline-block w-3 h-3 rounded-full bg-rose-500"></span>
+    <div>
+      <div class="text-lg font-semibold">NPU not detected</div>
+      <div class="text-sm text-slate-400 mt-1">
+        No /dev/accel0 device found. Ensure the NPU is passed through to this container
+        and the amdxdna driver is loaded on the host.
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

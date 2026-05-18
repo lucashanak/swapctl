@@ -1,0 +1,1098 @@
+{% extends "base.html" %}
+{% block title %}Models - swapctl{% endblock %}
+{% block main_class %}max-w-[100rem] w-full{% endblock %}
+{% block content %}
+<div hx-get="{{ root_path }}/testing" hx-trigger="every 10s" hx-select="#status-panels" hx-target="#status-panels" hx-swap="outerHTML"></div>
+
+<div id="status-panels" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4 mb-4 sm:mb-6">
+  <div class="bg-slate-800 rounded-lg shadow p-3 sm:p-4">
+    <div class="text-[10px] sm:text-xs uppercase text-slate-400 tracking-wide">Utilization</div>
+    {% if status.cpu_pct is not none %}
+      <div class="flex items-center gap-1.5 sm:gap-2 mt-2">
+        <span class="text-[10px] text-slate-400 w-7 sm:w-8">CPU</span>
+        <div class="flex-1 h-1.5 sm:h-2 rounded-full bg-slate-700 overflow-hidden">
+          <div class="h-full rounded-full {% if status.cpu_pct > 90 %}bg-rose-500{% elif status.cpu_pct > 70 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" style="width:{{ status.cpu_pct }}%"></div>
+        </div>
+        <span class="text-[10px] sm:text-xs font-mono w-9 sm:w-10 text-right">{{ status.cpu_pct }}%</span>
+      </div>
+    {% endif %}
+    {% if status.gpu_busy_pct is not none %}
+      <div class="flex items-center gap-1.5 sm:gap-2 mt-1.5">
+        <span class="text-[10px] text-slate-400 w-7 sm:w-8">iGPU</span>
+        <div class="flex-1 h-1.5 sm:h-2 rounded-full bg-slate-700 overflow-hidden">
+          <div class="h-full rounded-full {% if status.gpu_busy_pct > 90 %}bg-rose-500{% elif status.gpu_busy_pct > 70 %}bg-amber-500{% else %}bg-sky-500{% endif %}" style="width:{{ status.gpu_busy_pct }}%"></div>
+        </div>
+        <span class="text-[10px] sm:text-xs font-mono w-9 sm:w-10 text-right">{{ status.gpu_busy_pct }}%</span>
+      </div>
+    {% endif %}
+    {% if status.npu_contexts is not none %}
+      <div class="flex items-center gap-1.5 sm:gap-2 mt-1.5">
+        <span class="text-[10px] text-slate-400 w-7 sm:w-8">NPU</span>
+        <div class="flex-1">
+          {% if status.npu_contexts > 0 %}
+            <span class="text-[10px] sm:text-xs text-violet-300 font-mono">{{ status.npu_contexts }} ctx</span>
+          {% else %}
+            <span class="text-[10px] sm:text-xs text-slate-500 font-mono">idle</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% set s = status.sensors or {} %}
+  <div class="bg-slate-800 rounded-lg shadow p-3 sm:p-4">
+    <div class="text-[10px] sm:text-xs uppercase text-slate-400 tracking-wide">Sensors</div>
+    <div class="mt-2 space-y-1 text-[10px] sm:text-xs">
+      {% if s.cpu_temp %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">CPU</span>
+        <span class="font-mono {% if s.cpu_temp > 90 %}text-rose-400{% elif s.cpu_temp > 75 %}text-amber-300{% else %}text-emerald-300{% endif %}">{{ s.cpu_temp }}°C</span>
+      </div>
+      {% endif %}
+      {% if s.gpu_temp %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">GPU</span>
+        <span class="font-mono {% if s.gpu_temp > 90 %}text-rose-400{% elif s.gpu_temp > 75 %}text-amber-300{% else %}text-sky-300{% endif %}">{{ s.gpu_temp }}°C</span>
+      </div>
+      {% endif %}
+      {% if s.gpu_power_w %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">GPU power</span>
+        <span class="font-mono text-slate-200">{{ s.gpu_power_w }}W</span>
+      </div>
+      {% endif %}
+      {% if s.gpu_clock_mhz %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">GPU clock</span>
+        <span class="font-mono text-slate-200">{{ s.gpu_clock_mhz }} MHz</span>
+      </div>
+      {% endif %}
+      {% if s.nvme_temp %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">NVMe</span>
+        <span class="font-mono {% if s.nvme_temp > 70 %}text-rose-400{% elif s.nvme_temp > 55 %}text-amber-300{% else %}text-emerald-300{% endif %}">{{ s.nvme_temp }}°C</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-3 sm:p-4">
+    <div class="text-[10px] sm:text-xs uppercase text-slate-400 tracking-wide">GPU memory</div>
+    {% if status.gpu_total_mb %}
+      {% set gpu_pct = (status.gpu_used_mb / status.gpu_total_mb * 100) | round(0) | int %}
+      <div class="text-base sm:text-xl font-semibold mt-1">{{ '%.1f' | format(status.gpu_used_mb / 1024) }}<span class="text-slate-400">/</span>{{ '%.0f' | format(status.gpu_total_mb / 1024) }} <span class="text-xs text-slate-400">GiB</span></div>
+      <div class="mt-1.5 sm:mt-2 h-1.5 sm:h-2 rounded-full bg-slate-700 overflow-hidden">
+        <div class="h-full rounded-full {% if gpu_pct > 90 %}bg-rose-500{% elif gpu_pct > 70 %}bg-amber-500{% else %}bg-sky-500{% endif %}" style="width:{{ gpu_pct }}%"></div>
+      </div>
+      <div class="text-[9px] sm:text-[10px] text-slate-500 mt-1">{{ gpu_pct }}% (GTT+VRAM)</div>
+    {% else %}
+      <div class="text-base sm:text-xl font-semibold mt-1 text-slate-500">n/a</div>
+    {% endif %}
+    {% if status.ram_total_mb %}
+      {% set ram_pct = (status.ram_used_mb / status.ram_total_mb * 100) | round(0) | int %}
+      <div class="text-[9px] sm:text-[10px] text-slate-500 mt-1.5 sm:mt-2">RAM: {{ '%.1f' | format(status.ram_used_mb / 1024) }}/{{ '%.0f' | format(status.ram_total_mb / 1024) }} GiB ({{ ram_pct }}%)</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-3 sm:p-4">
+    <div class="text-[10px] sm:text-xs uppercase text-slate-400 tracking-wide">Disk /models</div>
+    {% if status.disk_free_gb is not none %}
+      {% set used = status.disk_total_gb - status.disk_free_gb %}
+      {% set pct = (used / status.disk_total_gb * 100) | round(0) | int if status.disk_total_gb else 0 %}
+      <div class="text-base sm:text-xl font-semibold mt-1">{{ status.disk_free_gb }} GB <span class="text-xs text-slate-400">free</span></div>
+      <div class="mt-1.5 sm:mt-2 h-1.5 sm:h-2 rounded-full bg-slate-700 overflow-hidden">
+        <div class="h-full rounded-full {% if pct > 90 %}bg-rose-500{% elif pct > 70 %}bg-amber-500{% else %}bg-emerald-500{% endif %}" style="width:{{ pct }}%"></div>
+      </div>
+      <div class="text-[9px] sm:text-[10px] text-slate-500 mt-1">{{ used }}/{{ status.disk_total_gb }} GB ({{ pct }}%)</div>
+    {% else %}
+      <div class="text-base sm:text-xl font-semibold mt-1 text-slate-500">unavailable</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-3 sm:p-4">
+    <div class="text-[10px] sm:text-xs uppercase text-slate-400 tracking-wide">llama-swap</div>
+    <div class="text-base sm:text-xl font-semibold mt-1 flex items-center gap-2">
+      <span class="inline-block w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full {% if status.swap_active %}bg-emerald-400{% else %}bg-rose-500{% endif %}"></span>
+      {% if status.swap_active %}running{% else %}stopped{% endif %}
+    </div>
+    {% if status.swap_running %}
+      <div class="text-[10px] sm:text-xs text-emerald-300 mt-1.5 sm:mt-2 break-all">Loaded: {{ status.swap_running | join(", ") }}</div>
+    {% else %}
+      <div class="text-[10px] sm:text-xs text-slate-500 mt-1.5 sm:mt-2">no model loaded</div>
+    {% endif %}
+    {% if status.swap_configured %}
+      <div class="text-[9px] sm:text-[10px] text-slate-500 mt-1">{{ status.swap_configured | length }} configured</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow p-3 sm:p-4">
+    <div class="text-[10px] sm:text-xs uppercase text-slate-400 tracking-wide">Models</div>
+    <div class="text-base sm:text-xl font-semibold mt-1">{{ models | length }}</div>
+    <div class="text-[10px] sm:text-xs text-slate-500 mt-1.5 sm:mt-2">
+      {% set tested = models | selectattr('intelligence') | list | length %}
+      {{ tested }} tested · {{ models | length - tested }} pending
+    </div>
+    {% set active_jobs = jobs | selectattr('status', 'in', ['running', 'queued']) | list %}
+    {% if active_jobs %}
+    <div class="text-[10px] sm:text-xs text-indigo-300 mt-1 animate-pulse">{{ active_jobs | length }} job(s) running</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Power Controls ──────────────────────────────────────────── #}
+{% if power %}
+<div x-data="{ powerOpen: false }" class="mb-4 sm:mb-6">
+  <button @click="powerOpen = !powerOpen"
+          class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 text-sm text-slate-300 hover:text-slate-100 transition-colors">
+    <svg :class="powerOpen && 'rotate-90'" class="w-3.5 h-3.5 transition-transform text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
+    <span class="text-[10px] sm:text-xs uppercase tracking-wide">Power Controls</span>
+    <span class="ml-auto text-[10px] text-slate-500">GPU DPM: {{ power.gpu_dpm or '?' }} · CPU: {{ power.cpu_governor or '?' }} · Boost: {% if power.cpu_boost %}on{% else %}off{% endif %}{% if power.socket_tdp and power.socket_tdp.available %} · Socket: STAPM {{ power.socket_tdp.limits.stapm_w|round(0)|int }}W / Fast {{ power.socket_tdp.limits.fast_w|round(0)|int }}W{% endif %}</span>
+  </button>
+  <div x-show="powerOpen" x-cloak class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
+
+    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">GPU DPM Level</div>
+      <form hx-post="{{ root_path }}/api/power/gpu-dpm" hx-swap="none" class="flex gap-1.5 flex-wrap">
+        {% set dpm = power.gpu_dpm or 'auto' %}
+        {% for level in ['auto', 'low', 'manual'] %}
+        <label class="flex items-center">
+          <input type="radio" name="level" value="{{ level }}" {% if dpm == level %}checked{% endif %}
+                 class="hidden peer">
+          <span class="px-2 py-1 text-[10px] rounded cursor-pointer
+            peer-checked:bg-sky-700 peer-checked:text-white
+            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
+            min-h-[28px] flex items-center">{{ level.replace('profile_', '') }}</span>
+        </label>
+        {% endfor %}
+        <button type="submit" class="px-2 py-1 text-[10px] rounded bg-sky-900 hover:bg-sky-800 text-sky-200 min-h-[28px]">Apply</button>
+      </form>
+    </div>
+
+    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">GPU Clock (MHz)</div>
+      {% set clk = power.gpu_clocks or {} %}
+      <form hx-post="{{ root_path }}/api/power/gpu-clocks" hx-swap="none" class="space-y-1.5">
+        <div class="flex gap-2 items-center">
+          <label class="text-[10px] text-slate-400 w-7">Min</label>
+          <input type="number" name="min_mhz" value="{{ clk.current_min or 600 }}" min="{{ clk.range_min or 600 }}" max="{{ clk.range_max or 2900 }}" step="100"
+                 class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono w-20">
+        </div>
+        <div class="flex gap-2 items-center">
+          <label class="text-[10px] text-slate-400 w-7">Max</label>
+          <input type="number" name="max_mhz" value="{{ clk.current_max or 2900 }}" min="{{ clk.range_min or 600 }}" max="{{ clk.range_max or 2900 }}" step="100"
+                 class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono w-20">
+        </div>
+        <div class="flex gap-1.5">
+          <button type="submit" class="px-2 py-1 text-[10px] rounded bg-sky-900 hover:bg-sky-800 text-sky-200 min-h-[28px]">Set</button>
+          <button type="button" hx-post="{{ root_path }}/api/power/gpu-clocks-reset" hx-swap="none"
+                  class="px-2 py-1 text-[10px] rounded bg-slate-700 hover:bg-slate-600 text-slate-300 min-h-[28px]">Reset</button>
+        </div>
+        <div class="text-[9px] text-slate-500">Range: {{ clk.range_min or 600 }}–{{ clk.range_max or 2900 }} MHz</div>
+      </form>
+    </div>
+
+    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">CPU Governor</div>
+      <form hx-post="{{ root_path }}/api/power/cpu-governor" hx-swap="none" class="flex gap-1.5 flex-wrap">
+        {% set gov = power.cpu_governor or 'performance' %}
+        {% for g in ['performance', 'powersave'] %}
+        <label class="flex items-center">
+          <input type="radio" name="governor" value="{{ g }}" {% if gov == g %}checked{% endif %}
+                 class="hidden peer">
+          <span class="px-2.5 py-1 text-[10px] rounded cursor-pointer
+            peer-checked:bg-emerald-700 peer-checked:text-white
+            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
+            min-h-[28px] flex items-center">{{ g }}</span>
+        </label>
+        {% endfor %}
+        <button type="submit" class="px-2 py-1 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px]">Apply</button>
+      </form>
+      {% if power.cpu_freq %}
+      <div class="text-[9px] text-slate-500 mt-2">{{ power.cpu_freq.min_mhz }}–{{ power.cpu_freq.max_mhz }} MHz (hw max {{ power.cpu_freq.hw_max_mhz }})</div>
+      {% endif %}
+    </div>
+
+    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">CPU Boost</div>
+      <form hx-post="{{ root_path }}/api/power/cpu-boost" hx-swap="none" class="flex gap-1.5">
+        {% set boost = power.cpu_boost %}
+        <label class="flex items-center">
+          <input type="radio" name="enabled" value="1" {% if boost %}checked{% endif %} class="hidden peer">
+          <span class="px-2.5 py-1 text-[10px] rounded cursor-pointer
+            peer-checked:bg-emerald-700 peer-checked:text-white
+            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
+            min-h-[28px] flex items-center">On</span>
+        </label>
+        <label class="flex items-center">
+          <input type="radio" name="enabled" value="0" {% if not boost %}checked{% endif %} class="hidden peer">
+          <span class="px-2.5 py-1 text-[10px] rounded cursor-pointer
+            peer-checked:bg-amber-700 peer-checked:text-white
+            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
+            min-h-[28px] flex items-center">Off</span>
+        </label>
+        <button type="submit" class="px-2 py-1 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px]">Apply</button>
+      </form>
+      {% if boost is not none %}
+      <div class="text-[9px] text-slate-500 mt-2">Boost {% if boost %}enabled{% else %}disabled{% endif %}</div>
+      {% endif %}
+    </div>
+
+    {% set tdp = power.socket_tdp or {} %}
+    {% set tdp_cfg = socket_tdp_config or {} %}
+    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700 sm:col-span-2 lg:col-span-2 xl:col-span-1">
+      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2 flex items-center gap-2">
+        Socket TDP (W)
+        {% if tdp.family %}<span class="text-[9px] text-slate-500 normal-case tracking-normal">· {{ tdp.family }}</span>{% endif %}
+      </div>
+      {% if not tdp.available %}
+        <div class="text-[10px] text-amber-400">unavailable: {{ tdp.error or 'tdpctl/host unreachable' }}</div>
+      {% else %}
+      {% set lim = tdp.limits or {} %}
+      {% set act = tdp.actual or {} %}
+      <form hx-post="{{ root_path }}/api/power/socket-tdp" hx-swap="none" class="space-y-1.5">
+        {% for key, label in [('stapm','STAPM'),('fast','Fast'),('slow','Slow'),('apu','APU')] %}
+        <div class="flex gap-2 items-center">
+          <label class="text-[10px] text-slate-400 w-10">{{ label }}</label>
+          <input type="number" name="{{ key }}_w" value="{{ lim[key + '_w']|round(0)|int if lim.get(key + '_w') is not none else 120 }}"
+                 min="1" max="200" step="1"
+                 class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono">
+          <span class="text-[9px] text-slate-500 font-mono">{{ act.get(key + '_value_w', 0)|round(1) }}W now</span>
+        </div>
+        {% endfor %}
+        <label class="flex items-center gap-2 pt-1">
+          <input type="checkbox" name="apply_on_boot" value="1" {% if tdp_cfg.get('apply_on_boot') %}checked{% endif %}
+                 class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600">
+          <span class="text-[10px] text-slate-400">Apply on swapctl boot</span>
+        </label>
+        <button type="submit" class="px-2 py-1 text-[10px] rounded bg-rose-900 hover:bg-rose-800 text-rose-200 min-h-[28px] w-full">Apply TDP</button>
+      </form>
+      {% if tdp_cfg.get('updated_at') %}
+      <div class="text-[9px] text-slate-500 mt-2">Saved: STAPM {{ (tdp_cfg.stapm_mw / 1000)|round(0)|int }} / Fast {{ (tdp_cfg.fast_mw / 1000)|round(0)|int }} / Slow {{ (tdp_cfg.slow_mw / 1000)|round(0)|int }} / APU {{ (tdp_cfg.apu_mw / 1000)|round(0)|int }} W</div>
+      {% endif %}
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+<div class="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6" x-data="{ batchOpen: false }">
+  <h1 class="text-lg sm:text-2xl font-semibold">Models</h1>
+  <div class="flex gap-1.5 sm:gap-2">
+    <a href="{{ root_path }}/testing?refresh=1"
+       class="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200"
+       title="Re-check Hugging Face for newer revisions">
+      Check updates
+    </a>
+    <a href="{{ root_path }}/api/test/export"
+       class="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">
+      Export CSV
+    </a>
+    <button @click="batchOpen = true"
+            class="text-[10px] sm:text-xs px-2.5 sm:px-4 py-1 sm:py-1.5 rounded bg-indigo-700 hover:bg-indigo-600 text-white font-medium">
+      Batch Test…
+    </button>
+  </div>
+
+  <div x-show="batchOpen" x-cloak
+       class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
+       @keydown.escape.window="batchOpen = false" @click.self="batchOpen = false">
+    <form class="bg-slate-800 sm:rounded-lg shadow-xl w-full sm:max-w-sm sm:mx-4 border-t sm:border border-slate-700 rounded-t-xl"
+          hx-post="{{ root_path }}/api/test/batch"
+          hx-swap="none"
+          @submit="batchOpen = false">
+      <div class="px-5 py-4 border-b border-slate-700">
+        <h3 class="font-semibold text-lg">Batch Test</h3>
+        <p class="text-xs text-slate-400 mt-1">Queue tests for multiple models</p>
+      </div>
+      <div class="p-5 space-y-5">
+        <fieldset>
+          <legend class="text-xs uppercase text-slate-400 tracking-wide mb-2">What to test</legend>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-900/20">
+              <input type="checkbox" name="test_type" value="speed" class="accent-emerald-500" checked>
+              <div>
+                <div class="text-sm text-slate-200">Vulkan</div>
+                <div class="text-[10px] text-slate-500">Speed</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-sky-600 has-[:checked]:bg-sky-900/20">
+              <input type="checkbox" name="test_type" value="speed_rocm" class="accent-sky-500">
+              <div>
+                <div class="text-sm text-slate-200">ROCm</div>
+                <div class="text-[10px] text-slate-500">Speed</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-violet-600 has-[:checked]:bg-violet-900/20">
+              <input type="checkbox" name="test_type" value="intelligence" class="accent-violet-500" checked>
+              <div>
+                <div class="text-sm text-slate-200">IQ</div>
+                <div class="text-[10px] text-slate-500">56 questions</div>
+              </div>
+            </label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend class="text-xs uppercase text-slate-400 tracking-wide mb-2">Which models</legend>
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-900/20">
+              <input type="radio" name="scope" value="missing" class="accent-indigo-500" checked>
+              <div>
+                <div class="text-sm text-slate-200">Missing only</div>
+                <div class="text-[10px] text-slate-500">Skip already tested</div>
+              </div>
+            </label>
+            <label class="flex-1 flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-900/20">
+              <input type="radio" name="scope" value="all" class="accent-indigo-500">
+              <div>
+                <div class="text-sm text-slate-200">All models</div>
+                <div class="text-[10px] text-slate-500">Re-test everything</div>
+              </div>
+            </label>
+          </div>
+        </fieldset>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-700 flex justify-end gap-2">
+        <button type="button" @click="batchOpen = false"
+                class="px-3 py-1.5 text-sm text-slate-300 hover:text-white">Cancel</button>
+        <button type="submit"
+                class="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium">
+          Start Tests
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if queue_len > 0 or jobs %}
+<div class="mb-4 px-4 py-2 rounded bg-indigo-900/50 border border-indigo-700 text-indigo-200 text-sm"
+     hx-get="{{ root_path }}/testing" hx-trigger="every 5s" hx-select="#testing-live" hx-target="#testing-live" hx-swap="outerHTML">
+  {% if queue_len > 0 %}
+    Testing in progress… {{ queue_len }} job(s) in queue
+  {% else %}
+    All tests finished.
+  {% endif %}
+</div>
+{% endif %}
+<div id="testing-live">
+
+<div class="bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide" id="test-table" x-data="sortTestTable()">
+  {% if models %}
+  <table class="w-full text-xs">
+    <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
+      <tr>
+        <th class="px-2 sm:px-3 py-2 cursor-pointer select-none hover:text-slate-200" @click="sort('model')">Model <span x-text="indicator('model')"></span></th>
+        <th class="px-2 py-2 hidden md:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('quant')">Quant <span x-text="indicator('quant')"></span></th>
+        <th class="px-2 py-2 hidden md:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('size')">Size <span x-text="indicator('size')"></span></th>
+        <th class="px-2 py-2 hidden lg:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('vram')">VRAM <span x-text="indicator('vram')"></span></th>
+        <th class="px-2 py-2 hidden lg:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('ctx')">Ctx <span x-text="indicator('ctx')"></span></th>
+        <th class="px-1.5 sm:px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('speed')"><span class="hidden sm:inline">Speed</span><span class="sm:hidden">Spd</span> <span x-text="indicator('speed')"></span></th>
+        <th class="px-1.5 sm:px-2 py-2 text-center hidden sm:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('spec')">Spec <span x-text="indicator('spec')"></span></th>
+        <th class="px-1.5 sm:px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('iq')">IQ <span x-text="indicator('iq')"></span></th>
+        <th class="px-2 py-2 text-center hidden lg:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('iqdur')">IQ Time <span x-text="indicator('iqdur')"></span></th>
+        <th class="px-1.5 sm:px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('eff')">Eff <span x-text="indicator('eff')"></span></th>
+        <th class="px-1.5 sm:px-2 py-2 text-right">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-700/50" x-ref="tbody">
+      {% for m in models %}
+      {% set iq_score = m.intelligence.score if m.intelligence else 0 %}
+      {% set eff = m.effectivity or 0 %}
+      <tr id="test-row-{{ m.model_id }}"
+          data-model="{{ m.model_id }}"
+          data-size="{{ m.size_bytes or 0 }}"
+          data-quant="{{ m.quant or '' }}"
+          data-ctx="{{ m.ctx_size or 0 }}"
+          data-speed="{{ m.best_speed }}"
+          data-spec="{{ m.speed_spec.tg_speed if m.speed_spec else 0 }}"
+          data-iq="{{ iq_score }}"
+          data-iqdur="{{ m.iq_duration or 0 }}"
+          data-vram="{{ m.vram_mb or 0 }}"
+          data-eff="{{ eff }}"
+          x-data="{ editOpen: false, confirmRemove: false, delOpen: false, detailOpen: false, repoInput: '{{ m.repo_id or '' }}' }">
+        <td class="px-2 sm:px-3 py-1.5">
+          <div class="font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} truncate max-w-[120px] sm:max-w-none" title="{{ m.model_id }}">{{ m.model_id }}</div>
+          {% if m.mmproj or m.tags or m.repo_id %}
+          <div class="flex flex-wrap gap-0.5 mt-0.5">
+            {% if m.mmproj %}<span class="text-[8px] px-1 py-0.5 rounded bg-fuchsia-900/60 text-fuchsia-300">vision</span>{% endif %}
+            {% if 'moe' in (m.tags or []) %}<span class="text-[8px] px-1 py-0.5 rounded bg-cyan-900/60 text-cyan-300">MoE</span>{% endif %}
+            {% if 'hybrid' in (m.tags or []) %}<span class="text-[8px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-300">hybrid</span>{% endif %}
+            {% if m.update_available %}<span class="text-[8px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-200">&uarr; update</span>{% endif %}
+          </div>
+          {% endif %}
+        </td>
+        <td class="px-2 py-1.5 hidden md:table-cell">
+          {% if m.quant %}
+            <span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono">{{ m.quant }}</span>
+          {% else %}-{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-slate-300 hidden md:table-cell">
+          {% if m.size_bytes %}{{ (m.size_bytes / 1024 / 1024 / 1024) | round(1) }}G{% else %}-{% endif %}
+        </td>
+        <td class="px-2 py-1.5 hidden lg:table-cell font-mono whitespace-nowrap
+          {% if m.vram_mb and m.vram_mb > 98304 %}text-rose-400{% elif m.vram_mb and m.vram_mb > 81920 %}text-amber-300{% elif m.vram_mb %}text-emerald-300{% else %}text-slate-500{% endif %}">
+          {% if m.vram_mb %}{{ (m.vram_mb / 1024) | round(1) }}G{% else %}-{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-slate-300 whitespace-nowrap hidden lg:table-cell">
+          {{ m.ctx_size or '-' }}{% if m.max_ctx %}<span class="text-slate-500">/{{ m.max_ctx }}</span>{% endif %}
+        </td>
+        <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap">
+          {% if m.best_speed %}
+            {% set best_pp = m.best_pp or 0 %}
+            <span class="font-mono" data-color="speed"
+                 title="tg128: {{ m.best_speed }} t/s · pp512: {{ best_pp }} t/s{% if m.speed_vulkan %} | VK: {{ m.speed_vulkan.tg_speed }}/{{ m.speed_vulkan.pp_speed }}{% endif %}{% if m.speed_hip %} | ROCm: {{ m.speed_hip.tg_speed }}/{{ m.speed_hip.pp_speed }}{% endif %}{% if m.speed_rock %} | Rock: {{ m.speed_rock.tg_speed }}/{{ m.speed_rock.pp_speed }}{% endif %}">
+              {{ m.best_speed }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span>
+              {% if m.best_backend == 'vulkan' %}
+                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-emerald-900/60 text-emerald-300 hidden sm:inline">VK</span>
+              {% elif m.best_backend == 'rocm' %}
+                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-sky-900/60 text-sky-300 hidden sm:inline">ROCm</span>
+              {% elif m.best_backend == 'rock' %}
+                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-amber-900/60 text-amber-300 hidden sm:inline">RK</span>
+              {% endif %}
+            </span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap hidden sm:table-cell">
+          {% if m.speed_spec %}
+            <span class="font-mono" data-color="spec"
+                  title="{% for k,v in m.speed_spec.tests.items() %}{{ k }}: {{ v.tg }} t/s {% endfor %}">
+              {{ m.speed_spec.tg_speed }} <span class="text-slate-500 text-[10px]">t/s</span>
+            </span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap">
+          {% if m.intelligence %}
+            <button type="button"
+                    hx-get="{{ root_path }}/api/test/iq/{{ m.model_id }}"
+                    hx-target="#iq-detail-body"
+                    hx-swap="innerHTML"
+                    @click="$dispatch('open-iq')"
+                    class="cursor-pointer hover:opacity-80 min-h-[28px] min-w-[28px]">
+              <span class="font-mono" data-color="iq">{{ m.intelligence.score }}%</span>
+              <span class="text-[10px] text-slate-500 ml-0.5 hidden sm:inline">{{ m.intelligence.passed }}/{{ m.intelligence.total }}</span>
+            </button>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center hidden lg:table-cell">
+          {% if m.iq_duration %}
+            <span class="font-mono text-slate-300" data-color="iqdur">{{ m.iq_duration }}s</span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-1.5 sm:px-2 py-1.5 text-center">
+          {% if eff > 0 %}
+            <span class="font-mono" data-color="eff">{{ eff }}</span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-1.5 sm:px-2 py-1.5 text-right">
+          <div class="inline-flex flex-wrap gap-0.5">
+            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed","backend":"vulkan"}' hx-swap="none"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px] sm:min-h-0" title="Speed test (Vulkan)">VK</button>
+            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed","backend":"hip"}' hx-swap="none"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-sky-900 hover:bg-sky-800 text-sky-200 min-h-[28px] sm:min-h-0" title="Speed test (ROCm)">RC</button>
+            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed","backend":"rock"}' hx-swap="none"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-amber-900 hover:bg-amber-800 text-amber-200 min-h-[28px] sm:min-h-0" title="Speed test (TheRock)">RK</button>
+            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"intelligence"}' hx-swap="none"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-violet-900 hover:bg-violet-800 text-violet-200 min-h-[28px] sm:min-h-0" title="Intelligence test">IQ</button>
+            {% if m.intelligence and m.intelligence.details %}
+            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"intelligence","only_failed":"true"}' hx-swap="none"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-fuchsia-900 hover:bg-fuchsia-800 text-fuchsia-200 min-h-[28px] sm:min-h-0" title="Re-run only previously failed questions">IQ↻</button>
+            {% endif %}
+            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed_spec"}' hx-swap="none"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-amber-900 hover:bg-amber-800 text-amber-200 min-h-[28px] sm:min-h-0 hidden sm:inline-block" title="Speculation speed test">Spec</button>
+            <button type="button" @click="detailOpen = true"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 min-h-[28px] sm:min-h-0" title="Model detail">&#8943;</button>
+          </div>
+
+          {# --- Detail modal --- #}
+          <div x-show="detailOpen" x-cloak
+               class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
+               @keydown.escape.window="detailOpen = false" @click.self="detailOpen = false">
+            <div class="bg-slate-800 sm:rounded-lg shadow-xl w-full sm:max-w-2xl sm:mx-4 border-t sm:border border-slate-700 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-t-xl"
+                 x-data="{ tab: 'info' }">
+              <div class="px-5 py-4 border-b border-slate-700">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="font-semibold">{{ m.model_id }}</h3>
+                    <div class="flex gap-2 mt-1 text-xs text-slate-400">
+                      {% if m.repo_id %}<a href="{{ root_path }}/model/{{ m.repo_id }}" class="hover:text-sky-300">{{ m.repo_id }}</a>{% endif %}
+                      {% if m.size_bytes %}<span>{{ (m.size_bytes / 1024 / 1024 / 1024) | round(1) }} GiB</span>{% endif %}
+                      {% if m.quant %}<span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-mono">{{ m.quant }}</span>{% endif %}
+                      {% if m.loaded %}<span class="px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-200">loaded</span>{% endif %}
+                    </div>
+                  </div>
+                  <button type="button" @click="detailOpen = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
+                </div>
+                <div class="flex gap-1 mt-3">
+                  <button @click="tab = 'info'" :class="tab === 'info' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'" class="px-3 py-1 text-xs rounded-md">VRAM</button>
+                  <button @click="tab = 'settings'" :class="tab === 'settings' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'" class="px-3 py-1 text-xs rounded-md">Settings</button>
+                  <button @click="tab = 'results'" :class="tab === 'results' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'" class="px-3 py-1 text-xs rounded-md">Results</button>
+                  <button @click="tab = 'history'"
+                          hx-get="{{ root_path }}/api/test/history/{{ m.model_id }}"
+                          hx-target="#history-{{ m.model_id }}" hx-swap="innerHTML" hx-trigger="click"
+                          :class="tab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'" class="px-3 py-1 text-xs rounded-md">History</button>
+                  <button @click="tab = 'danger'" :class="tab === 'danger' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'" class="px-3 py-1 text-xs rounded-md">Manage</button>
+                </div>
+              </div>
+
+              {# --- VRAM tab --- #}
+              <div x-show="tab === 'info'" class="p-5 text-left">
+                {% if m.vram_estimates %}
+                  {% with vram=m.vram_estimates %}
+                  {% include "partials/vram_estimate.html" %}
+                  {% endwith %}
+                {% else %}
+                  <p class="text-sm text-slate-400">VRAM estimate not available for this model.</p>
+                {% endif %}
+              </div>
+
+              {# --- Settings tab --- #}
+              <div x-show="tab === 'settings'" class="p-5 text-left">
+                <form hx-post="{{ root_path }}/api/edit/{{ m.model_id }}" hx-swap="none" @submit="detailOpen = false" class="space-y-4">
+                  <label class="block">
+                    <span class="text-xs uppercase text-slate-400 tracking-wide">HF repo (owner/name)</span>
+                    <input type="text" name="repo_id" x-model="repoInput" placeholder="unsloth/Foo-GGUF"
+                           class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                  </label>
+                  <label class="block">
+                    <span class="text-xs uppercase text-slate-400 tracking-wide">Context size (current {{ m.ctx_size }}{% if m.max_ctx %} / max {{ m.max_ctx }}{% endif %})</span>
+                    <input type="number" name="ctx_size" value="{{ m.ctx_size }}" min="1024" {% if m.max_ctx %}max="{{ m.max_ctx }}"{% endif %} step="1024"
+                           class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                  </label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <label class="block">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">KV cache K</span>
+                      <select name="cache_type_k" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                        {% for ct in ["f16","q8_0","q5_1","q5_0","q4_1","q4_0","iq4_nl"] %}
+                        <option value="{{ ct }}" {% if (m.cache_type_k or 'q8_0') == ct %}selected{% endif %}>{{ ct }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <label class="block">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">KV cache V</span>
+                      <select name="cache_type_v" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                        {% for ct in ["f16","q8_0","q5_1","q5_0","q4_1","q4_0","iq4_nl"] %}
+                        <option value="{{ ct }}" {% if (m.cache_type_v or 'q8_0') == ct %}selected{% endif %}>{{ ct }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <label class="block">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">Threads (0 = auto)</span>
+                      <input type="number" name="threads" value="{{ m.threads or 0 }}" min="0" max="128" step="1"
+                             class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                    </label>
+                    <label class="flex items-center gap-2 mt-5">
+                      <input type="hidden" name="flash_attn" value="0">
+                      <input type="checkbox" name="flash_attn" value="1" {% if m.flash_attn is not defined or m.flash_attn %}checked{% endif %}
+                             class="accent-sky-500 w-4 h-4">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">Flash attention</span>
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <label class="block">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">Thinking format</span>
+                      <select name="reasoning_format" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                        <option value="" {% if not m.reasoning_format %}selected{% endif %}>off</option>
+                        <option value="deepseek" {% if m.reasoning_format == 'deepseek' %}selected{% endif %}>deepseek</option>
+                      </select>
+                    </label>
+                    <label class="block">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">Thinking effort</span>
+                      <select name="reasoning_effort" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                        <option value="" {% if not m.reasoning_effort %}selected{% endif %}>off</option>
+                        <option value="low" {% if m.reasoning_effort == 'low' %}selected{% endif %}>low</option>
+                        <option value="medium" {% if m.reasoning_effort == 'medium' %}selected{% endif %}>medium</option>
+                        <option value="high" {% if m.reasoning_effort == 'high' %}selected{% endif %}>high</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="border border-slate-700 rounded-md p-3 space-y-3">
+                    <span class="text-xs uppercase text-slate-400 tracking-wide block">Speculative decoding</span>
+                    <label class="flex items-center gap-2">
+                      <input type="hidden" name="spec_default" value="0">
+                      <input type="checkbox" name="spec_default" value="1" {% if m.spec_default %}checked{% endif %}
+                             class="accent-sky-500 w-4 h-4">
+                      <span class="text-xs text-slate-300">Ngram speculation</span>
+                    </label>
+                    <label class="block">
+                      <span class="text-xs uppercase text-slate-400 tracking-wide">Draft model</span>
+                      <select name="draft_model" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                        <option value="">none</option>
+                        {% for dc in draft_candidates %}
+                        <option value="{{ dc.name }}" {% if m.draft_model == dc.name %}selected{% endif %}>{{ dc.name }} ({{ dc.size_mb }} MB)</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                      <label class="block">
+                        <span class="text-xs uppercase text-slate-400 tracking-wide">Draft max</span>
+                        <input type="number" name="draft_max" value="{{ m.draft_max or 0 }}" min="0" max="32" step="1"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                      </label>
+                      <label class="block">
+                        <span class="text-xs uppercase text-slate-400 tracking-wide">Draft min</span>
+                        <input type="number" name="draft_min" value="{{ m.draft_min or 0 }}" min="0" max="16" step="1"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                      </label>
+                    </div>
+                  </div>
+                  <div class="border border-slate-700 rounded-md p-3 space-y-3">
+                    <span class="text-xs uppercase text-slate-400 tracking-wide block">Sampling</span>
+                    <div class="grid grid-cols-3 gap-3">
+                      <label class="block">
+                        <span class="text-[10px] text-slate-400">Temperature</span>
+                        <input type="number" name="sampling_temp" value="{{ m.sampling_temp if m.sampling_temp is defined else 0.8 }}" min="0" max="2" step="0.05"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-sm font-mono">
+                      </label>
+                      <label class="block">
+                        <span class="text-[10px] text-slate-400">Top-K</span>
+                        <input type="number" name="sampling_top_k" value="{{ m.sampling_top_k if m.sampling_top_k is defined else 40 }}" min="0" max="200" step="1"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-sm font-mono">
+                      </label>
+                      <label class="block">
+                        <span class="text-[10px] text-slate-400">Top-P</span>
+                        <input type="number" name="sampling_top_p" value="{{ m.sampling_top_p if m.sampling_top_p is defined else 0.95 }}" min="0" max="1" step="0.01"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-sm font-mono">
+                      </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <label class="block">
+                        <span class="text-[10px] text-slate-400">Min-P</span>
+                        <input type="number" name="sampling_min_p" value="{{ m.sampling_min_p if m.sampling_min_p is defined else 0.05 }}" min="0" max="1" step="0.01"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-sm font-mono">
+                      </label>
+                      <label class="block">
+                        <span class="text-[10px] text-slate-400">Repeat penalty</span>
+                        <input type="number" name="sampling_repeat_penalty" value="{{ m.sampling_repeat_penalty if m.sampling_repeat_penalty is defined else 1.1 }}" min="0" max="2" step="0.05"
+                               class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-sm font-mono">
+                      </label>
+                    </div>
+                  </div>
+                  <label class="block">
+                    <span class="text-xs uppercase text-slate-400 tracking-wide">System prompt</span>
+                    <textarea name="system_prompt" rows="3"
+                              class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                              placeholder="Optional system prompt for IQ tests and server default">{{ m.system_prompt or '' }}</textarea>
+                  </label>
+                  <label class="block">
+                    <span class="text-xs uppercase text-slate-400 tracking-wide">Extra args</span>
+                    <input type="text" name="extra_args" value="{{ m.extra_args or '' }}"
+                           placeholder="--batch-size 512 --parallel 2"
+                           class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                  </label>
+                  <p class="text-xs text-amber-400">Changing any setting restarts llama-swap.</p>
+                  <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" @click="detailOpen = false" class="px-3 py-1.5 text-sm text-slate-300 hover:text-white">Cancel</button>
+                    <button type="submit" class="px-4 py-1.5 text-sm bg-sky-600 hover:bg-sky-500 text-white rounded-md">Save</button>
+                  </div>
+                </form>
+              </div>
+
+              {# --- Results tab --- #}
+              <div x-show="tab === 'results'" class="p-5 text-left space-y-2">
+                {% if m.speed_vulkan %}
+                <div class="text-xs px-3 py-1.5 rounded bg-slate-900 border border-slate-700">
+                  <div class="flex justify-between items-center">
+                    <span>Vulkan</span>
+                    <span>
+                      <span class="font-mono">tg {{ m.speed_vulkan.tg_speed }}</span>
+                      <span class="text-slate-500 mx-1">·</span>
+                      <span class="font-mono">pp {{ m.speed_vulkan.pp_speed }}</span>
+                      <span class="text-slate-500 ml-1">t/s</span>
+                      <button hx-post="{{ root_path }}/api/test/reset/{{ m.model_id }}" hx-vals='{"what":"speed_vulkan"}' hx-swap="none"
+                              @click="detailOpen = false" class="ml-2 text-rose-400 hover:text-rose-300">&times;</button>
+                    </span>
+                  </div>
+                </div>
+                {% endif %}
+                {% if m.speed_hip %}
+                <div class="text-xs px-3 py-1.5 rounded bg-slate-900 border border-slate-700">
+                  <div class="flex justify-between items-center">
+                    <span>ROCm</span>
+                    <span>
+                      <span class="font-mono">tg {{ m.speed_hip.tg_speed }}</span>
+                      <span class="text-slate-500 mx-1">·</span>
+                      <span class="font-mono">pp {{ m.speed_hip.pp_speed }}</span>
+                      <span class="text-slate-500 ml-1">t/s</span>
+                      <button hx-post="{{ root_path }}/api/test/reset/{{ m.model_id }}" hx-vals='{"what":"speed_hip"}' hx-swap="none"
+                              @click="detailOpen = false" class="ml-2 text-rose-400 hover:text-rose-300">&times;</button>
+                    </span>
+                  </div>
+                </div>
+                {% endif %}
+                {% if m.speed_rock %}
+                <div class="text-xs px-3 py-1.5 rounded bg-slate-900 border border-slate-700">
+                  <div class="flex justify-between items-center">
+                    <span>Rock</span>
+                    <span>
+                      <span class="font-mono">tg {{ m.speed_rock.tg_speed }}</span>
+                      <span class="text-slate-500 mx-1">·</span>
+                      <span class="font-mono">pp {{ m.speed_rock.pp_speed }}</span>
+                      <span class="text-slate-500 ml-1">t/s</span>
+                      <button hx-post="{{ root_path }}/api/test/reset/{{ m.model_id }}" hx-vals='{"what":"speed_rock"}' hx-swap="none"
+                              @click="detailOpen = false" class="ml-2 text-rose-400 hover:text-rose-300">&times;</button>
+                    </span>
+                  </div>
+                </div>
+                {% endif %}
+                {% if m.speed_spec %}
+                <div class="text-xs px-3 py-1.5 rounded bg-slate-900 border border-slate-700">
+                  <div class="flex justify-between items-center">
+                    <span>Spec</span>
+                    <span>
+                      <span class="font-mono">tg {{ m.speed_spec.tg_speed }}</span>
+                      <span class="text-slate-500 mx-1">·</span>
+                      <span class="font-mono">pp {{ m.speed_spec.pp_speed }}</span>
+                      <span class="text-slate-500 ml-1">t/s</span>
+                      <button hx-post="{{ root_path }}/api/test/reset/{{ m.model_id }}" hx-vals='{"what":"speed_spec"}' hx-swap="none"
+                              @click="detailOpen = false" class="ml-2 text-rose-400 hover:text-rose-300">&times;</button>
+                    </span>
+                  </div>
+                </div>
+                {% endif %}
+                {% if m.intelligence %}
+                <div class="flex justify-between items-center text-xs px-3 py-1.5 rounded bg-slate-900 border border-slate-700">
+                  <span>Intelligence</span>
+                  <span class="font-mono">{{ m.intelligence.score }}% ({{ m.intelligence.passed }}/{{ m.intelligence.total }})
+                    <button hx-post="{{ root_path }}/api/test/reset/{{ m.model_id }}" hx-vals='{"what":"intelligence"}' hx-swap="none"
+                            @click="detailOpen = false" class="ml-2 text-rose-400 hover:text-rose-300">&times;</button>
+                  </span>
+                </div>
+                {% endif %}
+                {% if not m.speed_vulkan and not m.speed_hip and not m.speed_rock and not m.speed_spec and not m.intelligence %}
+                <p class="text-sm text-slate-400">No test results yet.</p>
+                {% else %}
+                <button hx-post="{{ root_path }}/api/test/reset/{{ m.model_id }}" hx-vals='{"what":"all"}' hx-swap="none"
+                        @click="detailOpen = false"
+                        class="w-full text-xs px-3 py-1.5 rounded bg-rose-900/60 hover:bg-rose-800 border border-rose-700 text-rose-200 font-medium mt-3">
+                  Delete all results
+                </button>
+                {% endif %}
+              </div>
+
+              {# --- History tab --- #}
+              <div x-show="tab === 'history'" class="p-5 text-left">
+                <div id="history-{{ m.model_id }}" class="text-xs text-slate-500">Click History tab to load runs.</div>
+              </div>
+
+              {# --- Manage tab --- #}
+              <div x-show="tab === 'danger'" class="p-5 text-left space-y-3">
+                {% if m.repo_id %}
+                <button hx-post="{{ root_path }}/api/update/{{ m.model_id }}" hx-swap="none" @click="detailOpen = false"
+                        class="w-full text-left text-xs px-3 py-2 rounded bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200">
+                  Update from HF{% if m.update_available %} <span class="text-amber-300 ml-1">(update available)</span>{% endif %}
+                </button>
+                {% endif %}
+                <div x-data="{ confirmDel: false }">
+                  <button type="button" x-show="!confirmDel" @click="confirmDel = true"
+                          class="w-full text-left text-xs px-3 py-2 rounded bg-rose-900/40 hover:bg-rose-900/60 border border-rose-800 text-rose-200">
+                    Remove model and delete files
+                  </button>
+                  <div x-show="confirmDel" class="space-y-2">
+                    <p class="text-xs text-rose-300">Delete GGUF files and remove <span class="font-mono">{{ m.model_id }}</span> from llama-swap config?</p>
+                    <div class="flex gap-2">
+                      <button type="button" @click="confirmDel = false" class="px-3 py-1.5 text-xs text-slate-300 hover:text-white">Cancel</button>
+                      <button hx-post="{{ root_path }}/api/remove/{{ m.model_id }}" hx-swap="none" @click="detailOpen = false"
+                              class="px-3 py-1.5 text-xs bg-rose-600 hover:bg-rose-500 text-white rounded-md">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="p-8 text-center text-slate-400">
+    <p class="text-sm">No models installed.</p>
+    <a href="{{ root_path }}/browse" class="inline-block mt-3 text-sm text-sky-400 hover:text-sky-300">Browse Hugging Face &rarr;</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if jobs %}
+<div class="mt-4 sm:mt-6">
+  <div class="flex items-center justify-between mb-2 sm:mb-3">
+    <h2 class="text-sm sm:text-lg font-semibold">Test Jobs</h2>
+    <div class="flex gap-1.5 sm:gap-2">
+      <button hx-post="{{ root_path }}/api/test/cancel-all" hx-swap="none"
+              hx-on::after-request="setTimeout(()=>location.reload(), 300)"
+              class="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-rose-900 hover:bg-rose-800 text-rose-200">
+        Cancel All
+      </button>
+      <button hx-post="{{ root_path }}/api/test/clear" hx-swap="none"
+              hx-on::after-request="setTimeout(()=>location.reload(), 300)"
+              class="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+        Clear Done
+      </button>
+    </div>
+  </div>
+  <div class="bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide">
+    <table class="w-full text-xs">
+      <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
+        <tr>
+          <th class="px-3 py-2">Model</th>
+          <th class="px-2 py-2">Type</th>
+          <th class="px-2 py-2">Backend</th>
+          <th class="px-2 py-2">Status</th>
+          <th class="px-2 py-2">Result</th>
+          <th class="px-2 py-2 text-right"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-700/50">
+        {% for j in jobs %}
+        <tr>
+          <td class="px-3 py-1.5 font-mono">{{ j.model_id or '' }}</td>
+          <td class="px-2 py-1.5">{{ j.test_type }}</td>
+          <td class="px-2 py-1.5">{{ j.backend or '-' }}</td>
+          <td class="px-2 py-1.5">
+            {% if j.status == 'done' %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-200">done</span>
+            {% elif j.status == 'running' %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900 text-indigo-200 animate-pulse">running</span>
+            {% elif j.status == 'error' %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-900 text-rose-200" title="{{ j.error }}">error</span>
+            {% else %}
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">queued</span>
+            {% endif %}
+          </td>
+          <td class="px-2 py-1.5 text-slate-300">
+            {% if j.status == 'done' and j.result %}
+              {% if j.test_type == 'speed' %}{{ j.result.tg_speed }} t/s{% endif %}
+              {% if j.test_type == 'intelligence' %}{{ j.result.score }}%{% endif %}
+            {% elif j.status == 'running' and j.progress %}
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="w-24 h-1.5 bg-slate-700 rounded overflow-hidden">
+                  <div class="h-full bg-indigo-500" style="width: {{ j.progress.percent }}%"></div>
+                </div>
+                <span class="text-[10px] text-slate-400">
+                  {{ j.progress.current }}/{{ j.progress.total }}
+                  {% if j.progress.tg_speed %} · {{ j.progress.tg_speed }} t/s{% endif %}
+                  {% if j.progress.eta_sec %} · ETA {% if j.progress.eta_sec >= 60 %}{{ (j.progress.eta_sec // 60) }}m {{ (j.progress.eta_sec % 60) }}s{% else %}{{ j.progress.eta_sec }}s{% endif %}{% endif %}
+                </span>
+              </div>
+            {% elif j.status == 'error' %}
+              <span class="text-rose-400" title="{{ j.error }}">{{ (j.error or '')[:40] }}</span>
+            {% endif %}
+          </td>
+          <td class="px-2 py-1.5 text-right">
+            {% if j.status in ('queued', 'running') %}
+              <button hx-post="{{ root_path }}/api/test/cancel/{{ j.job_id }}" hx-swap="none"
+                      hx-on::after-request="setTimeout(()=>location.reload(), 300)"
+                      class="text-[10px] px-2 py-0.5 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-300">cancel</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+</div>
+
+<script>
+document.body.addEventListener('htmx:beforeSwap', function(e) {
+  var modals = document.querySelectorAll('.fixed.z-50');
+  for (var i = 0; i < modals.length; i++) {
+    if (getComputedStyle(modals[i]).display !== 'none') {
+      e.detail.shouldSwap = false;
+      return;
+    }
+  }
+});
+function sortTestTable() {
+  const KEY = 'swapctl_sort_models';
+  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+  return {
+    col: saved?.col || 'eff',
+    asc: saved?.asc ?? false,
+    indicator(c) { return this.col === c ? (this.asc ? '▲' : '▼') : ''; },
+    _apply() {
+      const tbody = this.$refs.tbody;
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('tr[data-model]'));
+      const isNum = ['size','speed','spec','iq','iqdur','eff','ctx','vram'].includes(this.col);
+      const col = this.col, asc = this.asc;
+      rows.sort((a, b) => {
+        let va = a.dataset[col] || '', vb = b.dataset[col] || '';
+        if (isNum) { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; }
+        else { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+        if (va < vb) return asc ? -1 : 1;
+        if (va > vb) return asc ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+      colorizeColumns(tbody, [{col:'speed'},{col:'spec'},{col:'iq'},{col:'iqdur',invert:true},{col:'eff'}]);
+    },
+    sort(c) {
+      if (this.col === c) { this.asc = !this.asc; } else { this.col = c; this.asc = c === 'model' || c === 'quant'; }
+      localStorage.setItem(KEY, JSON.stringify({col: this.col, asc: this.asc}));
+      this._apply();
+    },
+    init() {
+      this._apply();
+      document.body.addEventListener('htmx:afterSwap', () => this.$nextTick(() => this._apply()));
+    }
+  };
+}
+</script>
+
+{% set tested_models = models | selectattr('intelligence') | list %}
+{% if tested_models %}
+<div class="mt-4 sm:mt-6 bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide" x-data="{ init() { colorizeColumns(this.$refs.rtbody, [{col:'rspd'},{col:'riq'},{col:'reff'}]); } }">
+  <div class="px-3 sm:px-4 py-2 sm:py-3 border-b border-slate-700 flex items-center justify-between">
+    <h2 class="font-semibold text-sm sm:text-base">Results Overview</h2>
+    <span class="text-[10px] sm:text-xs text-slate-400">{{ tested_models | length }} tested</span>
+  </div>
+  <table class="w-full text-[11px]">
+    <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
+      <tr>
+        <th class="px-2 py-2">Model</th>
+        <th class="px-2 py-2 text-center">t/s</th>
+        <th class="px-2 py-2 text-center">IQ time</th>
+        <th class="px-2 py-2 text-center">IQ</th>
+        <th class="px-2 py-2 text-center">Eff</th>
+        {% for cat in iq_categories %}
+        <th class="px-1 py-2 text-center hidden md:table-cell" title="{{ cat }}">{{ cat[:4] }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-700/50" x-ref="rtbody">
+      {% for m in tested_models | sort(attribute='effectivity', reverse=true) %}
+      {% set iq = m.intelligence %}
+      {% set cats = iq.categories if iq.categories else {} %}
+      <tr data-model="{{ m.model_id }}"
+          data-rspd="{{ m.best_speed }}"
+          data-riq="{{ iq.score }}"
+          data-reff="{{ m.effectivity or 0 }}">
+        <td class="px-1.5 sm:px-2 py-1.5 font-mono whitespace-nowrap text-[11px] sm:text-xs truncate max-w-[100px] sm:max-w-none" title="{{ m.model_id }}">
+          {{ m.model_id }}
+          {% if m.best_backend == 'vulkan' %}
+            <span class="text-[8px] px-0.5 rounded bg-emerald-900/60 text-emerald-300 hidden sm:inline">VK</span>
+          {% elif m.best_backend == 'rocm' %}
+            <span class="text-[8px] px-0.5 rounded bg-sky-900/60 text-sky-300 hidden sm:inline">ROCm</span>
+          {% elif m.best_backend == 'rock' %}
+            <span class="text-[8px] px-0.5 rounded bg-amber-900/60 text-amber-300 hidden sm:inline">RK</span>
+          {% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center font-mono" data-color="rspd">
+          {% if m.best_speed %}{{ m.best_speed }}{% else %}—{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center font-mono text-slate-400">
+          {% if m.iq_duration %}{{ m.iq_duration }}s{% else %}—{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center font-mono font-semibold" data-color="riq">
+          {{ iq.score }}%
+        </td>
+        <td class="px-2 py-1.5 text-center font-mono" data-color="reff">
+          {% if m.effectivity %}{{ m.effectivity }}{% else %}—{% endif %}
+        </td>
+        {% for cat in iq_categories %}
+        {% set cv = cats.get(cat, {}) %}
+        <td class="px-1 py-1.5 text-center font-mono hidden md:table-cell {% if cv and cv.score >= 80 %}text-emerald-400{% elif cv and cv.score >= 60 %}text-amber-400{% elif cv %}text-rose-400{% else %}text-slate-600{% endif %}">
+          {% if cv %}{{ cv.score | round(0) | int }}{% else %}—{% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# ── NPU Models ──────────────────────────────────────────── #}
+{% if npu_models %}
+<div class="mt-6 sm:mt-8 mb-6 sm:mb-8">
+  <div class="flex items-center justify-between mb-3 sm:mb-4">
+    <h2 class="text-sm sm:text-lg font-semibold flex items-center gap-2">
+      <span class="inline-block w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-violet-400"></span>
+      NPU Models
+      <span class="text-[10px] sm:text-xs text-slate-500 font-normal">(FLM)</span>
+    </h2>
+    {% if npu_testing %}
+      <span class="text-xs text-sky-400 animate-pulse">Testing {{ npu_testing.model }}...</span>
+    {% endif %}
+  </div>
+  <div class="bg-slate-800 rounded-lg shadow overflow-x-auto">
+    <table class="w-full text-xs">
+      <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
+        <tr>
+          <th class="px-2 sm:px-3 py-2">Model</th>
+          <th class="px-2 py-2 hidden sm:table-cell">Params</th>
+          <th class="px-2 py-2 hidden md:table-cell">Quant</th>
+          <th class="px-2 py-2 text-right hidden md:table-cell">Size</th>
+          <th class="px-2 py-2 text-right hidden lg:table-cell">Context</th>
+          <th class="px-2 py-2 hidden lg:table-cell">Labels</th>
+          <th class="px-1.5 sm:px-2 py-2 text-center">Decode</th>
+          <th class="px-1.5 sm:px-2 py-2 text-center hidden sm:table-cell">Prefill</th>
+          <th class="px-1.5 sm:px-2 py-2 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-700/50">
+        {% for m in npu_models %}
+        <tr>
+          <td class="px-2 sm:px-3 py-1.5 font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} truncate max-w-[120px] sm:max-w-none" title="{{ m.name }}">{{ m.name }}</td>
+          <td class="px-2 py-1.5 text-slate-300 hidden sm:table-cell">{{ m.params }}</td>
+          <td class="px-2 py-1.5 hidden md:table-cell"><span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono">{{ m.quant }}</span></td>
+          <td class="px-2 py-1.5 text-right text-slate-300 hidden md:table-cell">{{ "%.1f"|format(m.size_gb) }}G</td>
+          <td class="px-2 py-1.5 text-right font-mono text-slate-400 hidden lg:table-cell">{{ "{:,}".format(m.ctx) }}</td>
+          <td class="px-2 py-1.5 hidden lg:table-cell">
+            {% for l in m.labels %}
+              <span class="inline-block text-[8px] px-1 py-0.5 rounded mr-0.5
+                {% if l == 'vision' %}bg-violet-900/60 text-violet-300
+                {% elif l == 'reasoning' %}bg-amber-900/60 text-amber-300
+                {% elif l == 'embeddings' %}bg-cyan-900/60 text-cyan-300
+                {% elif l == 'audio' or l == 'transcription' %}bg-rose-900/60 text-rose-300
+                {% elif l == 'tool-calling' %}bg-emerald-900/60 text-emerald-300
+                {% else %}bg-slate-700 text-slate-300{% endif %}">{{ l }}</span>
+            {% endfor %}
+          </td>
+          <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap">
+            {% if m.decode_speed %}
+              <span class="font-mono text-emerald-300">{{ m.decode_speed }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span></span>
+            {% else %}<span class="text-slate-500">—</span>{% endif %}
+          </td>
+          <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap hidden sm:table-cell">
+            {% if m.prefill_speed %}
+              <span class="font-mono text-sky-300">{{ m.prefill_speed }} <span class="text-slate-500 text-[10px]">t/s</span></span>
+            {% else %}<span class="text-slate-500">—</span>{% endif %}
+          </td>
+          <td class="px-1.5 sm:px-2 py-1.5 text-right">
+            <button type="button"
+                    hx-post="{{ root_path }}/api/npu/test/{{ m.name }}"
+                    hx-swap="none"
+                    {% if npu_testing %}disabled{% endif %}
+                    class="text-[10px] px-2 py-1.5 sm:py-1 rounded bg-violet-900/60 hover:bg-violet-700 text-violet-200 disabled:opacity-40 disabled:cursor-not-allowed min-h-[28px] sm:min-h-0"
+                    title="Run NPU speed test">
+              {% if npu_testing and npu_testing.model == m.name %}Testing...{% else %}Test{% endif %}
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div x-data="{ iqOpen: false }" @open-iq.window="iqOpen = true">
+  <div x-show="iqOpen" x-cloak
+       class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
+       @keydown.escape.window="iqOpen = false" @click.self="iqOpen = false">
+    <div class="bg-slate-800 sm:rounded-lg shadow-xl w-full sm:max-w-lg sm:mx-4 border-t sm:border border-slate-700 max-h-[90vh] sm:max-h-[80vh] overflow-y-auto rounded-t-xl">
+      <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800 z-10">
+        <h3 class="font-semibold text-sm sm:text-base">Intelligence Test Details</h3>
+        <button type="button" @click="iqOpen = false" class="text-slate-400 hover:text-white text-lg p-1 -mr-1">&times;</button>
+      </div>
+      <div class="p-4 sm:p-5" id="iq-detail-body">
+        <div class="text-slate-400 text-sm text-center py-4">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

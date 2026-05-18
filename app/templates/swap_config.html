@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Swap config - swapctl{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Swap config</h1>
+<p class="text-sm text-slate-400 mb-6">Controls how llama-swap keeps models in GPU memory and which can coexist. Changes restart llama-swap; on failure the previous config is auto-restored.</p>
+
+<form hx-post="{{ root_path }}/api/swap-config"
+      hx-swap="none"
+      x-data='swapSimple({{ cfg | tojson | safe }}, {{ registry | tojson | safe }}, {{ gpu_total_gb }}, {{ gpu_budget_gb }}, {{ backends | tojson | safe }})'>
+
+  <div class="bg-slate-800 rounded-lg shadow p-5 mb-6">
+    <label class="flex items-center gap-3 cursor-pointer">
+      <input type="checkbox" x-model="keepWarm" class="accent-sky-500 w-4 h-4">
+      <div>
+        <div class="font-medium">Keep models warm</div>
+        <div class="text-xs text-slate-400">When enabled, a loaded model stays in GPU until a request needs its memory for a different model.</div>
+      </div>
+    </label>
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow mb-6">
+    <div class="px-5 py-3 border-b border-slate-700 flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold">Models, priority &amp; backend</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Priority controls eviction order. Backend switches between HIP (stable ROCm), Vulkan, or Rock (TheRock nightly) per model.</p>
+      </div>
+      <div class="flex gap-1 text-xs">
+        <button type="button"
+                hx-post="{{ root_path }}/api/backend" hx-vals='{"backend":"hip"}' hx-swap="none"
+                class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">all &rarr; HIP</button>
+        <button type="button"
+                hx-post="{{ root_path }}/api/backend" hx-vals='{"backend":"vulkan"}' hx-swap="none"
+                class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">all &rarr; Vulkan</button>
+        <button type="button"
+                hx-post="{{ root_path }}/api/backend" hx-vals='{"backend":"rock"}' hx-swap="none"
+                class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">all &rarr; Rock</button>
+      </div>
+    </div>
+    <div class="divide-y divide-slate-700">
+      <template x-for="m in models" :key="m">
+        <div class="px-5 py-3 flex items-center justify-between gap-4 flex-wrap"
+             :class="!enabled[m] ? 'opacity-50' : ''">
+          <div class="flex items-center gap-3 min-w-0">
+            <label class="flex items-center gap-2 cursor-pointer shrink-0" :title="enabled[m] ? 'Disable this model (removed from matrix; requests to it will fail until re-enabled)' : 'Re-enable this model'">
+              <input type="checkbox" x-model="enabled[m]" class="accent-sky-500 w-4 h-4">
+              <span class="text-xs text-slate-400" x-text="enabled[m] ? 'on' : 'off'"></span>
+            </label>
+            <div class="min-w-0">
+              <div class="font-mono text-sm text-slate-100" x-text="m"></div>
+              <div class="text-xs text-slate-400" x-text="sizeGb(m) ? sizeGb(m) + ' GB' : ''"></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="inline-flex rounded-md overflow-hidden border border-slate-600 text-xs">
+              <template x-for="b in ['hip','vulkan','rock']" :key="b">
+                <button type="button"
+                        @click="switchBackend(m, b)"
+                        :disabled="!enabled[m]"
+                        :class="backends[m] === b ? (b === 'hip' ? 'bg-emerald-600 text-white' : (b === 'vulkan' ? 'bg-violet-600 text-white' : 'bg-amber-600 text-white')) : 'bg-slate-700 hover:bg-slate-600 text-slate-300'"
+                        class="px-2 py-1 disabled:cursor-not-allowed"
+                        x-text="b === 'hip' ? 'HIP' : (b === 'vulkan' ? 'VK' : 'RK')"></button>
+              </template>
+            </div>
+            <div class="inline-flex rounded-md overflow-hidden border border-slate-600 text-xs">
+              <template x-for="p in ['low','medium','high']" :key="p">
+                <button type="button"
+                        @click="priorities[m] = p"
+                        :disabled="!enabled[m]"
+                        :class="priorities[m] === p ? 'bg-sky-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'"
+                        class="px-3 py-1.5 capitalize disabled:cursor-not-allowed"
+                        x-text="p"></button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template x-if="models.length === 0">
+        <div class="px-5 py-6 text-sm text-slate-400">No models installed yet.</div>
+      </template>
+    </div>
+  </div>
+
+  <div class="bg-slate-800 rounded-lg shadow mb-6">
+    <div class="px-5 py-3 border-b border-slate-700 flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="font-semibold">Concurrent combinations</h2>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Auto-generated from model sizes and GPU budget. Models that fit together can stay loaded simultaneously.
+        </p>
+      </div>
+      <div class="flex gap-3 text-xs items-center flex-wrap">
+        <label class="flex items-center gap-1.5">
+          <span class="text-slate-400">GPU budget:</span>
+          <input type="number" x-model.number="budgetGb" min="8" max="256" step="1"
+                 class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono">
+          <span class="text-slate-500">GB</span>
+          <span class="text-slate-500 ml-1" x-text="'(HW: ' + gpuTotalGb + ' GB)'"></span>
+        </label>
+        <label class="flex items-center gap-1.5">
+          <span class="text-slate-400">Max group:</span>
+          <select x-model.number="maxGroupSize"
+                  class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <template x-if="enabledModels().length < 2">
+      <div class="px-5 py-6 text-sm text-slate-400">Need at least 2 enabled models for combinations.</div>
+    </template>
+    <template x-if="enabledModels().length >= 2">
+      <div>
+        <div class="px-5 py-3 text-sm text-slate-300">
+          <span class="font-mono text-sky-300" x-text="fittingCombos().length"></span> combinations fit within
+          <span class="font-mono" x-text="budgetGb"></span> GB budget
+        </div>
+        <template x-for="section in sections" :key="section.size">
+          <div x-show="section.fitting.length > 0">
+            <div class="px-5 py-2 bg-slate-900/40 border-b border-slate-700 text-xs uppercase text-slate-400 tracking-wide">
+              <span x-text="section.label"></span>
+              (<span x-text="section.fitting.length"></span>)
+            </div>
+            <ul class="divide-y divide-slate-700 max-h-48 overflow-y-auto">
+              <template x-for="combo in section.fitting" :key="combo.join('|')">
+                <li class="px-5 py-2 flex items-center justify-between gap-4">
+                  <div class="font-mono text-sm text-slate-200 break-all" x-text="combo.join(' + ')"></div>
+                  <span class="text-xs text-slate-400 shrink-0" x-text="comboSize(combo) + ' GB'"></span>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </template>
+      </div>
+    </template>
+  </div>
+
+  <details class="bg-slate-800 rounded-lg shadow mb-6">
+    <summary class="px-5 py-3 cursor-pointer select-none text-sm text-slate-300">Advanced</summary>
+    <div class="px-5 py-3 border-t border-slate-700">
+      <label class="block text-xs text-slate-400 mb-1">Health check timeout (seconds)</label>
+      <input type="number" x-model.number="healthTimeout" min="30" max="3600"
+             class="w-32 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+    </div>
+  </details>
+
+  <div class="flex items-center justify-end gap-2">
+    <input type="hidden" name="keepWarm" :value="keepWarm ? '1' : '0'">
+    <input type="hidden" name="healthCheckTimeout" :value="healthTimeout">
+    <input type="hidden" name="priorities_json" :value="JSON.stringify(priorities)">
+    <input type="hidden" name="enabled_json" :value="JSON.stringify(enabled)">
+    <input type="hidden" name="max_group_size" :value="maxGroupSize">
+    <button type="submit" class="px-4 py-2 text-sm bg-sky-600 hover:bg-sky-500 text-white rounded-md font-medium">
+      Save &amp; restart swap
+    </button>
+  </div>
+</form>
+
+<script>
+function swapSimple(cfg, registry, gpuTotalGb, gpuBudgetGb, backendsInit) {
+  const sizes = {};
+  (registry || []).forEach(r => { if (r && r.model_id) sizes[r.model_id] = r.size_gb; });
+  const models = cfg.models || [];
+  const enabledInit = {};
+  for (const m of models) enabledInit[m] = (cfg.enabled || {})[m] !== false;
+  return {
+    models: models,
+    priorities: Object.assign({}, cfg.priorities || {}),
+    backends: Object.assign({}, backendsInit || {}),
+    enabled: enabledInit,
+    keepWarm: (cfg.globalTTL || 0) === 0,
+    healthTimeout: cfg.healthCheckTimeout || 300,
+    gpuTotalGb: gpuTotalGb,
+    budgetGb: gpuBudgetGb || 70,
+    maxGroupSize: 3,
+    sizeGb(m) { return sizes[m] || null; },
+    enabledModels() { return this.models.filter(m => this.enabled[m]); },
+    switchBackend(model, backend) {
+      if (this.backends[model] === backend) return;
+      this.backends[model] = backend;
+      const rootPath = document.querySelector('[name="keepWarm"]')?.closest('form')?.getAttribute('hx-post')?.replace('/api/swap-config', '') || '';
+      fetch(rootPath + '/api/backend/' + encodeURIComponent(model), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'backend=' + backend,
+      }).then(r => {
+        if (!r.ok) {
+          r.json().then(d => alert('Backend switch failed: ' + (d.detail || r.statusText)));
+          this.backends[model] = backend === 'hip' ? 'vulkan' : 'hip';
+        }
+      }).catch(() => {
+        this.backends[model] = backend === 'hip' ? 'vulkan' : 'hip';
+      });
+    },
+    comboSize(c) {
+      let s = 0;
+      for (const m of c) s += sizes[m] || 0;
+      return Math.round(s * 10) / 10;
+    },
+    _kCombos(arr, k) {
+      if (k === 0) return [[]];
+      if (arr.length < k) return [];
+      const [head, ...rest] = arr;
+      return this._kCombos(rest, k - 1).map(c => [head, ...c]).concat(this._kCombos(rest, k));
+    },
+    fittingCombos() {
+      const active = this.enabledModels();
+      const out = [];
+      for (let k = 2; k <= Math.min(this.maxGroupSize, active.length); k++) {
+        for (const c of this._kCombos(active, k)) {
+          if (this.comboSize(c) <= this.budgetGb) out.push(c);
+        }
+      }
+      return out;
+    },
+    get sections() {
+      const labels = {2: 'Pairs', 3: 'Trios', 4: 'Quads'};
+      const active = this.enabledModels();
+      const out = [];
+      for (let k = 2; k <= Math.min(this.maxGroupSize, active.length); k++) {
+        const all = this._kCombos(active, k);
+        const fitting = all.filter(c => this.comboSize(c) <= this.budgetGb);
+        out.push({size: k, label: labels[k] || (k + '-groups'), fitting});
+      }
+      return out;
+    },
+  };
+}
+</script>
+{% endblock %}

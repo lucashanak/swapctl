@@ -1,0 +1,46 @@
+{% if error %}
+<div class="p-3 rounded-md bg-red-900/50 border border-red-700 text-red-200 text-sm">{{ error }}</div>
+{% elif not results %}
+<div class="p-6 bg-slate-800 rounded-lg text-slate-400 text-sm">No results.</div>
+{% else %}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+  {% for m in results %}
+  <a href="{{ root_path }}/model/{{ m.repo_id }}" class="block bg-slate-800 hover:bg-slate-700 rounded-lg shadow p-4 transition-colors">
+    <div class="flex items-start justify-between gap-2">
+      <div class="font-mono text-sm break-all text-slate-100">{{ m.repo_id }}</div>
+      <span class="shrink-0 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded bg-slate-700 text-slate-300">{{ m.author or 'unknown' }}</span>
+    </div>
+    {% if m.description %}
+    <div class="mt-2 text-xs text-slate-300 line-clamp-3" title="{{ m.description }}">{{ m.description }}</div>
+    {% elif m.base_model %}
+    <div class="mt-2 text-xs text-slate-400">quant of <span class="font-mono text-slate-300">{{ m.base_model }}</span></div>
+    {% endif %}
+    <div class="mt-2 flex items-center flex-wrap gap-1">
+      {% if m.pipeline_tag == 'image-text-to-text' %}
+      <span class="text-[9px] px-1.5 py-0.5 rounded bg-fuchsia-900/60 text-fuchsia-300">vision</span>
+      {% endif %}
+      {% set ns = namespace(is_moe=false) %}
+      {% for t in (m.tags or []) %}{% if 'moe' in t.lower() or 'mixture' in t.lower() %}{% set ns.is_moe = true %}{% endif %}{% endfor %}
+      {% if ns.is_moe %}
+      <span class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-900/60 text-cyan-300">MoE</span>
+      {% endif %}
+      {% if m.pipeline_tag and m.pipeline_tag != 'image-text-to-text' %}
+      <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300">{{ m.pipeline_tag }}</span>
+      {% endif %}
+    </div>
+    <div class="mt-2 flex items-center flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+      <span>{{ '{:,}'.format(m.downloads) }} dl</span>
+      {% if m.last_modified %}
+      <span>{{ m.last_modified.strftime('%Y-%m-%d') }}</span>
+      {% endif %}
+      {% if m.license %}
+      <span class="text-slate-500">{{ m.license }}</span>
+      {% endif %}
+      {% if m.min_size_gb is not none %}
+      <span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-sky-300 font-mono">min {{ m.min_size_gb }} GB</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Jobs - swapctl{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-semibold">Jobs</h1>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-slate-800 border border-slate-700"
+         x-data="{ open: false, val: {{ dl_speed_limit }} }">
+      <span class="text-xs text-slate-400">DL speed:</span>
+      <span id="dl-speed-val" class="text-xs font-mono text-slate-200">{{ 'Full speed' if dl_speed_limit == 0 else '%d MB/s' % dl_speed_limit }}</span>
+      <button type="button" @click="open = !open" class="text-xs text-sky-400 hover:text-sky-300">change</button>
+      <form x-show="open" x-cloak class="flex items-center gap-1 ml-1"
+            hx-post="{{ root_path }}/api/dl-speed" hx-swap="none" @submit="open = false">
+        <input type="number" name="limit_mb" x-model="val" min="0" max="1000" step="1"
+               class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-right">
+        <span class="text-[10px] text-slate-500">MB/s</span>
+        <button type="submit" class="text-xs px-2 py-1 rounded bg-sky-700 hover:bg-sky-600 text-white">Set</button>
+        <button type="button" @click="val = 0; $nextTick(() => $el.closest('form').requestSubmit())"
+                class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Full</button>
+      </form>
+    </div>
+    <button type="button"
+            hx-post="{{ root_path }}/api/jobs/clear-terminated"
+            hx-swap="none"
+            hx-confirm="Remove all done/error/interrupted jobs from history?"
+            class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-rose-700 text-slate-200">
+      Clear terminated
+    </button>
+    <span class="text-xs text-slate-400">Auto-refreshing every 3s</span>
+  </div>
+</div>
+
+<div class="bg-slate-800 rounded-lg shadow"
+     hx-get="{{ root_path }}/jobs"
+     hx-trigger="every 3s"
+     hx-select="#jobs-table"
+     hx-target="#jobs-table"
+     hx-swap="outerHTML">
+  <div id="jobs-table">
+    {% if jobs %}
+    <table class="w-full text-sm">
+      <thead class="text-left text-slate-400 text-xs uppercase">
+        <tr>
+          <th class="px-4 py-2">Model</th>
+          <th class="px-4 py-2">Kind</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2">Progress</th>
+          <th class="px-4 py-2">Started</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-700">
+        {% for j in jobs %}
+        <tr>
+          <td class="px-4 py-2 font-mono text-xs break-all">{{ j.model_id }}</td>
+          <td class="px-4 py-2 text-slate-300">{{ j.kind }}</td>
+          <td class="px-4 py-2">
+            {% if j.status == 'queued' %}
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-900/60 border border-amber-700 text-amber-200">queued</span>
+            {% elif j.status == 'running' %}
+              <span class="text-xs px-2 py-0.5 rounded bg-sky-900/60 border border-sky-700 text-sky-200">running</span>
+            {% elif j.status == 'done' %}
+              <span class="text-xs px-2 py-0.5 rounded bg-emerald-900/60 border border-emerald-700 text-emerald-200">done</span>
+            {% elif j.status == 'error' %}
+              <span class="text-xs px-2 py-0.5 rounded bg-rose-900/60 border border-rose-700 text-rose-200" title="{{ j.error }}">error</span>
+            {% elif j.status == 'interrupted' %}
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-900/60 border border-amber-700 text-amber-200" title="{{ j.error }}">interrupted</span>
+            {% else %}
+              <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">{{ j.status }}</span>
+            {% endif %}
+            {% if j.message %}
+              <div class="text-[10px] text-slate-500 mt-0.5">{{ j.message }}</div>
+            {% endif %}
+            {% if j.error %}
+              <div class="text-[10px] text-rose-400 mt-0.5 break-all">{{ j.error }}</div>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2">
+            <div class="flex items-center gap-2">
+              <div class="w-32 h-2 bg-slate-900 rounded overflow-hidden">
+                <div class="h-full bg-sky-500 transition-all" style="width: {{ j.percent }}%"></div>
+              </div>
+              <div class="text-xs text-slate-300 whitespace-nowrap">{{ j.percent }}%</div>
+            </div>
+            <div class="text-[10px] text-slate-500 mt-0.5">{{ j.bytes_done_gb }} / {{ j.bytes_total_gb }} GB</div>
+          </td>
+          <td class="px-4 py-2 text-xs text-slate-400">{{ j.started_at[:19] }}</td>
+          <td class="px-4 py-2 text-right">
+            <div class="inline-flex gap-2 items-center">
+              {% if j.status in ('running', 'queued') %}
+              <button type="button"
+                      hx-post="{{ root_path }}/api/jobs/{{ j.job_id }}/pause"
+                      hx-swap="none"
+                      class="text-xs px-2 py-1 rounded bg-amber-700 hover:bg-amber-600 text-white">
+                Pause
+              </button>
+              <button type="button"
+                      hx-post="{{ root_path }}/api/jobs/{{ j.job_id }}/cancel"
+                      hx-swap="none"
+                      hx-confirm="Cancel this download? Partial files will be deleted."
+                      class="text-xs px-2 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white">
+                Cancel
+              </button>
+              {% endif %}
+              {% if j.status in ('interrupted', 'error') %}
+              <button type="button"
+                      hx-post="{{ root_path }}/api/jobs/{{ j.job_id }}/resume"
+                      hx-swap="none"
+                      class="text-xs px-2 py-1 rounded bg-sky-700 hover:bg-sky-600 text-white">
+                Resume
+              </button>
+              {% endif %}
+              {% if j.status in ('done', 'error', 'interrupted') %}
+              <button type="button"
+                      hx-post="{{ root_path }}/api/jobs/{{ j.job_id }}/clear"
+                      hx-swap="none"
+                      hx-confirm="Remove this job from history?"
+                      class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-rose-700 text-slate-300">
+                Clear
+              </button>
+              {% endif %}
+              <a href="{{ root_path }}/jobs/{{ j.job_id }}" class="text-xs text-sky-400 hover:text-sky-300 self-center">details</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-6 text-slate-400 text-sm">No jobs in memory. Active downloads queued via the Browse page appear here. Restarting swapctl clears in-flight jobs.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

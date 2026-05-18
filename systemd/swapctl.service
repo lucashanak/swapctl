@@ -1,0 +1,17 @@
+[Unit]
+Description=swapctl GGUF model lifecycle web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/swapctl
+EnvironmentFile=-/etc/swapctl.env
+ExecStart=/opt/swapctl/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8090
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target

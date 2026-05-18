@@ -1,0 +1,257 @@
+{% set tr = m.test_results or {} %}
+{% set best_speed = tr.get('best_speed', 0) if tr else 0 %}
+{% set iq_data = tr.get('intelligence') if tr else None %}
+{% set iq_score = iq_data.score if iq_data and iq_data.score is defined else 0 %}
+{% set eff = m.effectivity or 0 %}
+{% set spct = m.speed_pct or 0 %}
+<tr id="row-{{ m.model_id }}"
+    data-model="{{ m.model_id }}"
+    data-size="{{ m.size_bytes or 0 }}"
+    data-quant="{{ m.quant or '' }}"
+    data-speed="{{ best_speed }}"
+    data-iq="{{ iq_score }}"
+    data-eff="{{ eff }}"
+    data-ctx="{{ m.ctx_size or 0 }}"
+    x-data="{ confirmRemove: false, editOpen: false, vramOpen: false, vramLoaded: false, repoInput: '{{ m.repo_id or '' }}' }">
+  <td class="px-3 py-1.5">
+    <div class="font-mono">{{ m.model_id }}</div>
+    {% if m.mmproj or m.tags %}
+    <div class="flex flex-wrap gap-0.5 mt-0.5">
+      {% if m.mmproj %}<span class="text-[8px] px-1 py-0.5 rounded bg-fuchsia-900/60 text-fuchsia-300">vision</span>{% endif %}
+      {% if 'moe' in (m.tags or []) %}<span class="text-[8px] px-1 py-0.5 rounded bg-cyan-900/60 text-cyan-300">MoE</span>{% endif %}
+      {% if 'hybrid' in (m.tags or []) %}<span class="text-[8px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-300">hybrid</span>{% endif %}
+    </div>
+    {% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-slate-400 hidden md:table-cell">
+    {% if m.repo_id %}
+      <a href="{{ root_path }}/model/{{ m.repo_id }}" class="hover:text-sky-300">{{ m.repo_id }}</a>
+    {% else %}
+      <button type="button" @click="editOpen = true" class="text-amber-400 hover:text-amber-300 underline decoration-dotted">set</button>
+    {% endif %}
+  </td>
+  <td class="px-2 py-1.5">
+    {% if m.quant %}
+      <span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono">{{ m.quant }}</span>
+    {% else %}-{% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-slate-300">
+    {% if m.size_bytes %}{{ (m.size_bytes / 1024 / 1024 / 1024) | round(1) }}G{% else %}-{% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-slate-300 whitespace-nowrap hidden lg:table-cell">
+    {{ m.ctx_size or '-' }}{% if m.max_ctx %}<span class="text-slate-500">/{{ m.max_ctx }}</span>{% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-slate-400 hidden lg:table-cell">
+    {% if m.hf_last_modified %}
+      {{ m.hf_last_modified[:10] if m.hf_last_modified is string else m.hf_last_modified.strftime('%Y-%m-%d') }}
+      {% if m.update_available %}
+        <span class="ml-0.5 text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-200" title="HF latest: {{ m.latest_modified[:10] }}">&uarr;</span>
+      {% endif %}
+    {% else %}-{% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-center whitespace-nowrap">
+    {% set backend = tr.get('best_backend', '') if tr else '' %}
+    {% if best_speed %}
+      <span class="font-mono" data-color="speed">{{ best_speed }} <span class="text-slate-500 text-[10px]">t/s</span></span>
+      {% if backend == 'vulkan' %}
+        <span class="text-[8px] ml-0.5 px-0.5 rounded bg-emerald-900/60 text-emerald-300">VK</span>
+      {% elif backend == 'hip' %}
+        <span class="text-[8px] ml-0.5 px-0.5 rounded bg-sky-900/60 text-sky-300">ROCm</span>
+      {% endif %}
+    {% else %}<span class="text-slate-500">—</span>{% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-center whitespace-nowrap">
+    {% if iq_score %}
+      <span class="font-mono" data-color="iq">{{ iq_score }}%</span>
+    {% else %}<span class="text-slate-500">—</span>{% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-center whitespace-nowrap">
+    {% if eff > 0 %}
+      <span class="font-mono" data-color="eff">{{ eff }}</span>
+    {% else %}<span class="text-slate-500">—</span>{% endif %}
+  </td>
+  <td class="px-2 py-1.5 hidden md:table-cell text-center">
+    {% if m.loaded %}
+      <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-200">loaded</span>
+    {% else %}
+      <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">idle</span>
+    {% endif %}
+  </td>
+  <td class="px-2 py-1.5 text-right">
+    <div class="inline-flex flex-wrap gap-0.5">
+      <button type="button" @click="editOpen = true"
+              class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300" title="Edit settings">
+        &#9998;
+      </button>
+      {% if m.repo_id %}
+      <button type="button" hx-post="{{ root_path }}/api/update/{{ m.model_id }}" hx-swap="none"
+              class="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-100" title="Update from HF">
+        &uarr;
+      </button>
+      {% endif %}
+      <button type="button" @click="confirmRemove = true"
+              class="px-1.5 py-0.5 rounded bg-rose-900/60 hover:bg-rose-700 text-rose-200" title="Remove model">
+        &times;
+      </button>
+      {% set vram_id = m.model_id | replace('/', '--') | replace('.', '-') %}
+      <button type="button"
+              @click="vramOpen = !vramOpen; document.getElementById('vram-row-{{ vram_id }}').classList.toggle('hidden', !vramOpen); if(vramOpen && !vramLoaded){ vramLoaded = true; htmx.ajax('GET', '{{ root_path }}/api/vram-estimate/{{ m.model_id }}', {target: '#vram-{{ vram_id }}', swap: 'innerHTML'}); }"
+              class="px-1.5 py-0.5 rounded bg-violet-900/60 hover:bg-violet-700 text-violet-200" title="VRAM estimate">
+        &#9881;
+      </button>
+    </div>
+
+    <div x-show="editOpen" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+         @keydown.escape.window="editOpen = false">
+      <form class="bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 border border-slate-700"
+            hx-post="{{ root_path }}/api/edit/{{ m.model_id }}"
+            hx-swap="none"
+            @submit="editOpen = false">
+        <div class="px-5 py-4 border-b border-slate-700">
+          <h3 class="font-semibold">Edit model metadata</h3>
+          <p class="text-xs text-slate-400 mt-1 font-mono">{{ m.model_id }}</p>
+        </div>
+        <div class="p-5 space-y-4 text-left">
+          <label class="block">
+            <span class="text-xs uppercase text-slate-400 tracking-wide">HF repo (owner/name)</span>
+            <input type="text" name="repo_id" x-model="repoInput"
+                   placeholder="unsloth/Foo-GGUF"
+                   class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+            <span class="text-xs text-slate-500">Setting this enables "Update". Leave empty to clear.</span>
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase text-slate-400 tracking-wide">Context size (current {{ m.ctx_size }}{% if m.max_ctx %} / model max {{ m.max_ctx }}{% endif %})</span>
+            <input type="number" name="ctx_size" value="{{ m.ctx_size }}" min="1024" {% if m.max_ctx %}max="{{ m.max_ctx }}"{% endif %} step="1024"
+                   class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+            <span class="text-xs text-slate-500">KV cache RAM scales roughly linearly with context size.</span>
+          </label>
+          <div class="mt-3 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">KV cache K</span>
+                  <select name="cache_type_k" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                    {% for ct in ["f16","q8_0","q5_1","q5_0","q4_1","q4_0","iq4_nl"] %}
+                    <option value="{{ ct }}" {% if (m.cache_type_k or 'q8_0') == ct %}selected{% endif %}>{{ ct }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">KV cache V</span>
+                  <select name="cache_type_v" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                    {% for ct in ["f16","q8_0","q5_1","q5_0","q4_1","q4_0","iq4_nl"] %}
+                    <option value="{{ ct }}" {% if (m.cache_type_v or 'q8_0') == ct %}selected{% endif %}>{{ ct }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+              <span class="text-xs text-slate-500">Lower quantization (q4) saves GPU memory but may reduce quality. f16 = full precision.</span>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">Threads (0 = auto)</span>
+                  <input type="number" name="threads" value="{{ m.threads or 0 }}" min="0" max="128" step="1"
+                         class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                </label>
+                <label class="flex items-center gap-2 mt-5">
+                  <input type="hidden" name="flash_attn" value="0">
+                  <input type="checkbox" name="flash_attn" value="1" {% if m.flash_attn is not defined or m.flash_attn %}checked{% endif %}
+                         class="accent-sky-500 w-4 h-4">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">Flash attention</span>
+                </label>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">Thinking format</span>
+                  <select name="reasoning_format" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                    <option value="" {% if not m.reasoning_format %}selected{% endif %}>off</option>
+                    <option value="deepseek" {% if m.reasoning_format == 'deepseek' %}selected{% endif %}>deepseek</option>
+                  </select>
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">Thinking effort</span>
+                  <select name="reasoning_effort" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                    <option value="" {% if not m.reasoning_effort %}selected{% endif %}>off</option>
+                    <option value="low" {% if m.reasoning_effort == 'low' %}selected{% endif %}>low</option>
+                    <option value="medium" {% if m.reasoning_effort == 'medium' %}selected{% endif %}>medium</option>
+                    <option value="high" {% if m.reasoning_effort == 'high' %}selected{% endif %}>high</option>
+                  </select>
+                </label>
+              </div>
+              <div class="border border-slate-700 rounded-md p-3 space-y-3">
+              <span class="text-xs uppercase text-slate-400 tracking-wide block">Speculative decoding</span>
+              <label class="flex items-center gap-2">
+                <input type="hidden" name="spec_default" value="0">
+                <input type="checkbox" name="spec_default" value="1" {% if m.spec_default %}checked{% endif %}
+                       class="accent-sky-500 w-4 h-4">
+                <span class="text-xs text-slate-300">Ngram speculation (predicts next tokens from repeated patterns, no draft model needed)</span>
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase text-slate-400 tracking-wide">Draft model</span>
+                <select name="draft_model" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                  <option value="">none</option>
+                  {% for dc in draft_candidates %}
+                  <option value="{{ dc.name }}" {% if m.draft_model == dc.name %}selected{% endif %}>{{ dc.name }} ({{ dc.size_mb }} MB)</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">Draft max tokens</span>
+                  <input type="number" name="draft_max" value="{{ m.draft_max or 0 }}" min="0" max="32" step="1"
+                         class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase text-slate-400 tracking-wide">Draft min tokens</span>
+                  <input type="number" name="draft_min" value="{{ m.draft_min or 0 }}" min="0" max="16" step="1"
+                         class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm">
+                </label>
+              </div>
+              <span class="text-xs text-slate-500">Draft model uses a smaller model to predict tokens. 0 = server default.</span>
+              </div>
+              <label class="block">
+                <span class="text-xs uppercase text-slate-400 tracking-wide">Extra args</span>
+                <input type="text" name="extra_args" value="{{ m.extra_args or '' }}"
+                       placeholder="--batch-size 512 --parallel 2"
+                       class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
+                <span class="text-xs text-slate-500">Additional llama-server flags. Applied as-is.</span>
+              </label>
+          </div>
+          <p class="text-xs text-amber-400 mt-2">Changing any setting restarts llama-swap.</p>
+        </div>
+        <div class="px-5 py-3 border-t border-slate-700 flex justify-end gap-2">
+          <button type="button" @click="editOpen = false"
+                  class="px-3 py-1.5 text-sm text-slate-300 hover:text-white">Cancel</button>
+          <button type="submit"
+                  class="px-4 py-1.5 text-sm bg-sky-600 hover:bg-sky-500 text-white rounded-md">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <div x-show="confirmRemove" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+         @keydown.escape.window="confirmRemove = false">
+      <div class="bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4 border border-slate-700">
+        <div class="px-5 py-4 border-b border-slate-700">
+          <h3 class="font-semibold">Remove model</h3>
+        </div>
+        <div class="p-5 text-sm text-slate-300 text-left">
+          Delete GGUF files and remove <span class="font-mono">{{ m.model_id }}</span> from llama-swap config?
+        </div>
+        <div class="px-5 py-3 border-t border-slate-700 flex justify-end gap-2">
+          <button type="button" @click="confirmRemove=false" class="px-3 py-1.5 text-sm text-slate-300 hover:text-white">Cancel</button>
+          <button type="button"
+                  hx-post="{{ root_path }}/api/remove/{{ m.model_id }}"
+                  hx-swap="none"
+                  class="px-4 py-1.5 text-sm bg-rose-600 hover:bg-rose-500 text-white rounded-md">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  </td>
+</tr>
+<tr id="vram-row-{{ m.model_id | replace('/', '--') | replace('.', '-') }}" class="hidden">
+  <td colspan="10" class="px-3 py-2 bg-slate-800/50">
+    <div id="vram-{{ m.model_id | replace('/', '--') | replace('.', '-') }}"></div>
+  </td>
+</tr>
