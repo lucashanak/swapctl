@@ -50,7 +50,8 @@ async def lifespan(app: FastAPI):
         cfg = registry.get_socket_tdp_config()
         if cfg.get("apply_on_boot"):
             result = power.set_socket_tdp(
-                cfg["stapm_mw"], cfg["fast_mw"], cfg["slow_mw"], cfg["apu_mw"]
+                cfg["stapm_mw"], cfg["fast_mw"], cfg["slow_mw"], cfg["apu_mw"],
+                stapm_time_s=cfg.get("stapm_time_s"),
             )
             if result.get("ok"):
                 log.info("socket TDP restored on boot: %s", result.get("actual"))

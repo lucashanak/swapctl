@@ -1123,17 +1123,25 @@ def power_socket_tdp(
     fast_w: float = Form(...),
     slow_w: float = Form(...),
     apu_w: float = Form(...),
+    stapm_time_s: int = Form(0),
     apply_on_boot: str = Form(""),
 ):
     from .. import power, registry
     for label, val in (("stapm", stapm_w), ("fast", fast_w), ("slow", slow_w), ("apu", apu_w)):
         if not (1.0 <= val <= 200.0):
             raise HTTPException(400, f"{label}_w {val} out of range 1..200 W")
+    if stapm_time_s and not (1 <= stapm_time_s <= 3600):
+        raise HTTPException(400, f"stapm_time_s {stapm_time_s} out of range 1..3600 s")
     args = [int(round(v * 1000)) for v in (stapm_w, fast_w, slow_w, apu_w)]
-    result = power.set_socket_tdp(*args)
+    time_arg = stapm_time_s if stapm_time_s > 0 else None
+    result = power.set_socket_tdp(*args, stapm_time_s=time_arg)
     if not result.get("ok"):
         raise HTTPException(502, result.get("error") or str(result.get("errors") or "tdpctl failed"))
-    registry.set_socket_tdp_config(*args, apply_on_boot=apply_on_boot in ("1", "true", "on"))
+    registry.set_socket_tdp_config(
+        *args,
+        apply_on_boot=apply_on_boot in ("1", "true", "on"),
+        stapm_time_s=time_arg,
+    )
     if _is_htmx(request):
         return Response(status_code=204, headers={"HX-Refresh": "true"})
     return JSONResponse({"ok": True, "actual": result.get("actual")})

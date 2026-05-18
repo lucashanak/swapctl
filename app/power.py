@@ -176,9 +176,20 @@ def get_socket_tdp() -> dict:
     return _tdpctl("get")
 
 
-def set_socket_tdp(stapm_mw: int, fast_mw: int, slow_mw: int, apu_mw: int) -> dict:
-    """Apply STAPM/PPT limits on the pve2 host. Values in milliwatts."""
-    return _tdpctl("set", str(stapm_mw), str(fast_mw), str(slow_mw), str(apu_mw))
+def set_socket_tdp(
+    stapm_mw: int, fast_mw: int, slow_mw: int, apu_mw: int,
+    stapm_time_s: int | None = None,
+) -> dict:
+    """Apply STAPM/PPT limits on the pve2 host. Values in milliwatts.
+
+    Optional stapm_time_s sets the STAPM filter time constant in seconds.
+    Strix Halo doesn't reflect it back in ryzenadj -i, but the SMU
+    accepts the write.
+    """
+    args = ["set", str(stapm_mw), str(fast_mw), str(slow_mw), str(apu_mw)]
+    if stapm_time_s is not None:
+        args.append(str(int(stapm_time_s)))
+    return _tdpctl(*args)
 
 
 def get_state() -> dict:

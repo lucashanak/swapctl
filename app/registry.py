@@ -174,10 +174,11 @@ def set_socket_tdp_config(
     slow_mw: int,
     apu_mw: int,
     apply_on_boot: bool,
+    stapm_time_s: int | None = None,
     path: Path | None = None,
 ) -> None:
     data = _read_raw(path)
-    data["socket_tdp"] = {
+    payload = {
         "stapm_mw": int(stapm_mw),
         "fast_mw": int(fast_mw),
         "slow_mw": int(slow_mw),
@@ -185,6 +186,9 @@ def set_socket_tdp_config(
         "apply_on_boot": bool(apply_on_boot),
         "updated_at": _now(),
     }
+    if stapm_time_s is not None:
+        payload["stapm_time_s"] = int(stapm_time_s)
+    data["socket_tdp"] = payload
     _write_raw(data, path)
 
 

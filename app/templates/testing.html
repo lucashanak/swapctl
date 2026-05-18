@@ -257,6 +257,13 @@
                  class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono">
         </div>
         {% endfor %}
+        <div class="flex gap-2 items-center pt-1 border-t border-slate-700">
+          <label class="text-[10px] text-slate-400 w-10" title="STAPM filter time constant. Longer = bursts ride above STAPM limit for longer.">τ STAPM</label>
+          <input type="number" name="stapm_time_s" value="{{ tdp_cfg.get('stapm_time_s') or 0 }}"
+                 min="0" max="3600" step="10"
+                 class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono">
+          <span class="text-[9px] text-slate-500">sec (0 = keep)</span>
+        </div>
         <label class="flex items-center gap-2 pt-1">
           <input type="checkbox" name="apply_on_boot" value="1" {% if tdp_cfg.get('apply_on_boot') %}checked{% endif %}
                  class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-600">
