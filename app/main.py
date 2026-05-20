@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import bootstrap, downloader
 from .config import settings
-from .routers import api, auth, views
+from .routers import api, auth, benchmark, views
 
 APP_DIR = Path(__file__).resolve().parent
 log = logging.getLogger("swapctl")
@@ -45,6 +45,11 @@ async def lifespan(app: FastAPI):
         auto_update.start_scheduler()
     except Exception as exc:
         log.warning("auto-update scheduler failed to start: %s", exc)
+    try:
+        from .backends_registry import BackendsRegistry
+        BackendsRegistry().seed_defaults_if_empty()
+    except Exception as exc:
+        log.warning("backends registry seed skipped: %s", exc)
     try:
         from . import power, registry
         cfg = registry.get_socket_tdp_config()
@@ -104,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=PREFIX)
     app.include_router(views.router, prefix=PREFIX)
     app.include_router(api.router, prefix=PREFIX)
+    app.include_router(benchmark.router, prefix=PREFIX)
 
     @app.get(f"{PREFIX}/healthz")
     def healthz():

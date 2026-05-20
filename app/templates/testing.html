@@ -208,7 +208,14 @@
         <button type="submit" class="px-2 py-1 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px]">Apply</button>
       </form>
       {% if power.cpu_freq %}
-      <div class="text-[9px] text-slate-500 mt-2">{{ power.cpu_freq.min_mhz }}–{{ power.cpu_freq.max_mhz }} MHz (hw max {{ power.cpu_freq.hw_max_mhz }})</div>
+      <form hx-post="{{ root_path }}/api/power/cpu-max-freq" hx-swap="none" class="flex gap-1.5 items-center mt-2">
+        <label class="text-[10px] text-slate-400">Max</label>
+        <input type="number" name="max_mhz" value="{{ power.cpu_freq.max_mhz }}"
+               min="{{ power.cpu_freq.hw_min_mhz }}" max="{{ power.cpu_freq.hw_max_mhz }}" step="100"
+               class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] font-mono">
+        <span class="text-[9px] text-slate-500">MHz / hw {{ power.cpu_freq.hw_max_mhz }}</span>
+        <button type="submit" class="px-1.5 py-0.5 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200">Set</button>
+      </form>
       {% endif %}
     </div>
 
@@ -313,21 +320,7 @@
       <div class="p-5 space-y-5">
         <fieldset>
           <legend class="text-xs uppercase text-slate-400 tracking-wide mb-2">What to test</legend>
-          <div class="grid grid-cols-3 gap-2">
-            <label class="flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-900/20">
-              <input type="checkbox" name="test_type" value="speed" class="accent-emerald-500" checked>
-              <div>
-                <div class="text-sm text-slate-200">Vulkan</div>
-                <div class="text-[10px] text-slate-500">Speed</div>
-              </div>
-            </label>
-            <label class="flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-sky-600 has-[:checked]:bg-sky-900/20">
-              <input type="checkbox" name="test_type" value="speed_rocm" class="accent-sky-500">
-              <div>
-                <div class="text-sm text-slate-200">ROCm</div>
-                <div class="text-[10px] text-slate-500">Speed</div>
-              </div>
-            </label>
+          <div class="grid grid-cols-2 gap-2">
             <label class="flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-500 has-[:checked]:border-violet-600 has-[:checked]:bg-violet-900/20">
               <input type="checkbox" name="test_type" value="intelligence" class="accent-violet-500" checked>
               <div>
@@ -369,10 +362,14 @@
   </div>
 </div>
 
-{% if queue_len > 0 or jobs %}
+{% if queue_len > 0 or jobs or (bench_state and bench_state.running) %}
 <div class="mb-4 px-4 py-2 rounded bg-indigo-900/50 border border-indigo-700 text-indigo-200 text-sm"
      hx-get="{{ root_path }}/testing" hx-trigger="every 5s" hx-select="#testing-live" hx-target="#testing-live" hx-swap="outerHTML">
-  {% if queue_len > 0 %}
+  {% if bench_state and bench_state.running %}
+    Benchmark running: <span class="font-mono">{{ bench_state.model_id }}</span>
+    {% if bench_state.current_backend %} on <span class="font-mono">{{ bench_state.current_backend }}</span>{% endif %}
+    {% if bench_state.stage %} — {{ bench_state.stage }}{% endif %}
+  {% elif queue_len > 0 %}
     Testing in progress… {{ queue_len }} job(s) in queue
   {% else %}
     All tests finished.
@@ -400,9 +397,12 @@
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-700/50" x-ref="tbody">
+      {% set small_threshold = 10 * 1024 * 1024 * 1024 %}
+      {% set small_count = models | selectattr('size_bytes') | map(attribute='size_bytes') | select('lt', small_threshold) | list | length %}
       {% for m in models %}
       {% set iq_score = m.intelligence.score if m.intelligence else 0 %}
       {% set eff = m.effectivity or 0 %}
+      {% set is_small = (m.size_bytes or 0) < small_threshold %}
       <tr id="test-row-{{ m.model_id }}"
           data-model="{{ m.model_id }}"
           data-size="{{ m.size_bytes or 0 }}"
@@ -414,6 +414,7 @@
           data-iqdur="{{ m.iq_duration or 0 }}"
           data-vram="{{ m.vram_mb or 0 }}"
           data-eff="{{ eff }}"
+          {% if is_small %}x-show="showSmall" x-cloak{% endif %}
           x-data="{ editOpen: false, confirmRemove: false, delOpen: false, detailOpen: false, repoInput: '{{ m.repo_id or '' }}' }">
         <td class="px-2 sm:px-3 py-1.5">
           <div class="font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} truncate max-w-[120px] sm:max-w-none" title="{{ m.model_id }}">{{ m.model_id }}</div>
@@ -442,18 +443,38 @@
           {{ m.ctx_size or '-' }}{% if m.max_ctx %}<span class="text-slate-500">/{{ m.max_ctx }}</span>{% endif %}
         </td>
         <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap">
-          {% if m.best_speed %}
-            {% set best_pp = m.best_pp or 0 %}
-            <span class="font-mono" data-color="speed"
-                 title="tg128: {{ m.best_speed }} t/s · pp512: {{ best_pp }} t/s{% if m.speed_vulkan %} | VK: {{ m.speed_vulkan.tg_speed }}/{{ m.speed_vulkan.pp_speed }}{% endif %}{% if m.speed_hip %} | ROCm: {{ m.speed_hip.tg_speed }}/{{ m.speed_hip.pp_speed }}{% endif %}{% if m.speed_rock %} | Rock: {{ m.speed_rock.tg_speed }}/{{ m.speed_rock.pp_speed }}{% endif %}">
-              {{ m.best_speed }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span>
-              {% if m.best_backend == 'vulkan' %}
-                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-emerald-900/60 text-emerald-300 hidden sm:inline">VK</span>
-              {% elif m.best_backend == 'rocm' %}
-                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-sky-900/60 text-sky-300 hidden sm:inline">ROCm</span>
-              {% elif m.best_backend == 'rock' %}
-                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-amber-900/60 text-amber-300 hidden sm:inline">RK</span>
+          {# Speed from speed_history: latest GEN record for current backend #}
+          {% set ns = namespace(gen_tps=none, backend_label='', tooltip_rows=[]) %}
+          {% if m.speed_history %}
+            {# Find latest gen record for current backend #}
+            {% for entry in m.speed_history | reverse %}
+              {% if entry.test == 'gen' and entry.backend_id == m.current_backend_id and ns.gen_tps is none %}
+                {% set ns.gen_tps = entry.gen_tps %}
+                {% set ns.backend_label = entry.backend_id %}
               {% endif %}
+            {% endfor %}
+            {# Fallback: no record for current backend → show latest gen of any backend #}
+            {% if ns.gen_tps is none %}
+              {% for entry in m.speed_history | reverse %}
+                {% if entry.test == 'gen' and ns.gen_tps is none %}
+                  {% set ns.gen_tps = entry.gen_tps %}
+                  {% set ns.backend_label = entry.backend_id %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {# Build per-backend summary for tooltip #}
+            {% set seen_backends = namespace(ids=[]) %}
+            {% for entry in m.speed_history | reverse %}
+              {% if entry.backend_id not in seen_backends.ids %}
+                {% set seen_backends.ids = seen_backends.ids + [entry.backend_id] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if ns.gen_tps %}
+            <span class="font-mono" data-color="speed"
+                  title="gen t/s ({{ ns.backend_label }}){% if m.speed_history %} | {{ m.speed_history | length }} history records{% endif %}">
+              {{ ns.gen_tps }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span>
+              <span class="text-[8px] ml-0.5 px-0.5 rounded bg-emerald-900/60 text-emerald-300 hidden sm:inline">{{ ns.backend_label }}</span>
             </span>
           {% else %}<span class="text-slate-500">—</span>{% endif %}
         </td>
@@ -490,20 +511,14 @@
         </td>
         <td class="px-1.5 sm:px-2 py-1.5 text-right">
           <div class="inline-flex flex-wrap gap-0.5">
-            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed","backend":"vulkan"}' hx-swap="none"
-                    class="px-1.5 py-1 sm:py-0.5 rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px] sm:min-h-0" title="Speed test (Vulkan)">VK</button>
-            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed","backend":"hip"}' hx-swap="none"
-                    class="px-1.5 py-1 sm:py-0.5 rounded bg-sky-900 hover:bg-sky-800 text-sky-200 min-h-[28px] sm:min-h-0" title="Speed test (ROCm)">RC</button>
-            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed","backend":"rock"}' hx-swap="none"
-                    class="px-1.5 py-1 sm:py-0.5 rounded bg-amber-900 hover:bg-amber-800 text-amber-200 min-h-[28px] sm:min-h-0" title="Speed test (TheRock)">RK</button>
             <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"intelligence"}' hx-swap="none"
                     class="px-1.5 py-1 sm:py-0.5 rounded bg-violet-900 hover:bg-violet-800 text-violet-200 min-h-[28px] sm:min-h-0" title="Intelligence test">IQ</button>
             {% if m.intelligence and m.intelligence.details %}
             <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"intelligence","only_failed":"true"}' hx-swap="none"
                     class="px-1.5 py-1 sm:py-0.5 rounded bg-fuchsia-900 hover:bg-fuchsia-800 text-fuchsia-200 min-h-[28px] sm:min-h-0" title="Re-run only previously failed questions">IQ↻</button>
             {% endif %}
-            <button hx-post="{{ root_path }}/api/test/run/{{ m.model_id }}" hx-vals='{"test_type":"speed_spec"}' hx-swap="none"
-                    class="px-1.5 py-1 sm:py-0.5 rounded bg-amber-900 hover:bg-amber-800 text-amber-200 min-h-[28px] sm:min-h-0 hidden sm:inline-block" title="Speculation speed test">Spec</button>
+            <a href="{{ root_path }}/benchmark?model={{ m.model_id }}"
+                    class="px-1.5 py-1 sm:py-0.5 rounded bg-indigo-900 hover:bg-indigo-800 text-indigo-200 min-h-[28px] sm:min-h-0 inline-block" title="Open benchmark page (model preselected)">Bench</a>
             <button type="button" @click="detailOpen = true"
                     class="px-1.5 py-1 sm:py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 min-h-[28px] sm:min-h-0" title="Model detail">&#8943;</button>
           </div>
@@ -809,6 +824,18 @@
         </td>
       </tr>
       {% endfor %}
+      {% if small_count > 0 %}
+      <tr>
+        <td colspan="11" class="px-2 sm:px-3 py-2 bg-slate-900/40">
+          <button type="button" @click="showSmall = !showSmall"
+                  class="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400 hover:text-slate-200 w-full">
+            <svg :class="showSmall && 'rotate-90'" class="w-3 h-3 transition-transform" fill="currentColor" viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
+            <span x-text="showSmall ? 'Hide' : 'Show'"></span>
+            <span>{{ small_count }} small model{{ 's' if small_count != 1 else '' }} (&lt; 10 GB)</span>
+          </button>
+        </td>
+      </tr>
+      {% endif %}
     </tbody>
   </table>
   {% else %}
@@ -912,10 +939,12 @@ document.body.addEventListener('htmx:beforeSwap', function(e) {
 });
 function sortTestTable() {
   const KEY = 'swapctl_sort_models';
+  const SMALL_KEY = 'swapctl_show_small';
   const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
   return {
     col: saved?.col || 'eff',
     asc: saved?.asc ?? false,
+    showSmall: localStorage.getItem(SMALL_KEY) === '1',
     indicator(c) { return this.col === c ? (this.asc ? '▲' : '▼') : ''; },
     _apply() {
       const tbody = this.$refs.tbody;
@@ -941,6 +970,7 @@ function sortTestTable() {
     },
     init() {
       this._apply();
+      this.$watch('showSmall', v => localStorage.setItem(SMALL_KEY, v ? '1' : '0'));
       document.body.addEventListener('htmx:afterSwap', () => this.$nextTick(() => this._apply()));
     }
   };

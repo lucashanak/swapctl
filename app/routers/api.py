@@ -508,40 +508,62 @@ def update_swap_config(
     return JSONResponse({"ok": True})
 
 
+@router.get("/backends")
+def list_backends(request: Request, model_id: str | None = None):
+    """Return all registered backends, optionally filtered by compatibility with a model.
+
+    Response: [{id, label, caps, default_flags, required_flags, version_hint, compatible}]
+    When model_id is omitted, compatible is always True.
+    """
+    from ..backends_registry import BackendsRegistry
+    from .. import registry as reg_mod
+
+    br = BackendsRegistry()
+    all_backends = br.list_all()
+
+    compat_ids: set[str] | None = None
+    if model_id:
+        try:
+            model_id = valid_model_id(model_id)
+            record = reg_mod.get(model_id)
+            if record is not None:
+                compat_ids = {b.id for b in br.compatible(record)}
+        except (ConfigError, Exception):
+            pass
+
+    result = []
+    for b in all_backends:
+        compatible = True if compat_ids is None else (b.id in compat_ids)
+        result.append({
+            "id": b.id,
+            "label": b.label,
+            "caps": b.caps,
+            "default_flags": b.default_flags,
+            "required_flags": b.required_flags,
+            "version_hint": b.version_hint,
+            "compatible": compatible,
+        })
+    return JSONResponse(result)
+
+
 @router.post("/backend")
 def switch_all_backends(
     request: Request,
     backend: str = Form(...),
 ):
-    from ..config import _VALID_BACKENDS
-    from .. import swap_config, system
+    """Removed: global backend switch is no longer supported.
 
-    if backend not in _VALID_BACKENDS:
-        raise HTTPException(status_code=400, detail=f"invalid backend: {backend!r}, must be one of {_VALID_BACKENDS}")
-
-    bak = swap_config.backup()
-    try:
-        count = swap_config.switch_backend(backend)
-    except (ConfigError, SwapctlError) as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    if count > 0:
-        try:
-            system.restart_swap()
-            if not system.wait_swap_healthy(timeout_s=15.0):
-                raise SwapctlError("llama-swap did not come up after backend switch")
-        except SwapctlError as exc:
-            try:
-                swap_config.restore_backup()
-                system.restart_swap()
-                system.wait_swap_healthy(timeout_s=15.0)
-            except Exception:
-                pass
-            raise HTTPException(status_code=500, detail=f"{exc}; reverted") from exc
-
-    if _is_htmx(request):
-        return Response(status_code=204, headers={"HX-Refresh": "true"})
-    return JSONResponse({"ok": True, "backend": backend, "models_updated": count})
+    Use POST /api/backend/{model_id} for per-model backend switching,
+    or POST /api/benchmark/apply-best/{model_id} to apply the best benchmarked backend.
+    """
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Global backend switch has been removed. "
+            "Use POST /api/backend/{model_id} for per-model switching, "
+            "or POST /api/benchmark/apply-best/{model_id} to apply the best benchmarked backend."
+        ),
+    )
 
 
 @router.post("/backend/{model_id}")
@@ -550,16 +572,31 @@ def switch_model_backend(
     model_id: str,
     backend: str = Form(...),
 ):
-    from ..config import _VALID_BACKENDS
+    from ..backends_registry import BackendsRegistry
     from .. import swap_config, system
-
-    if backend not in _VALID_BACKENDS:
-        raise HTTPException(status_code=400, detail=f"invalid backend: {backend!r}")
 
     try:
         model_id = valid_model_id(model_id)
     except ConfigError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Validate backend against registry (accepts any registered id)
+    from .. import registry as reg_mod
+    br = BackendsRegistry()
+    known_ids = {b.id for b in br.list_all()}
+    if not known_ids:
+        # Registry empty — fall back to legacy validation
+        from ..config import _VALID_BACKENDS
+        known_ids = set(_VALID_BACKENDS)
+    if backend not in known_ids:
+        raise HTTPException(status_code=400, detail=f"invalid backend: {backend!r}")
+
+    # Enforce compatibility: reject backends incompatible with this model (FIX 7)
+    record = reg_mod.get(model_id)
+    if record is not None:
+        compat_ids = {b.id for b in br.compatible(record)}
+        if backend not in compat_ids:
+            raise HTTPException(status_code=400, detail=f"Backend {backend!r} is not compatible with {model_id!r}")
 
     current = swap_config.detect_model_backend(model_id)
     if current == backend:
@@ -606,16 +643,23 @@ def test_run(
     except ConfigError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if test_type == "all":
-        tester.enqueue(model_id, "speed", "vulkan")
-        tester.enqueue(model_id, "speed", "hip")
+    if test_type == "speed":
+        # Legacy speed test deprecated — use /benchmark instead
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "The per-backend speed test has been removed. "
+                "Use POST /api/benchmark/run or GET /benchmark to measure speed."
+            ),
+        )
+    elif test_type == "all":
         job_id = tester.enqueue(model_id, "intelligence")
     elif test_type == "intelligence":
         job_id = tester.enqueue(model_id, "intelligence", only_failed=only_failed)
     elif test_type == "speed_spec":
         job_id = tester.enqueue(model_id, "speed_spec")
     else:
-        job_id = tester.enqueue(model_id, "speed", backend)
+        job_id = tester.enqueue(model_id, "intelligence")
 
     if _is_htmx(request):
         return Response(status_code=204, headers={"HX-Redirect": f"{PREFIX}/testing"})
@@ -631,22 +675,12 @@ def test_batch(
     from .. import registry, tester
 
     types = set(test_type)
-    do_vk = "speed" in types
-    do_rocm = "speed_rocm" in types
     do_iq = "intelligence" in types
 
     records = registry.list_all()
     queued = 0
     for r in records:
         tr = r.test_results or {}
-        if do_vk:
-            if scope != "missing" or not tr.get("speed_vulkan"):
-                tester.enqueue(r.model_id, "speed", "vulkan")
-                queued += 1
-        if do_rocm:
-            if scope != "missing" or not tr.get("speed_hip"):
-                tester.enqueue(r.model_id, "speed", "hip")
-                queued += 1
         if do_iq:
             if scope != "missing" or not tr.get("intelligence"):
                 tester.enqueue(r.model_id, "intelligence")
@@ -677,20 +711,11 @@ def test_reset(
     tr = rec.test_results or {}
     if what == "all":
         rec.test_results = {}
+        rec.speed_history = []
     else:
         for key in what.split(","):
             key = key.strip()
             tr.pop(key, None)
-        for k in ("best_speed", "best_backend"):
-            tr.pop(k, None)
-        vk = (tr.get("speed_vulkan") or {}).get("tg_speed", 0) or 0
-        hip = (tr.get("speed_hip") or {}).get("tg_speed", 0) or 0
-        if hip > vk:
-            tr["best_speed"] = hip
-            tr["best_backend"] = "hip"
-        elif vk > 0:
-            tr["best_speed"] = vk
-            tr["best_backend"] = "vulkan"
         rec.test_results = tr
     registry.upsert(rec)
     if _is_htmx(request):
@@ -1114,6 +1139,17 @@ def power_cpu_boost(request: Request, enabled: str = Form(...)):
     if _is_htmx(request):
         return Response(status_code=204, headers={"HX-Refresh": "true"})
     return JSONResponse({"ok": True, "boost": enabled == "1"})
+
+
+@router.post("/power/cpu-max-freq")
+def power_cpu_max_freq(request: Request, max_mhz: int = Form(...)):
+    from .. import power
+    err = power.set_cpu_max_freq(max_mhz)
+    if err:
+        raise HTTPException(400, err)
+    if _is_htmx(request):
+        return Response(status_code=204, headers={"HX-Refresh": "true"})
+    return JSONResponse({"ok": True, "max_mhz": max_mhz})
 
 
 @router.post("/power/socket-tdp")

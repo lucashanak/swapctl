@@ -131,8 +131,24 @@ def set_llama_backend(backend: str) -> None:
     _BACKEND_FILE.write_text(backend + "\n")
 
 
-def llama_server_binary() -> str:
-    return _BACKEND_BINARIES[get_llama_backend()]
+def llama_server_binary(backend_id: str | None = None) -> str:
+    """Return the binary path for a backend.
+
+    If backend_id is None, uses the currently configured default backend.
+    Looks up the registry first so custom backends (e.g. vulkan-mtp) are resolved.
+    Falls back to _BACKEND_BINARIES for the three built-in ids.
+    """
+    bid = backend_id if backend_id is not None else get_llama_backend()
+    # Try registry lookup for non-standard backends
+    if bid not in _BACKEND_BINARIES:
+        try:
+            from .backends_registry import BackendsRegistry
+            b = BackendsRegistry().get(bid)
+            if b is not None:
+                return b.binary_path
+        except Exception:
+            pass
+    return _BACKEND_BINARIES.get(bid, _BACKEND_BINARIES[get_llama_backend()])
 
 
 _PARALLEL_FILE = Path("/var/lib/swapctl/parallel_slots")

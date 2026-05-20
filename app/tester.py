@@ -49,16 +49,16 @@ def _load_benchmark() -> dict:
 
 
 _THINKING_BUDGET_BY_CATEGORY = {
-    "reasoning": 1024,
-    "math": 1024,
-    "code": 512,
+    "reasoning": 512,
+    "math": 512,
+    "code": 256,
     "coding": 0,
     "instruction": 0,
     "structured": 0,
     "czech": 0,
     "summarization": 0,
-    "sysadmin": 0,
-    "knowledge": 0,
+    "sysadmin": 128,
+    "knowledge": 128,
 }
 
 
@@ -500,13 +500,9 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
 
     def _answer_one(q: dict) -> tuple[dict, str, float]:
         max_tok = q.get("max_tokens", 100)
-        if thinking and effort == "auto":
-            budget = None
-            max_tok = max(max_tok + 512, 1024)
-        else:
-            budget = _THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 256) if thinking else None
-            if thinking and budget and budget > 0:
-                max_tok = max(max_tok + budget + 100, 512)
+        budget = _THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 128) if thinking else None
+        if thinking and budget and budget > 0:
+            max_tok = max(max_tok + budget + 100, 512)
         q_sys_prompt = sys_prompt
         if budget == 0 and "<|think|>" in q_sys_prompt:
             q_sys_prompt = q_sys_prompt.replace("<|think|>", "").strip()

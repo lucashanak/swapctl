@@ -165,3 +165,58 @@ def test_backup_and_restore(cfg_path: Path) -> None:
     assert "llama3-8b" not in swap_config.list_model_ids(cfg_path)
     swap_config.restore_backup(cfg_path)
     assert cfg_path.read_text() == original
+
+
+# ---------------------------------------------------------------------------
+# Test FIX 5: add_model with vulkan-mtp backend applies backend flags
+# ---------------------------------------------------------------------------
+
+def test_add_model_vulkan_mtp_injects_backend_flags(tmp_path: Path) -> None:
+    """add_model using the vulkan-mtp binary must inject --spec-type draft-mtp and --parallel 1."""
+    import os
+    import app.registry as rmod
+    from unittest.mock import patch
+    from app.backends_registry import BackendsRegistry
+
+    reg_path = tmp_path / "registry.json"
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text("models: {}\n")
+
+    # Seed backends into tmp registry
+    old_path_fn = rmod._path
+    rmod._path = lambda: reg_path
+    try:
+        br = BackendsRegistry()
+        # Wire br to use tmp registry
+        def _read():
+            return rmod.get_backends_raw()
+        def _write(data):
+            rmod.set_backends_raw(data)
+        br._read = _read
+        br._write = _write
+        br.seed_defaults_if_empty()
+    finally:
+        rmod._path = old_path_fn
+
+    mtp_binary = "/usr/local/bin/llama-server-vulkan-mtp"
+
+    with (
+        patch("app.swap_config.llama_server_binary", return_value=mtp_binary),
+        patch("app.registry._path", lambda: reg_path),
+    ):
+        swap_config.add_model(
+            model_id="mtp-model",
+            gguf_path=Path("/models/mtp-model/model.gguf"),
+            mmproj_path=None,
+            port=9150,
+            ctx_size=65536,
+            no_mmap=False,
+            path=cfg_path,
+        )
+
+    data = swap_config.load(cfg_path)
+    cmd = data["models"]["mtp-model"]["cmd"]
+
+    assert mtp_binary in cmd, f"Expected MTP binary in cmd: {cmd}"
+    assert "--spec-type draft-mtp" in cmd, f"Expected --spec-type draft-mtp in cmd: {cmd}"
+    assert "--parallel 1" in cmd, f"Expected --parallel 1 in cmd: {cmd}"

@@ -51,15 +51,23 @@
             </div>
           </div>
           <div class="flex items-center gap-3">
-            <div class="inline-flex rounded-md overflow-hidden border border-slate-600 text-xs">
-              <template x-for="b in ['hip','vulkan','rock']" :key="b">
-                <button type="button"
-                        @click="switchBackend(m, b)"
-                        :disabled="!enabled[m]"
-                        :class="backends[m] === b ? (b === 'hip' ? 'bg-emerald-600 text-white' : (b === 'vulkan' ? 'bg-violet-600 text-white' : 'bg-amber-600 text-white')) : 'bg-slate-700 hover:bg-slate-600 text-slate-300'"
-                        class="px-2 py-1 disabled:cursor-not-allowed"
-                        x-text="b === 'hip' ? 'HIP' : (b === 'vulkan' ? 'VK' : 'RK')"></button>
-              </template>
+            <div class="flex flex-col gap-1 text-xs">
+              <select
+                :disabled="!enabled[m]"
+                :value="backends[m]"
+                @change="switchBackend(m, $event.target.value)"
+                class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <template x-for="b in availableBackends(m)" :key="b.id">
+                  <option :value="b.id" :selected="backends[m] === b.id" x-text="b.label"></option>
+                </template>
+              </select>
+              <div
+                x-show="backendFlags(m).length > 0"
+                class="font-mono text-slate-400 text-xs truncate max-w-xs"
+                :title="backendFlags(m).join(' ')"
+                x-text="backendFlags(m).join(' ')"
+              ></div>
             </div>
             <div class="inline-flex rounded-md overflow-hidden border border-slate-600 text-xs">
               <template x-for="p in ['low','medium','high']" :key="p">
@@ -174,23 +182,53 @@ function swapSimple(cfg, registry, gpuTotalGb, gpuBudgetGb, backendsInit) {
     gpuTotalGb: gpuTotalGb,
     budgetGb: gpuBudgetGb || 70,
     maxGroupSize: 3,
+    // All backends from registry, loaded once on init
+    _allBackends: [],
+    // Per-model compatible backend lists (loaded on demand)
+    _modelBackends: {},
+    async init() {
+      const rootPath = document.querySelector('[name="keepWarm"]')?.closest('form')?.getAttribute('hx-post')?.replace('/api/swap-config', '') || '';
+      try {
+        const resp = await fetch(rootPath + '/api/backends');
+        if (resp.ok) this._allBackends = await resp.json();
+      } catch (e) {
+        // fall back to static list
+        this._allBackends = [
+          {id:'vulkan', label:'Vulkan', caps:['vulkan'], default_flags:[], required_flags:[], compatible:true},
+          {id:'hip',    label:'HIP',    caps:['hip'],    default_flags:[], required_flags:[], compatible:true},
+          {id:'rock',   label:'Rock',   caps:['rock'],   default_flags:[], required_flags:[], compatible:true},
+        ];
+      }
+    },
     sizeGb(m) { return sizes[m] || null; },
     enabledModels() { return this.models.filter(m => this.enabled[m]); },
+    availableBackends(model) {
+      // Return all backends; mark incompatible ones visually (they're still selectable as fallback)
+      return this._allBackends;
+    },
+    backendFlags(model) {
+      const bid = this.backends[model];
+      if (!bid) return [];
+      const b = this._allBackends.find(x => x.id === bid);
+      if (!b) return [];
+      return [...(b.required_flags || []), ...(b.default_flags || [])];
+    },
     switchBackend(model, backend) {
       if (this.backends[model] === backend) return;
+      const prev = this.backends[model];
       this.backends[model] = backend;
       const rootPath = document.querySelector('[name="keepWarm"]')?.closest('form')?.getAttribute('hx-post')?.replace('/api/swap-config', '') || '';
       fetch(rootPath + '/api/backend/' + encodeURIComponent(model), {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'backend=' + backend,
+        body: 'backend=' + encodeURIComponent(backend),
       }).then(r => {
         if (!r.ok) {
           r.json().then(d => alert('Backend switch failed: ' + (d.detail || r.statusText)));
-          this.backends[model] = backend === 'hip' ? 'vulkan' : 'hip';
+          this.backends[model] = prev;
         }
       }).catch(() => {
-        this.backends[model] = backend === 'hip' ? 'vulkan' : 'hip';
+        this.backends[model] = prev;
       });
     },
     comboSize(c) {

@@ -464,7 +464,7 @@ def installed(request: Request, refresh: int = 0):
 
 @router.get("/testing", response_class=HTMLResponse)
 def testing(request: Request, refresh: int = 0) -> HTMLResponse:
-    from .. import hf_client, registry, system, tester
+    from .. import hf_client, registry, swap_config, system, tester
     from .api import _list_draft_candidates
 
     records = registry.list_all()
@@ -482,28 +482,32 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
         except Exception:
             pass
 
+    # Detect current backend for each model from config
+    try:
+        all_backends = swap_config.detect_all_backends()
+    except Exception:
+        all_backends = {}
+
     models = []
     for r in records:
         tr = r.test_results or {}
         iq = tr.get("intelligence")
-        vk = tr.get("speed_vulkan")
-        hip = tr.get("speed_hip")
-        rock = tr.get("speed_rock")
         iq_dur = (iq.get("duration") if isinstance(iq, dict) else None) if iq else None
-        vk_tg = (vk.get("tg_speed", 0) if isinstance(vk, dict) else 0) or 0
-        vk_pp = (vk.get("pp_speed", 0) if isinstance(vk, dict) else 0) or 0
-        hip_tg = (hip.get("tg_speed", 0) if isinstance(hip, dict) else 0) or 0
-        hip_pp = (hip.get("pp_speed", 0) if isinstance(hip, dict) else 0) or 0
-        rock_tg = (rock.get("tg_speed", 0) if isinstance(rock, dict) else 0) or 0
-        rock_pp = (rock.get("pp_speed", 0) if isinstance(rock, dict) else 0) or 0
-        candidates = [(vk_tg, vk_pp, "vulkan"), (hip_tg, hip_pp, "rocm"), (rock_tg, rock_pp, "rock")]
-        candidates.sort(key=lambda c: c[0], reverse=True)
-        best_speed, best_pp, best_backend = candidates[0]
-        if best_speed == 0:
-            best_backend = ""
         spec = tr.get("speed_spec")
         latest = latest_map.get(r.repo_id) if r.repo_id else None
         installed_lm = r.hf_last_modified
+
+        current_backend_id = all_backends.get(r.model_id, "")
+        speed_history = list(r.speed_history or [])
+
+        # Compute best_speed for sorting/effectivity from speed_history (gen records)
+        best_speed = 0.0
+        for entry in speed_history:
+            if entry.get("test") == "gen":
+                tps = entry.get("gen_tps") or 0
+                if tps > best_speed:
+                    best_speed = tps
+
         models.append({
             "model_id": r.model_id,
             "repo_id": r.repo_id,
@@ -535,12 +539,9 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
                 latest and installed_lm and latest.isoformat() > installed_lm
             ),
             "loaded": r.model_id in loaded,
-            "speed_vulkan": vk,
-            "speed_hip": hip,
-            "speed_rock": rock,
+            "speed_history": speed_history,
+            "current_backend_id": current_backend_id,
             "best_speed": best_speed,
-            "best_pp": best_pp,
-            "best_backend": best_backend,
             "speed_spec": spec,
             "intelligence": iq,
             "iq_duration": iq_dur,
@@ -567,9 +568,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             pass
 
     def _test_best_speed(m):
-        vk = (m.get("speed_vulkan") or {}).get("tg_speed", 0) or 0
-        hip = (m.get("speed_hip") or {}).get("tg_speed", 0) or 0
-        return max(vk, hip)
+        return m.get("best_speed") or 0
 
     def _test_iq(m):
         iq = m.get("intelligence")
@@ -619,6 +618,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
         request,
         "testing.html",
         {"models": models, "jobs": jobs, "queue_len": tester.queue_length(),
+         "bench_state": __import__("app.benchmark", fromlist=["bench_state"]).bench_state(),
          "active_tab": "models", "iq_categories": iq_categories,
          "draft_candidates": draft_candidates,
          "npu_models": npu_installed, "npu_testing": npu_testing,

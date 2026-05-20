@@ -40,7 +40,9 @@ class ModelRecord:
     sampling_min_p: float = 0.05
     sampling_repeat_penalty: float = 1.1
     system_prompt: str = ""
+    model_tags: list[str] = field(default_factory=list)
     test_results: dict = field(default_factory=dict)
+    speed_history: list[dict] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
 
 
@@ -109,7 +111,9 @@ def _record_from_dict(model_id: str, d: dict) -> ModelRecord:
         draft_min=int(d.get("draft_min", 0) or 0),
         spec_default=bool(d.get("spec_default", False)),
         quant=str(d.get("quant", "") or ""),
+        model_tags=list(d.get("model_tags") or []),
         test_results=dict(d.get("test_results") or {}),
+        speed_history=list(d.get("speed_history") or []),
         events=list(d.get("events", []) or []),
     )
 
@@ -162,6 +166,19 @@ def recent_events(limit: int = 5, path: Path | None = None) -> list[dict]:
     return list(data.get("events", []))[-limit:]
 
 
+def get_backends_raw(path: Path | None = None) -> dict:
+    """Return the raw `backends` dict from registry.json, or {} if not present."""
+    data = _read_raw(path)
+    return dict(data.get("backends") or {})
+
+
+def set_backends_raw(data: dict, path: Path | None = None) -> None:
+    """Atomically overwrite the `backends` section of registry.json."""
+    raw = _read_raw(path)
+    raw["backends"] = dict(data)
+    _write_raw(raw, path)
+
+
 def get_socket_tdp_config(path: Path | None = None) -> dict:
     """Return persisted socket-TDP config or empty dict if never set."""
     data = _read_raw(path)
@@ -194,5 +211,6 @@ def set_socket_tdp_config(
 
 __all__ = [
     "ModelRecord", "get", "upsert", "delete", "list_all", "recent_events",
+    "get_backends_raw", "set_backends_raw",
     "get_socket_tdp_config", "set_socket_tdp_config",
 ]

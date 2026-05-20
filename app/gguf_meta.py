@@ -199,8 +199,42 @@ def estimate_vram(path: Path, context_sizes: list[int] | None = None, overhead_g
     }
 
 
+def read_tensor_names(path: Path) -> list[str]:
+    """Read tensor names from GGUF file header.
+
+    Stops after the tensor info section (does not read weight data).
+    Returns empty list on any failure.
+    """
+    names: list[str] = []
+    try:
+        with open(path, "rb") as f:
+            if f.read(4) != b"GGUF":
+                return names
+            _version = struct.unpack("<I", f.read(4))[0]
+            tensor_count = struct.unpack("<Q", f.read(8))[0]
+            kv_count = struct.unpack("<Q", f.read(8))[0]
+            # Skip all metadata key-value pairs
+            for _ in range(kv_count):
+                key_len = struct.unpack("<Q", f.read(8))[0]
+                f.read(key_len)  # key bytes
+                value_type = struct.unpack("<I", f.read(4))[0]
+                _read_value(f, value_type)
+            # Read tensor info: name, n_dims, dims[], type, offset
+            for _ in range(min(tensor_count, 100_000)):
+                name_len = struct.unpack("<Q", f.read(8))[0]
+                name = f.read(name_len).decode("utf-8", errors="replace")
+                names.append(name)
+                n_dims = struct.unpack("<I", f.read(4))[0]
+                f.read(8 * n_dims)  # dims (uint64 each)
+                f.read(4)           # ggml_type (uint32)
+                f.read(8)           # offset (uint64)
+    except (OSError, ValueError, struct.error):
+        pass
+    return names
+
+
 def read_model_tags(path: Path) -> list[str]:
-    """Return list of tag strings (e.g. 'moe', 'hybrid') derived from GGUF metadata."""
+    """Return list of tag strings (e.g. 'moe', 'hybrid', 'mtp_heads') derived from GGUF metadata."""
     meta = read_gguf_metadata(path, ("expert_count", "general.architecture"))
     tags: list[str] = []
     for k, v in meta.items():
@@ -212,4 +246,24 @@ def read_model_tags(path: Path) -> list[str]:
             if "hybrid" in v.lower():
                 tags.append("hybrid")
             break
+
+    # MTP heads detection — check tensor names for mtp.* pattern
+    # Fall back to filename heuristic if tensor read fails or returns nothing
+    try:
+        tensor_names = read_tensor_names(path)
+        has_mtp = any(
+            n.startswith("mtp") or ".mtp" in n
+            for n in tensor_names
+        )
+    except Exception:
+        has_mtp = False
+
+    if not has_mtp:
+        # Filename heuristic
+        stem = str(path.name)
+        has_mtp = "-mtp-" in stem.lower()
+
+    if has_mtp:
+        tags.append("mtp_heads")
+
     return tags

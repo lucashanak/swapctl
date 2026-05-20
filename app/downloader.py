@@ -288,6 +288,11 @@ async def _do_install(
                 hf_lm = hf_client.repo_last_modified(repo_id).isoformat()
             except DownloadError:
                 hf_lm = None
+            try:
+                from .gguf_meta import read_model_tags as _read_tags
+                _tags = _read_tags(gguf_path)
+            except Exception:
+                _tags = []
             record = registry.ModelRecord(
                 model_id=model_id,
                 repo_id=repo_id,
@@ -298,6 +303,7 @@ async def _do_install(
                 size_bytes=size_bytes,
                 ctx_size=ctx_size,
                 quant=_extract_quant(filename),
+                model_tags=_tags,
             )
             registry.upsert(record)
             registry_written = True

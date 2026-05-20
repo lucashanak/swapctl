@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% block title %}Benchmark — swapctl{% endblock %}
+{% block content %}
+<div x-data="{
+  selectedModel: '{{ prefill_model|default('', true) }}',
+  compatibleBackends: [],
+  selectedBackends: [],
+  mode: 'auto',
+  running: false,
+  results: [],
+  history: {},
+  errorMsg: '',
+  applyMsg: '',
+  showApply: false,
+  applyConfirmBackend: '',
+  applyConfirmOpen: false,
+
+  async fetchBackends(modelId) {
+    if (!modelId) { this.compatibleBackends = []; this.selectedBackends = []; this.results = []; this.history = {}; return; }
+    try {
+      const r = await fetch('{{ root_path }}/api/backends?model_id=' + encodeURIComponent(modelId));
+      const data = await r.json();
+      this.compatibleBackends = data;
+      this.selectedBackends = [];
+    } catch(e) {
+      this.errorMsg = 'Failed to load backends: ' + e;
+    }
+    /* Also load any persisted history so user sees prior bench results. */
+    try {
+      const hr = await fetch('{{ root_path }}/api/benchmark/history/' + encodeURIComponent(modelId));
+      if (hr.ok) {
+        const hd = await hr.json();
+        const hist = hd.history || [];
+        this.results = hist;
+        this.buildHistory(hist);
+        this.showApply = hist.some(r => r.test === 'gen' && r.gen_tps);
+      }
+    } catch(e) { /* non-fatal */ }
+  },
+
+  stage: '',
+
+  async runBenchmark() {
+    this.running = true;
+    this.results = [];
+    this.errorMsg = '';
+    this.applyMsg = '';
+    this.showApply = false;
+    this.stage = 'starting';
+    try {
+      const body = { model_id: this.selectedModel, mode: this.mode };
+      if (this.mode === 'manual') body.backend_ids = this.selectedBackends;
+      const r = await fetch('{{ root_path }}/api/benchmark/run', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({detail: r.statusText}));
+        this.errorMsg = err.detail || 'Benchmark failed';
+        this.running = false;
+        return;
+      }
+      /* Poll status until running=false */
+      while (true) {
+        await new Promise(res => setTimeout(res, 2000));
+        let s;
+        try {
+          const sr = await fetch('{{ root_path }}/api/benchmark/status');
+          s = await sr.json();
+        } catch(e) { continue; /* keep polling on transient net error */ }
+        this.stage = (s.current_backend ? s.current_backend + ' / ' : '') + (s.stage || '');
+        if (!s.running) {
+          if (s.last_error) {
+            this.errorMsg = 'Benchmark error: ' + s.last_error;
+          } else if (s.last_result) {
+            this.results = s.last_result.results || [];
+            this.buildHistory(this.results);
+            this.showApply = this.results.some(r => r.test === 'gen' && r.gen_tps);
+          }
+          break;
+        }
+      }
+    } catch(e) {
+      this.errorMsg = 'Network error: ' + e;
+    } finally {
+      this.running = false;
+      this.stage = '';
+    }
+  },
+
+  buildHistory(records) {
+    /* Group into { backend_id: { pp: [...], gen: [...] } } */
+    const h = {};
+    for (const r of records) {
+      if (!h[r.backend_id]) h[r.backend_id] = { pp: [], gen: [] };
+      if (r.test === 'pp') h[r.backend_id].pp.push(r);
+      else if (r.test === 'gen') h[r.backend_id].gen.push(r);
+    }
+    this.history = h;
+  },
+
+  latestGen(backendId) {
+    const records = (this.history[backendId] || {}).gen || [];
+    return records.length ? records[records.length - 1] : null;
+  },
+
+  latestPp(backendId) {
+    const records = (this.history[backendId] || {}).pp || [];
+    return records.length ? records[records.length - 1] : null;
+  },
+
+  backendIds() {
+    return Object.keys(this.history);
+  },
+
+  bestBackend() {
+    let best = null, bestTps = -1;
+    for (const bid of this.backendIds()) {
+      const r = this.latestGen(bid);
+      if (r && r.gen_tps && r.gen_tps > bestTps) {
+        bestTps = r.gen_tps;
+        best = bid;
+      }
+    }
+    return best;
+  },
+
+  async applyBest() {
+    this.applyConfirmOpen = false;
+    this.applyMsg = '';
+    try {
+      const r = await fetch('{{ root_path }}/api/benchmark/apply-best/' + encodeURIComponent(this.selectedModel), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({}),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        this.applyMsg = 'Error: ' + (data.detail || r.statusText);
+      } else {
+        this.applyMsg = 'Applied backend: ' + data.backend_id;
+      }
+    } catch(e) {
+      this.applyMsg = 'Network error: ' + e;
+    }
+  },
+
+  fmt(v, digits) {
+    return v != null ? parseFloat(v).toFixed(digits != null ? digits : 1) : '—';
+  },
+
+  fmtPct(v) {
+    return v != null ? parseFloat(v).toFixed(1) + '%' : '—';
+  },
+
+  fmtVram(v) {
+    return v != null ? v + ' MB' : '—';
+  },
+
+  async forceRelease() {
+    try {
+      const r = await fetch('{{ root_path }}/api/benchmark/force-release', {method: 'POST'});
+      const d = await r.json();
+      this.errorMsg = d.released ? 'Stale lock released — try again' : 'No lock was held';
+    } catch(e) {
+      this.errorMsg = 'Force release failed: ' + e;
+    }
+  },
+}" x-init="
+  if (selectedModel) fetchBackends(selectedModel);
+  {% if auto_trigger %}$nextTick(() => runBenchmark());{% endif %}
+">
+
+  <div class="flex items-center justify-between mb-2">
+    <h1 class="text-2xl font-semibold">Benchmark</h1>
+  </div>
+  <p class="text-sm text-slate-400 mb-6">PP + GEN speed tests across backends. Auto mode benchmarks Vulkan plus any spec-capable backend for this model.</p>
+
+  <!-- Error banner -->
+  <div x-show="errorMsg" x-cloak
+       class="mb-4 bg-red-900/60 border border-red-700 text-red-200 rounded-lg px-4 py-3 flex items-start gap-3">
+    <span class="flex-1 text-sm" x-text="errorMsg"></span>
+    <button x-show="errorMsg.includes('already running')"
+            @click="forceRelease()"
+            class="text-xs bg-red-800 hover:bg-red-700 text-red-100 px-2 py-1 rounded">Force release</button>
+    <button @click="errorMsg=''" class="text-red-300 hover:text-white text-lg leading-none">&times;</button>
+  </div>
+
+  <!-- Config card -->
+  <div class="bg-slate-800 rounded-lg shadow p-5 mb-6 space-y-5">
+
+    <!-- Model select -->
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-1">Model</label>
+      <select x-model="selectedModel"
+              @change="fetchBackends($event.target.value); results = []; history = {}; showApply = false;"
+              class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 w-full max-w-lg">
+        <option value="">— select a model —</option>
+        {% for m in models %}
+        <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Mode selector -->
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-2">Mode</label>
+      <div class="flex gap-3">
+        <label class="flex items-center gap-2 cursor-pointer bg-slate-900 border rounded-md px-3 py-2 hover:border-slate-500"
+               :class="mode === 'auto' ? 'border-sky-500 bg-sky-900/20' : 'border-slate-700'">
+          <input type="radio" value="auto" x-model="mode" class="accent-sky-500">
+          <span class="text-sm text-slate-200">Auto</span>
+          <span class="text-xs text-slate-400 ml-1">Vulkan + spec-capable backend</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer bg-slate-900 border rounded-md px-3 py-2 hover:border-slate-500"
+               :class="mode === 'manual' ? 'border-indigo-500 bg-indigo-900/20' : 'border-slate-700'">
+          <input type="radio" value="manual" x-model="mode" class="accent-indigo-500">
+          <span class="text-sm text-slate-200">Manual</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Backend checkboxes (manual only) -->
+    <div x-show="mode === 'manual' && compatibleBackends.length > 0">
+      <label class="block text-sm font-medium text-slate-300 mb-2">Backends</label>
+      <div class="flex flex-wrap gap-3">
+        <template x-for="b in compatibleBackends" :key="b.id">
+          <label class="flex items-center gap-2 cursor-pointer bg-slate-900 border border-slate-700 rounded-md px-3 py-2 hover:border-slate-500"
+                 :class="!b.compatible ? 'opacity-40 cursor-not-allowed' : ''">
+            <input type="checkbox"
+                   :value="b.id"
+                   :disabled="!b.compatible"
+                   x-model="selectedBackends"
+                   class="accent-sky-500 w-4 h-4">
+            <span class="text-sm text-slate-200" x-text="b.label"></span>
+            <span x-show="!b.compatible" class="text-xs text-slate-500 ml-1">(incompatible)</span>
+          </label>
+        </template>
+      </div>
+    </div>
+
+    <!-- Run button -->
+    <div class="flex items-center gap-4 pt-1">
+      <button @click="runBenchmark()"
+              :disabled="running || !selectedModel || (mode === 'manual' && selectedBackends.length === 0)"
+              class="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-md text-sm font-medium transition-colors">
+        <span x-show="!running">Run benchmark</span>
+        <span x-show="running" class="flex items-center gap-2">
+          <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          Running benchmark…
+        </span>
+      </button>
+      <span x-show="running" class="text-xs text-slate-400">PP + GEN tests per backend. May take 1–3 min each. Please wait.</span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div x-show="results.length > 0" x-cloak>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold">Results</h2>
+      <!-- Apply best button -->
+      <div x-show="showApply" class="flex items-center gap-3">
+        <span x-show="applyMsg" class="text-xs"
+              :class="applyMsg.startsWith('Error') ? 'text-red-400' : 'text-emerald-400'"
+              x-text="applyMsg"></span>
+        <button x-show="!applyConfirmOpen"
+                @click="applyConfirmBackend = bestBackend(); applyConfirmOpen = true"
+                class="px-3 py-1.5 text-sm bg-emerald-700 hover:bg-emerald-600 text-white rounded-md font-medium">
+          Apply best
+        </button>
+        <div x-show="applyConfirmOpen" class="flex items-center gap-2">
+          <span class="text-xs text-slate-300">Apply <span class="font-mono text-emerald-300" x-text="applyConfirmBackend"></span>?</span>
+          <button @click="applyBest()" class="px-2 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded">Yes</button>
+          <button @click="applyConfirmOpen = false" class="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">No</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-backend summary -->
+    <div class="bg-slate-800 rounded-lg shadow overflow-x-auto mb-6">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-900">
+          <tr>
+            <th class="px-4 py-2 text-left text-slate-400 font-medium">Backend</th>
+            <th class="px-4 py-2 text-right text-slate-400 font-medium">gen t/s</th>
+            <th class="px-4 py-2 text-right text-slate-400 font-medium">pp t/s</th>
+            <th class="px-4 py-2 text-right text-slate-400 font-medium">accept %</th>
+            <th class="px-4 py-2 text-right text-slate-400 font-medium">VRAM peak</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="bid in backendIds()" :key="bid">
+            <tr>
+              <td class="px-4 py-2 border-t border-slate-700 font-mono text-slate-200">
+                <span x-text="bid"></span>
+                <span x-show="bid === bestBackend()"
+                      class="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-emerald-900/60 text-emerald-300">best</span>
+              </td>
+              <td class="px-4 py-2 border-t border-slate-700 text-right text-emerald-300 font-medium"
+                  x-text="latestGen(bid) ? fmt(latestGen(bid).gen_tps) : '—'"></td>
+              <td class="px-4 py-2 border-t border-slate-700 text-right text-slate-300"
+                  x-text="latestPp(bid) ? fmt(latestPp(bid).pp_tps) : '—'"></td>
+              <td class="px-4 py-2 border-t border-slate-700 text-right text-slate-300"
+                  x-text="latestGen(bid) ? fmtPct(latestGen(bid).accept_pct) : '—'"></td>
+              <td class="px-4 py-2 border-t border-slate-700 text-right text-slate-400"
+                  x-text="(latestGen(bid) || latestPp(bid)) ? fmtVram((latestGen(bid) || latestPp(bid)).vram_peak_mb) : '—'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Per-backend history (collapsible) -->
+    <template x-for="bid in backendIds()" :key="'hist-' + bid">
+      <div class="mb-4" x-data="{ open: false }">
+        <button @click="open = !open"
+                class="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 mb-2">
+          <span x-text="open ? '▼' : '▶'"></span>
+          <span class="font-mono" x-text="bid"></span>
+          <span class="text-slate-500 text-xs">history</span>
+        </button>
+        <div x-show="open" x-cloak class="bg-slate-800/60 rounded-lg overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-900/50">
+              <tr>
+                <th class="px-3 py-1.5 text-left text-slate-400">test</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">gen t/s</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">pp t/s</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">accept %</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">VRAM MB</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">tokens</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">fingerprint</th>
+                <th class="px-3 py-1.5 text-right text-slate-400">tested at</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(r, i) in (history[bid] ? history[bid].pp.concat(history[bid].gen) : [])" :key="i">
+                <tr>
+                  <td class="px-3 py-1 border-t border-slate-700/50 font-mono text-slate-400" x-text="r.test"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-emerald-300 font-mono"
+                      x-text="r.gen_tps != null ? fmt(r.gen_tps) : '—'"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-slate-300 font-mono"
+                      x-text="r.pp_tps != null ? fmt(r.pp_tps) : '—'"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-slate-300"
+                      x-text="fmtPct(r.accept_pct)"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-slate-400"
+                      x-text="r.vram_peak_mb != null ? r.vram_peak_mb : '—'"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-slate-400"
+                      x-text="r.tokens || '—'"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-slate-500 font-mono text-[10px]"
+                      x-text="r.build_fingerprint || '—'"></td>
+                  <td class="px-3 py-1 border-t border-slate-700/50 text-right text-slate-500 text-[10px]"
+                      x-text="r.tested_at ? r.tested_at.slice(0,19).replace('T',' ') : '—'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+  </div>
+
+</div>
+{% endblock %}

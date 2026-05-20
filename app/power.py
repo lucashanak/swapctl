@@ -138,6 +138,27 @@ def set_cpu_boost(enabled: bool) -> str | None:
     return _write(_CPU_BOOST_PATH, "1" if enabled else "0")
 
 
+def set_cpu_max_freq(mhz: int) -> str | None:
+    """Set scaling_max_freq on every cpufreq policy. mhz in MHz."""
+    policies = sorted(Path("/sys/devices/system/cpu/cpufreq").glob("policy*"))
+    if not policies:
+        return "no cpufreq policies found"
+    try:
+        hw_max = int((policies[0] / "cpuinfo_max_freq").read_text().strip()) // 1000
+        hw_min = int((policies[0] / "cpuinfo_min_freq").read_text().strip()) // 1000
+    except (OSError, ValueError) as exc:
+        return f"cannot read hw freq range: {exc}"
+    if mhz < hw_min or mhz > hw_max:
+        return f"mhz {mhz} out of range [{hw_min}-{hw_max}]"
+    khz = str(mhz * 1000)
+    errors = []
+    for policy in policies:
+        err = _write(policy / "scaling_max_freq", khz)
+        if err:
+            errors.append(err)
+    return errors[0] if errors else None
+
+
 def get_cpu_freq() -> dict | None:
     p = Path("/sys/devices/system/cpu/cpu0/cpufreq")
     try:

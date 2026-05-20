@@ -330,7 +330,7 @@ def add_model(
         models = CommentedMap()
         data["models"] = models
     block = CommentedMap()
-    block["cmd"] = _build_cmd(
+    cmd = _build_cmd(
         gguf_path, mmproj_path, port, ctx_size, no_mmap,
         cache_type_k=cache_type_k, cache_type_v=cache_type_v,
         threads=threads, flash_attn=flash_attn, extra_args=extra_args,
@@ -341,6 +341,17 @@ def add_model(
         sampling_top_p=sampling_top_p, sampling_min_p=sampling_min_p,
         sampling_repeat_penalty=sampling_repeat_penalty,
     )
+    # Apply backend-specific flag injection (FIX 5: registry awareness in _build_cmd path)
+    try:
+        from .backends_registry import BackendsRegistry
+        _backend_id = _detect_backend(cmd)
+        _br = BackendsRegistry()
+        _backend_def = _br.get(_backend_id)
+        if _backend_def is not None:
+            cmd = _inject_backend_flags(cmd, _backend_def)
+    except Exception:
+        pass
+    block["cmd"] = cmd
     block["proxy"] = f"http://127.0.0.1:{port}"
     models[model_id] = block
     save(data, path)
@@ -818,21 +829,126 @@ def set_simple_config(payload: dict) -> None:
     save(data)
 
 
-_BINARY_RE = re.compile(r"(/usr/local/bin/llama-server(?:-(?:hip|vulkan|rock))?|/opt/llama\.cpp/build[^/]*/bin/llama-server)")
+_BINARY_RE = re.compile(r"(/usr/local/bin/llama-server[-\w]*|/opt/llama\.cpp/build[^/]*/bin/llama-server)")
 
 
-def _detect_backend(cmd: str) -> str:
-    if "llama-server-rock" in cmd or "build-rock" in cmd:
+def _binary_to_backend_id(binary_path: str) -> str:
+    """Map a binary basename to a registry backend id.
+
+    Falls back to simple basename → id heuristics when registry is unavailable.
+    """
+    import os as _os
+    basename = _os.path.basename(binary_path)
+    try:
+        from .backends_registry import BackendsRegistry
+        reg = BackendsRegistry()
+        for b in reg.list_all():
+            if _os.path.basename(b.binary_path) == basename:
+                return b.id
+    except Exception:
+        pass
+    # Fallback heuristics
+    if basename == "llama-server-rock":
         return "rock"
-    if "llama-server-vulkan" in cmd or "build-vulkan" in cmd:
+    if basename == "llama-server-vulkan":
         return "vulkan"
-    if "llama-server-hip" in cmd or "build/bin" in cmd:
+    if basename == "llama-server-hip":
         return "hip"
     return "unknown"
 
 
+def _detect_backend(cmd: str) -> str:
+    m = _BINARY_RE.search(cmd)
+    if m:
+        return _binary_to_backend_id(m.group(1))
+    if "build-rock" in cmd:
+        return "rock"
+    if "build-vulkan" in cmd:
+        return "vulkan"
+    if "build/bin" in cmd:
+        return "hip"
+    return "unknown"
+
+
+def _apply_backend_flags(cmd: str, backend) -> str:  # backend: BackendDef
+    """Apply a BackendDef's flag injection rules to cmd:
+    1. Strip tokens matching incompatible_flag_patterns (flag + value).
+    2. Apply required_flags (replace existing same-flag, else append).
+    3. Append default_flags only if flag name not already present.
+    """
+    # Step 1: strip incompatible patterns (each pattern may consume flag+value)
+    for pat_str in backend.incompatible_flag_patterns:
+        try:
+            pat = re.compile(pat_str)
+            # Find the flag name from the pattern prefix (e.g. --parallel)
+            flag_match = re.match(r"(--[\w-]+)", pat_str)
+            if flag_match:
+                flag_name = flag_match.group(1)
+                # Strip flag + its value token(s) by matching flag \s+ value
+                strip_re = re.compile(re.escape(flag_name) + r"\s+\S+")
+                # Only strip if the value matches the incompatible pattern
+                def _strip_if_match(m, pat=pat, strip_re=strip_re):
+                    return "" if pat.search(m.group(0)) else m.group(0)
+                cmd = strip_re.sub(_strip_if_match, cmd)
+        except re.error:
+            pass
+    cmd = re.sub(r"  +", " ", cmd).strip()
+
+    # Step 2: apply required_flags
+    for flag_str in backend.required_flags:
+        parts = flag_str.split(None, 1)
+        if not parts:
+            continue
+        flag_name = parts[0]
+        flag_val = parts[1] if len(parts) > 1 else None
+        existing_re = re.compile(re.escape(flag_name) + r"\s+\S+")
+        if existing_re.search(cmd):
+            if flag_val is not None:
+                cmd = existing_re.sub(f"{flag_name} {flag_val}", cmd, count=1)
+        else:
+            cmd = cmd + " " + flag_str
+    cmd = re.sub(r"  +", " ", cmd).strip()
+
+    # Step 3: append default_flags only if flag name absent (word-boundary check)
+    def _flag_present(cmd: str, flag_name: str) -> bool:
+        return bool(re.search(rf"(?:^|\s){re.escape(flag_name)}(?=\s|$)", cmd))
+
+    for flag_str in backend.default_flags:
+        parts = flag_str.split(None, 1)
+        if not parts:
+            continue
+        flag_name = parts[0]
+        if not _flag_present(cmd, flag_name):
+            cmd = cmd + " " + flag_str
+    cmd = re.sub(r"  +", " ", cmd).strip()
+
+    return cmd
+
+
+def _inject_backend_flags(cmd: str, backend) -> str:
+    """Apply a backend's flag injection rules to cmd (strips incompatible, applies required, appends defaults).
+
+    Thin wrapper around _apply_backend_flags that can be called from both
+    add_model (via _build_cmd path) and switch_model_backend, ensuring
+    consistent flag injection regardless of call site.
+    """
+    return _apply_backend_flags(cmd, backend)
+
+
+def _strip_all_backend_flags(cmd: str, backend) -> str:
+    """Remove all default_flags and required_flags injected by a backend from cmd."""
+    for flag_str in list(backend.required_flags) + list(backend.default_flags):
+        parts = flag_str.split(None, 1)
+        if not parts:
+            continue
+        flag_name = parts[0]
+        strip_re = re.compile(re.escape(flag_name) + r"\s+\S+")
+        cmd = strip_re.sub("", cmd)
+    return re.sub(r"  +", " ", cmd).strip()
+
+
 def detect_model_backend(model_id: str, path: Path | None = None) -> str:
-    """Detect which backend a model's cmd currently uses. Returns 'hip', 'vulkan', 'rock', or 'unknown'."""
+    """Detect which backend a model's cmd currently uses. Returns backend id or 'unknown'."""
     data = load(path)
     models = data.get("models") or {}
     if model_id not in models:
@@ -841,7 +957,10 @@ def detect_model_backend(model_id: str, path: Path | None = None) -> str:
 
 
 def detect_all_backends(path: Path | None = None) -> dict[str, str]:
-    """Return {model_id: backend} for all models."""
+    """Return {model_id: backend_id} for all models.
+
+    Uses binary basename → registry id mapping.
+    """
     data = load(path)
     models = data.get("models") or {}
     return {
@@ -850,21 +969,58 @@ def detect_all_backends(path: Path | None = None) -> dict[str, str]:
     }
 
 
-def switch_model_backend(model_id: str, backend: str, path: Path | None = None) -> None:
-    """Rewrite a single model's cmd to use the given backend binary."""
-    if backend not in ("hip", "vulkan", "rock"):
-        raise ConfigError(f"invalid backend: {backend!r}")
-    new_bin = _BACKEND_BINARIES[backend]
+def switch_model_backend(model_id: str, backend_id: str, path: Path | None = None) -> None:
+    """Rewrite a single model's cmd to use the given backend.
+
+    Accepts any backend_id known to BackendsRegistry (including 'vulkan-mtp').
+    For backwards compat also accepts the three legacy ids 'hip', 'vulkan', 'rock'.
+
+    Steps:
+    1. Resolve BackendDef from registry.
+    2. Detect current backend and strip its injected flags first.
+    3. Replace binary path.
+    4. Strip incompatible flags.
+    5. Apply required_flags (replace existing value or append).
+    6. Append missing default_flags.
+    """
+    from .backends_registry import BackendsRegistry, BackendDef
+    reg = BackendsRegistry()
+    backend = reg.get(backend_id)
+    if backend is None:
+        # Legacy fallback — accept 'hip', 'vulkan', 'rock' even if registry empty
+        if backend_id in _BACKEND_BINARIES:
+            backend = BackendDef(
+                id=backend_id,
+                binary_path=_BACKEND_BINARIES[backend_id],
+                label=backend_id,
+            )
+        else:
+            raise ConfigError(f"unknown backend: {backend_id!r}")
+
     data = load(path)
     models = data.get("models") or {}
     if model_id not in models:
         raise ConfigError(f"unknown model: {model_id}")
     block = models[model_id]
     cmd = block.get("cmd", "")
-    new_cmd, n = _BINARY_RE.subn(new_bin, cmd, count=1)
+
+    # Strip flags from the current backend before switching
+    current_id = _detect_backend(cmd)
+    if current_id != "unknown" and current_id != backend_id:
+        current_backend = reg.get(current_id)
+        if current_backend is not None:
+            cmd = _strip_all_backend_flags(cmd, current_backend)
+
+    # Replace binary
+    new_cmd, n = _BINARY_RE.subn(backend.binary_path, cmd, count=1)
     if n == 0:
         raise ConfigError(f"no llama-server binary found in cmd for {model_id!r}")
-    block["cmd"] = new_cmd
+    cmd = new_cmd
+
+    # Apply flag injection
+    cmd = _inject_backend_flags(cmd, backend)
+
+    block["cmd"] = cmd
     save(data, path)
 
 
@@ -896,23 +1052,17 @@ def update_parallel_slots(slots: int, path: Path | None = None) -> int:
 
 
 def switch_backend(backend: str, path: Path | None = None) -> int:
-    """Rewrite all model cmd strings to use the given backend binary. Returns count of models updated."""
-    set_llama_backend(backend)
-    new_bin = _BACKEND_BINARIES[backend]
-    data = load(path)
-    models = data.get("models") or {}
-    count = 0
-    for block in models.values():
-        if not isinstance(block, dict):
-            continue
-        cmd = block.get("cmd", "")
-        new_cmd, n = _BINARY_RE.subn(new_bin, cmd, count=1)
-        if n > 0 and new_cmd != cmd:
-            block["cmd"] = new_cmd
-            count += 1
-    if count > 0:
-        save(data, path)
-    return count
+    """DEPRECATED: global backend switch. Kept as a no-op stub so tester.py imports don't break.
+
+    Use switch_model_backend() for per-model backend switching instead.
+    Returns 0 without modifying any config.
+    """
+    import logging as _logging
+    _logging.getLogger("swapctl.swap_config").warning(
+        "switch_backend() is deprecated and is a no-op. "
+        "Use switch_model_backend(model_id, backend_id) instead."
+    )
+    return 0
 
 
 NPU_PORT_BASE = 9200
