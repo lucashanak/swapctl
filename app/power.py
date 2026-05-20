@@ -139,24 +139,29 @@ def set_cpu_boost(enabled: bool) -> str | None:
 
 
 def set_cpu_max_freq(mhz: int) -> str | None:
-    """Set scaling_max_freq on every cpufreq policy. mhz in MHz."""
-    policies = sorted(Path("/sys/devices/system/cpu/cpufreq").glob("policy*"))
-    if not policies:
-        return "no cpufreq policies found"
+    """Set scaling_max_freq across all host cpufreq policies via cpufreqctl SSH.
+
+    LXC AppArmor blocks /sys/devices/system/cpu/cpufreq writes from inside
+    the container, so we hop to the bare-metal pve2 host.
+    """
+    if not shutil.which("ssh"):
+        return "ssh client not installed"
     try:
-        hw_max = int((policies[0] / "cpuinfo_max_freq").read_text().strip()) // 1000
-        hw_min = int((policies[0] / "cpuinfo_min_freq").read_text().strip()) // 1000
-    except (OSError, ValueError) as exc:
-        return f"cannot read hw freq range: {exc}"
-    if mhz < hw_min or mhz > hw_max:
-        return f"mhz {mhz} out of range [{hw_min}-{hw_max}]"
-    khz = str(mhz * 1000)
-    errors = []
-    for policy in policies:
-        err = _write(policy / "scaling_max_freq", khz)
-        if err:
-            errors.append(err)
-    return errors[0] if errors else None
+        p = subprocess.run(
+            ["ssh", *_TDP_SSH_OPTS, _TDP_SSH_HOST, "cpufreqctl", "set-max-mhz", str(mhz)],
+            capture_output=True, text=True, timeout=6,
+        )
+    except subprocess.TimeoutExpired:
+        return f"ssh {_TDP_SSH_HOST} timeout"
+    except OSError as exc:
+        return str(exc)
+    try:
+        result = json.loads(p.stdout)
+    except json.JSONDecodeError:
+        return f"bad json from cpufreqctl: {p.stdout[:120]}"
+    if not result.get("ok"):
+        return result.get("error") or str(result.get("errors") or "cpufreqctl failed")
+    return None
 
 
 def get_cpu_freq() -> dict | None:
