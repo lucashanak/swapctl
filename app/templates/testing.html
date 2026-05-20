@@ -37,6 +37,19 @@
         </div>
       </div>
     {% endif %}
+    {% set _s = status.sensors or {} %}
+    {% if _s.cpu_clock_avg_mhz %}
+      <div class="flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-xs">
+        <span class="text-slate-400 w-7 sm:w-8">CPU</span>
+        <span class="font-mono text-slate-200">{{ _s.cpu_clock_avg_mhz }}<span class="text-slate-500">/{{ _s.cpu_clock_max_mhz }}</span> MHz</span>
+      </div>
+    {% endif %}
+    {% if _s.gpu_clock_mhz %}
+      <div class="flex items-center gap-1.5 sm:gap-2 mt-1 text-[10px] sm:text-xs">
+        <span class="text-slate-400 w-7 sm:w-8">iGPU</span>
+        <span class="font-mono text-slate-200">{{ _s.gpu_clock_mhz }} MHz</span>
+      </div>
+    {% endif %}
   </div>
 
   {% set s = status.sensors or {} %}
@@ -55,22 +68,16 @@
         <span class="font-mono {% if s.gpu_temp > 90 %}text-rose-400{% elif s.gpu_temp > 75 %}text-amber-300{% else %}text-sky-300{% endif %}">{{ s.gpu_temp }}°C</span>
       </div>
       {% endif %}
+      {% if s.nvme_temp %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">NVMe</span>
+        <span class="font-mono {% if s.nvme_temp > 70 %}text-rose-400{% elif s.nvme_temp > 55 %}text-amber-300{% else %}text-emerald-300{% endif %}">{{ s.nvme_temp }}°C</span>
+      </div>
+      {% endif %}
       {% if s.gpu_power_w %}
       <div class="flex justify-between">
         <span class="text-slate-400">GPU power</span>
         <span class="font-mono text-slate-200">{{ s.gpu_power_w }}W</span>
-      </div>
-      {% endif %}
-      {% if s.gpu_clock_mhz %}
-      <div class="flex justify-between">
-        <span class="text-slate-400">GPU clock</span>
-        <span class="font-mono text-slate-200">{{ s.gpu_clock_mhz }} MHz</span>
-      </div>
-      {% endif %}
-      {% if s.cpu_clock_avg_mhz %}
-      <div class="flex justify-between">
-        <span class="text-slate-400">CPU clock</span>
-        <span class="font-mono text-slate-200">{{ s.cpu_clock_avg_mhz }}<span class="text-slate-500">/{{ s.cpu_clock_max_mhz }}</span> MHz</span>
       </div>
       {% endif %}
       {% set _tdpa = (power.socket_tdp or {}).get('actual') or {} %}
@@ -79,12 +86,6 @@
       <div class="flex justify-between">
         <span class="text-slate-400">Pkg power</span>
         <span class="font-mono text-slate-200">{{ _tdpa.fast_value_w|round(0)|int }}<span class="text-slate-500">/{{ _tdpl.get('fast_w', '?')|round(0)|int if _tdpl.get('fast_w') else '?' }}</span> W</span>
-      </div>
-      {% endif %}
-      {% if s.nvme_temp %}
-      <div class="flex justify-between">
-        <span class="text-slate-400">NVMe</span>
-        <span class="font-mono {% if s.nvme_temp > 70 %}text-rose-400{% elif s.nvme_temp > 55 %}text-amber-300{% else %}text-emerald-300{% endif %}">{{ s.nvme_temp }}°C</span>
       </div>
       {% endif %}
     </div>
