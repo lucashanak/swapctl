@@ -293,10 +293,28 @@ def sensors() -> dict:
             except (OSError, ValueError):
                 pass
         elif name == "nvme":
-            try:
-                out["nvme_temp"] = round(int((d / "temp1_input").read_text().strip()) / 1000, 1)
-            except (OSError, ValueError):
-                pass
+            peak = out.get("nvme_temp") or 0
+            for i in range(1, 6):
+                f = d / f"temp{i}_input"
+                if not f.exists():
+                    break
+                try:
+                    t = round(int(f.read_text().strip()) / 1000, 1)
+                    if t > peak:
+                        peak = t
+                except (OSError, ValueError):
+                    continue
+            if peak:
+                out["nvme_temp"] = peak
+    cpu_freqs: list[int] = []
+    for p in Path("/sys/devices/system/cpu/").glob("cpu[0-9]*/cpufreq/scaling_cur_freq"):
+        try:
+            cpu_freqs.append(int(p.read_text().strip()) // 1000)
+        except (OSError, ValueError):
+            continue
+    if cpu_freqs:
+        out["cpu_clock_avg_mhz"] = sum(cpu_freqs) // len(cpu_freqs)
+        out["cpu_clock_max_mhz"] = max(cpu_freqs)
     return out
 
 

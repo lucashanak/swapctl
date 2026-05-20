@@ -1152,6 +1152,42 @@ def power_cpu_max_freq(request: Request, max_mhz: int = Form(...)):
     return JSONResponse({"ok": True, "max_mhz": max_mhz})
 
 
+@router.get("/power/dump", response_class=Response)
+def power_dump():
+    """Plain-text diagnostic dump of all power-related state on the host."""
+    import shutil, subprocess
+    if not shutil.which("ssh"):
+        return Response("ssh client unavailable in LXC", media_type="text/plain", status_code=500)
+    script = (
+        'echo "=== ryzenadj -i ==="; timeout 6 /usr/local/bin/ryzenadj -i 2>&1 | grep -vE "SMU_SERVICE|^$"; '
+        'echo; echo "=== cpufreq summary ==="; '
+        'echo "governor: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"; '
+        'echo "scaling_max_freq policy0 (kHz): $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq)"; '
+        'echo "cpuinfo_max_freq policy0 (kHz): $(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq)"; '
+        'echo "boost: $(cat /sys/devices/system/cpu/cpufreq/boost)"; '
+        'echo "driver: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver)"; '
+        'echo; echo "=== per-core current freq (MHz) ==="; '
+        'for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq; do cpu=$(echo $f | sed "s|.*/cpu\\([0-9]*\\)/.*|\\1|"); printf "cpu%s: %d\\n" $cpu $(($(cat $f) / 1000)); done | sort -V; '
+        'echo; echo "=== amdgpu pp_dpm_sclk ==="; cat /sys/class/drm/card0/device/pp_dpm_sclk; '
+        'echo; echo "=== amdgpu gpu_busy_percent ==="; cat /sys/class/drm/card0/device/gpu_busy_percent; '
+        'echo; echo "=== hwmon temps ==="; for h in /sys/class/hwmon/hwmon*; do n=$(cat $h/name 2>/dev/null); for f in $h/temp*_input; do [ -e "$f" ] && printf "%s %s: %s°C\\n" "$n" "$(basename $f)" "$(echo "scale=1; $(cat $f) / 1000" | bc)"; done; done; '
+        'echo; echo "=== amdgpu power/voltage ==="; '
+        'for h in /sys/class/hwmon/hwmon*; do n=$(cat $h/name 2>/dev/null); [ "$n" = "amdgpu" ] || continue; '
+        '  for f in $h/power*_input $h/power*_average; do [ -e "$f" ] && printf "  %s: %.2f W\\n" "$(basename $f)" "$(echo "scale=3; $(cat $f) / 1000000" | bc)"; done; '
+        '  for f in $h/in*_input; do [ -e "$f" ] && printf "  %s: %s mV\\n" "$(basename $f)" "$(cat $f)"; done; '
+        '  for f in $h/freq*_input; do [ -e "$f" ] && printf "  %s: %d MHz\\n" "$(basename $f)" "$(($(cat $f) / 1000000))"; done; done'
+    )
+    try:
+        p = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=4", "pve2-host", script],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return Response(f"dump failed: {exc}", media_type="text/plain", status_code=502)
+    body = p.stdout or p.stderr or "(empty)"
+    return Response(body, media_type="text/plain")
+
+
 @router.post("/power/socket-tdp")
 def power_socket_tdp(
     request: Request,

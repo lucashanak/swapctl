@@ -67,6 +67,20 @@
         <span class="font-mono text-slate-200">{{ s.gpu_clock_mhz }} MHz</span>
       </div>
       {% endif %}
+      {% if s.cpu_clock_avg_mhz %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">CPU clock</span>
+        <span class="font-mono text-slate-200">{{ s.cpu_clock_avg_mhz }}<span class="text-slate-500">/{{ s.cpu_clock_max_mhz }}</span> MHz</span>
+      </div>
+      {% endif %}
+      {% set _tdpa = (power.socket_tdp or {}).get('actual') or {} %}
+      {% set _tdpl = (power.socket_tdp or {}).get('limits') or {} %}
+      {% if _tdpa.get('fast_value_w') is not none %}
+      <div class="flex justify-between">
+        <span class="text-slate-400">Pkg power</span>
+        <span class="font-mono text-slate-200">{{ _tdpa.fast_value_w|round(0)|int }}<span class="text-slate-500">/{{ _tdpl.get('fast_w', '?')|round(0)|int if _tdpl.get('fast_w') else '?' }}</span> W</span>
+      </div>
+      {% endif %}
       {% if s.nvme_temp %}
       <div class="flex justify-between">
         <span class="text-slate-400">NVMe</span>
@@ -146,50 +160,10 @@
           class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-500 text-sm text-slate-300 hover:text-slate-100 transition-colors">
     <svg :class="powerOpen && 'rotate-90'" class="w-3.5 h-3.5 transition-transform text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
     <span class="text-[10px] sm:text-xs uppercase tracking-wide">Power Controls</span>
-    <span class="ml-auto text-[10px] text-slate-500">GPU DPM: {{ power.gpu_dpm or '?' }} · CPU: {{ power.cpu_governor or '?' }} · Boost: {% if power.cpu_boost %}on{% else %}off{% endif %}{% if power.socket_tdp and power.socket_tdp.available %} · Socket: STAPM {{ power.socket_tdp.limits.stapm_w|round(0)|int }}W / Fast {{ power.socket_tdp.limits.fast_w|round(0)|int }}W{% endif %}</span>
+    <span class="ml-auto text-[10px] text-slate-500">CPU: {{ power.cpu_governor or '?' }} · Boost: {% if power.cpu_boost %}on{% else %}off{% endif %}{% if power.socket_tdp and power.socket_tdp.available %} · Socket: STAPM {{ power.socket_tdp.limits.stapm_w|round(0)|int }}W / Fast {{ power.socket_tdp.limits.fast_w|round(0)|int }}W{% endif %}</span>
   </button>
-  <div x-show="powerOpen" x-cloak class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
-
-    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
-      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">GPU DPM Level</div>
-      <form hx-post="{{ root_path }}/api/power/gpu-dpm" hx-swap="none" class="flex gap-1.5 flex-wrap">
-        {% set dpm = power.gpu_dpm or 'auto' %}
-        {% for level in ['auto', 'low', 'manual'] %}
-        <label class="flex items-center">
-          <input type="radio" name="level" value="{{ level }}" {% if dpm == level %}checked{% endif %}
-                 class="hidden peer">
-          <span class="px-2 py-1 text-[10px] rounded cursor-pointer
-            peer-checked:bg-sky-700 peer-checked:text-white
-            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
-            min-h-[28px] flex items-center">{{ level.replace('profile_', '') }}</span>
-        </label>
-        {% endfor %}
-        <button type="submit" class="px-2 py-1 text-[10px] rounded bg-sky-900 hover:bg-sky-800 text-sky-200 min-h-[28px]">Apply</button>
-      </form>
-    </div>
-
-    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
-      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">GPU Clock (MHz)</div>
-      {% set clk = power.gpu_clocks or {} %}
-      <form hx-post="{{ root_path }}/api/power/gpu-clocks" hx-swap="none" class="space-y-1.5">
-        <div class="flex gap-2 items-center">
-          <label class="text-[10px] text-slate-400 w-7">Min</label>
-          <input type="number" name="min_mhz" value="{{ clk.current_min or 600 }}" min="{{ clk.range_min or 600 }}" max="{{ clk.range_max or 2900 }}" step="100"
-                 class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono w-20">
-        </div>
-        <div class="flex gap-2 items-center">
-          <label class="text-[10px] text-slate-400 w-7">Max</label>
-          <input type="number" name="max_mhz" value="{{ clk.current_max or 2900 }}" min="{{ clk.range_min or 600 }}" max="{{ clk.range_max or 2900 }}" step="100"
-                 class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono w-20">
-        </div>
-        <div class="flex gap-1.5">
-          <button type="submit" class="px-2 py-1 text-[10px] rounded bg-sky-900 hover:bg-sky-800 text-sky-200 min-h-[28px]">Set</button>
-          <button type="button" hx-post="{{ root_path }}/api/power/gpu-clocks-reset" hx-swap="none"
-                  class="px-2 py-1 text-[10px] rounded bg-slate-700 hover:bg-slate-600 text-slate-300 min-h-[28px]">Reset</button>
-        </div>
-        <div class="text-[9px] text-slate-500">Range: {{ clk.range_min or 600 }}–{{ clk.range_max or 2900 }} MHz</div>
-      </form>
-    </div>
+  <div x-show="powerOpen" x-cloak>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
 
     <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
       <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">CPU Governor</div>
@@ -289,6 +263,17 @@
       {% endif %}
     </div>
 
+  </div>
+
+  <div x-data="{ dumpOpen: false, dump: null, loading: false }" class="mt-3">
+    <button @click="dumpOpen = !dumpOpen; if (dumpOpen && !dump) { loading = true; fetch('{{ root_path }}/api/power/dump').then(r => r.text()).then(t => { dump = t; loading = false }) }"
+            class="w-full flex items-center gap-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 hover:border-slate-500 text-[11px] text-slate-300">
+      <svg :class="dumpOpen && 'rotate-90'" class="w-3 h-3 transition-transform text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
+      <span>Load all values (diagnostic dump)</span>
+      <span x-show="loading" class="ml-auto text-amber-300">loading…</span>
+    </button>
+    <pre x-show="dumpOpen && dump" x-cloak x-text="dump"
+         class="mt-2 p-3 bg-slate-950 border border-slate-800 rounded text-[10px] font-mono text-slate-300 whitespace-pre-wrap overflow-x-auto max-h-96"></pre>
   </div>
 </div>
 {% endif %}
