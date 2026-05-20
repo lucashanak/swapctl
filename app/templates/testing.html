@@ -74,12 +74,6 @@
         <span class="font-mono {% if s.nvme_temp > 70 %}text-rose-400{% elif s.nvme_temp > 55 %}text-amber-300{% else %}text-emerald-300{% endif %}">{{ s.nvme_temp }}°C</span>
       </div>
       {% endif %}
-      {% if s.gpu_power_w %}
-      <div class="flex justify-between">
-        <span class="text-slate-400">GPU power</span>
-        <span class="font-mono text-slate-200">{{ s.gpu_power_w }}W</span>
-      </div>
-      {% endif %}
       {% set _tdpa = (power.socket_tdp or {}).get('actual') or {} %}
       {% set _tdpl = (power.socket_tdp or {}).get('limits') or {} %}
       {% if _tdpa.get('fast_value_w') is not none %}
