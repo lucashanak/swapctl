@@ -116,15 +116,29 @@ def get_cpu_governor() -> str | None:
     return _read(p)
 
 
+def _cpufreqctl(*args: str) -> dict:
+    if not shutil.which("ssh"):
+        return {"ok": False, "error": "ssh client not installed"}
+    try:
+        p = subprocess.run(
+            ["ssh", *_TDP_SSH_OPTS, _TDP_SSH_HOST, "cpufreqctl", *args],
+            capture_output=True, text=True, timeout=6,
+        )
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": f"ssh {_TDP_SSH_HOST} timeout"}
+    except OSError as exc:
+        return {"ok": False, "error": str(exc)}
+    try:
+        return json.loads(p.stdout)
+    except json.JSONDecodeError:
+        return {"ok": False, "error": f"bad json from cpufreqctl: {p.stdout[:120]}"}
+
+
 def set_cpu_governor(gov: str) -> str | None:
     if gov not in GOVERNORS:
         return f"invalid governor: {gov}"
-    errors = []
-    for policy in sorted(Path("/sys/devices/system/cpu/cpufreq").glob("policy*")):
-        err = _write(policy / "scaling_governor", gov)
-        if err:
-            errors.append(err)
-    return errors[0] if errors else None
+    result = _cpufreqctl("set-governor", gov)
+    return None if result.get("ok") else (result.get("error") or str(result.get("errors") or "cpufreqctl failed"))
 
 
 def get_cpu_boost() -> bool | None:
@@ -135,7 +149,8 @@ def get_cpu_boost() -> bool | None:
 
 
 def set_cpu_boost(enabled: bool) -> str | None:
-    return _write(_CPU_BOOST_PATH, "1" if enabled else "0")
+    result = _cpufreqctl("set-boost", "1" if enabled else "0")
+    return None if result.get("ok") else (result.get("error") or "cpufreqctl failed")
 
 
 def set_cpu_max_freq(mhz: int) -> str | None:
@@ -144,24 +159,8 @@ def set_cpu_max_freq(mhz: int) -> str | None:
     LXC AppArmor blocks /sys/devices/system/cpu/cpufreq writes from inside
     the container, so we hop to the bare-metal pve2 host.
     """
-    if not shutil.which("ssh"):
-        return "ssh client not installed"
-    try:
-        p = subprocess.run(
-            ["ssh", *_TDP_SSH_OPTS, _TDP_SSH_HOST, "cpufreqctl", "set-max-mhz", str(mhz)],
-            capture_output=True, text=True, timeout=6,
-        )
-    except subprocess.TimeoutExpired:
-        return f"ssh {_TDP_SSH_HOST} timeout"
-    except OSError as exc:
-        return str(exc)
-    try:
-        result = json.loads(p.stdout)
-    except json.JSONDecodeError:
-        return f"bad json from cpufreqctl: {p.stdout[:120]}"
-    if not result.get("ok"):
-        return result.get("error") or str(result.get("errors") or "cpufreqctl failed")
-    return None
+    result = _cpufreqctl("set-max-mhz", str(mhz))
+    return None if result.get("ok") else (result.get("error") or str(result.get("errors") or "cpufreqctl failed"))
 
 
 def get_cpu_freq() -> dict | None:
