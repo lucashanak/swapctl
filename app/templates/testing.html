@@ -190,33 +190,10 @@
         </select>
         <button type="submit" class="px-1.5 py-0.5 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200">Set</button>
       </form>
+      <div class="text-[9px] text-slate-500 mt-1">Boost {% if power.cpu_boost %}<span class="text-emerald-400">on</span>{% else %}<span class="text-amber-400">off</span>{% endif %} (auto with max=hw_max)</div>
       {% endif %}
     </div>
 
-    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
-      <div class="text-[10px] uppercase text-slate-400 tracking-wide mb-2">CPU Boost</div>
-      <form hx-post="{{ root_path }}/api/power/cpu-boost" hx-swap="none" class="flex gap-1.5">
-        {% set boost = power.cpu_boost %}
-        <label class="flex items-center">
-          <input type="radio" name="enabled" value="1" {% if boost %}checked{% endif %} class="hidden peer">
-          <span class="px-2.5 py-1 text-[10px] rounded cursor-pointer
-            peer-checked:bg-emerald-700 peer-checked:text-white
-            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
-            min-h-[28px] flex items-center">On</span>
-        </label>
-        <label class="flex items-center">
-          <input type="radio" name="enabled" value="0" {% if not boost %}checked{% endif %} class="hidden peer">
-          <span class="px-2.5 py-1 text-[10px] rounded cursor-pointer
-            peer-checked:bg-amber-700 peer-checked:text-white
-            bg-slate-900 text-slate-400 hover:bg-slate-700 hover:text-slate-200
-            min-h-[28px] flex items-center">Off</span>
-        </label>
-        <button type="submit" class="px-2 py-1 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px]">Apply</button>
-      </form>
-      {% if boost is not none %}
-      <div class="text-[9px] text-slate-500 mt-2">Boost {% if boost %}enabled{% else %}disabled{% endif %}</div>
-      {% endif %}
-    </div>
 
     {% set tdp = power.socket_tdp or {} %}
     {% set tdp_cfg = socket_tdp_config or {} %}
