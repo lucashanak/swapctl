@@ -208,12 +208,17 @@
         <button type="submit" class="px-2 py-1 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200 min-h-[28px]">Apply</button>
       </form>
       {% if power.cpu_freq %}
+      {% set hw_max = power.cpu_freq.hw_max_mhz %}
+      {% set cur = power.cpu_freq.max_mhz %}
+      {% set ladder = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000] %}
       <form hx-post="{{ root_path }}/api/power/cpu-max-freq" hx-swap="none" class="flex gap-1.5 items-center mt-2">
         <label class="text-[10px] text-slate-400">Max</label>
-        <input type="number" name="max_mhz" value="{{ power.cpu_freq.max_mhz }}"
-               min="{{ power.cpu_freq.hw_min_mhz }}" max="{{ power.cpu_freq.hw_max_mhz }}" step="100"
-               class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] font-mono">
-        <span class="text-[9px] text-slate-500">MHz / hw {{ power.cpu_freq.hw_max_mhz }}</span>
+        <select name="max_mhz" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] font-mono">
+          {% for f in ladder if f <= hw_max %}
+          <option value="{{ f }}" {% if cur == f %}selected{% endif %}>{{ f }} MHz</option>
+          {% endfor %}
+          <option value="{{ hw_max }}" {% if cur == hw_max %}selected{% endif %}>{{ hw_max }} MHz (hw max)</option>
+        </select>
         <button type="submit" class="px-1.5 py-0.5 text-[10px] rounded bg-emerald-900 hover:bg-emerald-800 text-emerald-200">Set</button>
       </form>
       {% endif %}
