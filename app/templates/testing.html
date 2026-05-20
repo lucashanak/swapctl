@@ -369,7 +369,8 @@
 {% endif %}
 <div id="testing-live">
 
-<div class="bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide" id="test-table" x-data="sortTestTable()">
+<div class="bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide" id="test-table"
+     x-data="sortTestTable()" :class="showSmall && 'show-small'">
   {% if models %}
   <table class="w-full text-xs">
     <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
@@ -405,7 +406,7 @@
           data-iqdur="{{ m.iq_duration or 0 }}"
           data-vram="{{ m.vram_mb or 0 }}"
           data-eff="{{ eff }}"
-          {% if is_small %}x-show="showSmall" x-cloak{% endif %}
+          {% if is_small %}class="small-model"{% endif %}
           x-data="{ editOpen: false, confirmRemove: false, delOpen: false, detailOpen: false, repoInput: '{{ m.repo_id or '' }}' }">
         <td class="px-2 sm:px-3 py-1.5">
           <div class="font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} truncate max-w-[120px] sm:max-w-none" title="{{ m.model_id }}">{{ m.model_id }}</div>
@@ -930,12 +931,11 @@ document.body.addEventListener('htmx:beforeSwap', function(e) {
 });
 function sortTestTable() {
   const KEY = 'swapctl_sort_models';
-  const SMALL_KEY = 'swapctl_show_small';
   const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
   return {
     col: saved?.col || 'eff',
     asc: saved?.asc ?? false,
-    showSmall: localStorage.getItem(SMALL_KEY) === '1',
+    showSmall: false,
     indicator(c) { return this.col === c ? (this.asc ? '▲' : '▼') : ''; },
     _apply() {
       const tbody = this.$refs.tbody;
@@ -961,7 +961,6 @@ function sortTestTable() {
     },
     init() {
       this._apply();
-      this.$watch('showSmall', v => localStorage.setItem(SMALL_KEY, v ? '1' : '0'));
       document.body.addEventListener('htmx:afterSwap', () => this.$nextTick(() => this._apply()));
     }
   };

@@ -13,6 +13,8 @@
     .htmx-indicator { opacity: 0; transition: opacity 150ms ease-in; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     .scrollbar-hide::-webkit-scrollbar { display: none; }
+    tr.small-model { display: none; }
+    .show-small tr.small-model { display: table-row; }
     @media (max-width: 639px) {
       .mobile-card td { display: block; padding: 2px 0; }
       .mobile-card td:before { content: attr(data-label); font-size: 10px; color: #94a3b8; text-transform: uppercase; display: block; }
