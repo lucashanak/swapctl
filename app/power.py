@@ -165,12 +165,15 @@ def set_cpu_max_freq(mhz: int) -> str | None:
 
 def get_cpu_freq() -> dict | None:
     p = Path("/sys/devices/system/cpu/cpu0/cpufreq")
+    hw_max_file = p / "amd_pstate_max_freq"
+    if not hw_max_file.exists():
+        hw_max_file = p / "cpuinfo_max_freq"
     try:
         return {
             "min_mhz": int(_read(p / "scaling_min_freq") or 0) // 1000,
             "max_mhz": int(_read(p / "scaling_max_freq") or 0) // 1000,
             "hw_min_mhz": int(_read(p / "cpuinfo_min_freq") or 0) // 1000,
-            "hw_max_mhz": int(_read(p / "cpuinfo_max_freq") or 0) // 1000,
+            "hw_max_mhz": int(_read(hw_max_file) or 0) // 1000,
         }
     except (ValueError, TypeError):
         return None
