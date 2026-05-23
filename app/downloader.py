@@ -308,6 +308,11 @@ async def _do_install(
             registry.upsert(record)
             registry_written = True
             system.restart_swap()
+            try:
+                from . import background
+                background.invalidate_now()
+            except Exception:
+                pass
         _set(job_id, status="done")
     except hf_client.DownloadCancelled as exc:
         signal = str(exc)

@@ -196,9 +196,11 @@ def _build_cmd(
     sampling_top_p: float = 0.95,
     sampling_min_p: float = 0.05,
     sampling_repeat_penalty: float = 1.1,
+    binary_path: str | None = None,
+    parallel: int | None = None,
 ) -> str:
     parts = [
-        llama_server_binary(),
+        binary_path or llama_server_binary(),
         f"--model {gguf_path}",
         f"--port {port}",
         "-ngl 999",
@@ -206,7 +208,7 @@ def _build_cmd(
         f"--cache-type-v {cache_type_v}",
         "--jinja",
         f"--ctx-size {ctx_size}",
-        f"--parallel {get_parallel_slots()}",
+        f"--parallel {parallel if parallel else get_parallel_slots()}",
     ]
     if flash_attn:
         parts.append("--flash-attn on")
@@ -1004,21 +1006,70 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
     block = models[model_id]
     cmd = block.get("cmd", "")
 
-    # Strip flags from the current backend before switching
-    current_id = _detect_backend(cmd)
-    if current_id != "unknown" and current_id != backend_id:
-        current_backend = reg.get(current_id)
-        if current_backend is not None:
-            cmd = _strip_all_backend_flags(cmd, current_backend)
+    # Preserve existing port (don't reallocate)
+    port_m = _PORT_RE.search(cmd)
+    port = int(port_m.group(1)) if port_m else next_free_port(path=path)
 
-    # Replace binary
-    new_cmd, n = _BINARY_RE.subn(backend.binary_path, cmd, count=1)
-    if n == 0:
-        raise ConfigError(f"no llama-server binary found in cmd for {model_id!r}")
-    cmd = new_cmd
+    # Try to rebuild from registry — clean, no cruft
+    try:
+        from . import registry as _reg
+        rec = _reg.get(model_id)
+    except Exception:
+        rec = None
 
-    # Apply flag injection
-    cmd = _inject_backend_flags(cmd, backend)
+    if rec is not None and rec.filename:
+        model_dir = settings.models_dir / model_id
+        gguf_path = model_dir / rec.filename
+        mmproj_path = (model_dir / rec.mmproj) if rec.mmproj else None
+        # Resolve draft GGUF path from draft_model id
+        draft_path_str = ""
+        if rec.draft_model:
+            draft_dir = settings.models_dir / rec.draft_model
+            if draft_dir.is_dir():
+                draft_gguf = next(
+                    (p for p in sorted(draft_dir.iterdir())
+                     if p.suffix == ".gguf" and p.is_file()),
+                    None,
+                )
+                if draft_gguf is not None:
+                    draft_path_str = str(draft_gguf)
+        # Heuristic: keep --no-mmap if it was in the original cmd
+        no_mmap = "--no-mmap" in cmd
+        new_cmd = _build_cmd(
+            gguf_path=gguf_path,
+            mmproj_path=mmproj_path,
+            port=port,
+            ctx_size=rec.ctx_size or settings.ctx_default,
+            no_mmap=no_mmap,
+            cache_type_k=rec.cache_type_k or "q8_0",
+            cache_type_v=rec.cache_type_v or "q8_0",
+            threads=rec.threads or 0,
+            flash_attn=rec.flash_attn if rec.flash_attn is not None else True,
+            extra_args=rec.extra_args or "",
+            reasoning_format=rec.reasoning_format or "",
+            draft_model=draft_path_str,
+            draft_max=rec.draft_max or 0,
+            draft_min=rec.draft_min or 0,
+            spec_default=rec.spec_default or False,
+            sampling_temp=rec.sampling_temp if rec.sampling_temp is not None else 0.8,
+            sampling_top_k=rec.sampling_top_k if rec.sampling_top_k is not None else 40,
+            sampling_top_p=rec.sampling_top_p if rec.sampling_top_p is not None else 0.95,
+            sampling_min_p=rec.sampling_min_p if rec.sampling_min_p is not None else 0.05,
+            sampling_repeat_penalty=rec.sampling_repeat_penalty if rec.sampling_repeat_penalty is not None else 1.1,
+            binary_path=backend.binary_path,
+        )
+        cmd = _inject_backend_flags(new_cmd, backend)
+    else:
+        # Fallback to in-place patching when registry record is missing
+        current_id = _detect_backend(cmd)
+        if current_id != "unknown" and current_id != backend_id:
+            current_backend = reg.get(current_id)
+            if current_backend is not None:
+                cmd = _strip_all_backend_flags(cmd, current_backend)
+        new_cmd, n = _BINARY_RE.subn(backend.binary_path, cmd, count=1)
+        if n == 0:
+            raise ConfigError(f"no llama-server binary found in cmd for {model_id!r}")
+        cmd = _inject_backend_flags(new_cmd, backend)
 
     block["cmd"] = cmd
     save(data, path)

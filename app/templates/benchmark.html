@@ -110,6 +110,33 @@
     return records.length ? records[records.length - 1] : null;
   },
 
+  bestGen(backendId) {
+    const records = (this.history[backendId] || {}).gen || [];
+    let best = null;
+    for (const r of records) {
+      if (r.gen_tps != null && (best === null || r.gen_tps > best.gen_tps)) best = r;
+    }
+    return best;
+  },
+
+  bestPp(backendId) {
+    const records = (this.history[backendId] || {}).pp || [];
+    let best = null;
+    for (const r of records) {
+      if (r.pp_tps != null && (best === null || r.pp_tps > best.pp_tps)) best = r;
+    }
+    return best;
+  },
+
+  bestAccept(backendId) {
+    const records = (this.history[backendId] || {}).gen || [];
+    let best = null;
+    for (const r of records) {
+      if (r.accept_pct != null && (best === null || r.accept_pct > best.accept_pct)) best = r;
+    }
+    return best;
+  },
+
   backendIds() {
     return Object.keys(this.history);
   },
@@ -117,7 +144,7 @@
   bestBackend() {
     let best = null, bestTps = -1;
     for (const bid of this.backendIds()) {
-      const r = this.latestGen(bid);
+      const r = this.bestGen(bid);
       if (r && r.gen_tps && r.gen_tps > bestTps) {
         bestTps = r.gen_tps;
         best = bid;
@@ -224,17 +251,32 @@
     <!-- Backend checkboxes (manual only) -->
     <div x-show="mode === 'manual' && compatibleBackends.length > 0">
       <label class="block text-sm font-medium text-slate-300 mb-2">Backends</label>
-      <div class="flex flex-wrap gap-3">
+      <div class="space-y-1.5">
         <template x-for="b in compatibleBackends" :key="b.id">
-          <label class="flex items-center gap-2 cursor-pointer bg-slate-900 border border-slate-700 rounded-md px-3 py-2 hover:border-slate-500"
+          <label class="flex items-start gap-3 cursor-pointer bg-slate-900 border border-slate-700 rounded-md px-3 py-2 hover:border-slate-500"
                  :class="!b.compatible ? 'opacity-40 cursor-not-allowed' : ''">
             <input type="checkbox"
                    :value="b.id"
                    :disabled="!b.compatible"
                    x-model="selectedBackends"
-                   class="accent-sky-500 w-4 h-4">
-            <span class="text-sm text-slate-200" x-text="b.label"></span>
-            <span x-show="!b.compatible" class="text-xs text-slate-500 ml-1">(incompatible)</span>
+                   class="accent-sky-500 w-4 h-4 mt-0.5 shrink-0">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="text-sm text-slate-100 font-medium" x-text="b.label"></span>
+                <span class="text-[10px] font-mono text-slate-500" x-text="b.id"></span>
+                <template x-if="b.caps && b.caps.length">
+                  <span class="flex gap-1">
+                    <template x-for="c in b.caps" :key="c">
+                      <span class="text-[9px] px-1 py-0.5 rounded bg-slate-700/70 text-slate-300 font-mono" x-text="c"></span>
+                    </template>
+                  </span>
+                </template>
+                <span x-show="!b.compatible" class="text-[10px] text-rose-400 ml-auto">incompatible</span>
+              </div>
+              <div x-show="b.version_hint" class="text-[10px] text-slate-500 mt-0.5" x-text="b.version_hint"></div>
+              <div x-show="b.default_flags && b.default_flags.length" class="text-[10px] text-slate-600 font-mono mt-0.5 truncate"
+                   x-text="(b.default_flags || []).join(' ')"></div>
+            </div>
           </label>
         </template>
       </div>
@@ -301,13 +343,13 @@
                       class="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-emerald-900/60 text-emerald-300">best</span>
               </td>
               <td class="px-4 py-2 border-t border-slate-700 text-right text-emerald-300 font-medium"
-                  x-text="latestGen(bid) ? fmt(latestGen(bid).gen_tps) : '—'"></td>
+                  x-text="bestGen(bid) ? fmt(bestGen(bid).gen_tps) : '—'"></td>
               <td class="px-4 py-2 border-t border-slate-700 text-right text-slate-300"
-                  x-text="latestPp(bid) ? fmt(latestPp(bid).pp_tps) : '—'"></td>
+                  x-text="bestPp(bid) ? fmt(bestPp(bid).pp_tps) : '—'"></td>
               <td class="px-4 py-2 border-t border-slate-700 text-right text-slate-300"
-                  x-text="latestGen(bid) ? fmtPct(latestGen(bid).accept_pct) : '—'"></td>
+                  x-text="bestAccept(bid) ? fmtPct(bestAccept(bid).accept_pct) : '—'"></td>
               <td class="px-4 py-2 border-t border-slate-700 text-right text-slate-400"
-                  x-text="(latestGen(bid) || latestPp(bid)) ? fmtVram((latestGen(bid) || latestPp(bid)).vram_peak_mb) : '—'"></td>
+                  x-text="(bestGen(bid) || bestPp(bid)) ? fmtVram((bestGen(bid) || bestPp(bid)).vram_peak_mb) : '—'"></td>
             </tr>
           </template>
         </tbody>
@@ -316,7 +358,7 @@
 
     <!-- Per-backend history (collapsible) -->
     <template x-for="bid in backendIds()" :key="'hist-' + bid">
-      <div class="mb-4" x-data="{ open: false }">
+      <div class="mb-4" x-data="{ open: true }">
         <button @click="open = !open"
                 class="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 mb-2">
           <span x-text="open ? '▼' : '▶'"></span>

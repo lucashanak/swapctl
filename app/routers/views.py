@@ -12,6 +12,11 @@ from ..config import settings
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["root_path"] = settings.root_path
+try:
+    from .. import github_watch
+    templates.env.globals["gh_watch"] = github_watch.load_state
+except Exception:
+    pass
 
 router = APIRouter(tags=["views"])
 
@@ -464,15 +469,15 @@ def installed(request: Request, refresh: int = 0):
 
 @router.get("/testing", response_class=HTMLResponse)
 def testing(request: Request, refresh: int = 0) -> HTMLResponse:
-    from .. import hf_client, registry, swap_config, system, tester
+    from .. import background, hf_client, registry, swap_config, system, tester
     from .api import _list_draft_candidates
 
-    records = registry.list_all()
-    loaded: list[str] = []
-    try:
-        loaded = system.swap_running_models()
-    except Exception:
-        pass
+    snap = background.get_snapshot()
+    records = snap.get("records") or registry.list_all()
+    loaded = snap.get("swap_running") or []
+    all_backends = snap.get("all_backends") or {}
+    snap_max_ctx = snap.get("max_ctx") or {}
+    snap_tags = snap.get("tags") or {}
 
     latest_map: dict = {}
     if refresh:
@@ -481,12 +486,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             latest_map = hf_client.bulk_repo_last_modified(repos, force=True)
         except Exception:
             pass
-
-    # Detect current backend for each model from config
-    try:
-        all_backends = swap_config.detect_all_backends()
-    except Exception:
-        all_backends = {}
+        background.invalidate_now()
 
     models = []
     for r in records:
@@ -516,8 +516,8 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             "quant": r.quant,
             "mmproj": r.mmproj,
             "ctx_size": r.ctx_size,
-            "max_ctx": _model_max_ctx(r.model_id),
-            "tags": _model_tags(r.model_id),
+            "max_ctx": snap_max_ctx.get(r.model_id) if r.model_id in snap_max_ctx else _model_max_ctx(r.model_id),
+            "tags": snap_tags.get(r.model_id) if r.model_id in snap_tags else _model_tags(r.model_id),
             "cache_type_k": r.cache_type_k,
             "cache_type_v": r.cache_type_v,
             "threads": r.threads,
@@ -548,25 +548,12 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             "iq_duration": iq_dur,
         })
 
-    from .. import gguf_meta
+    snap_vram = snap.get("vram") or {}
     for m in models:
-        try:
-            model_dir = settings.models_dir / m["model_id"]
-            gguf_files = sorted(
-                [p for p in model_dir.glob("*.gguf") if not p.name.startswith("mmproj")]
-            )
-            if not gguf_files:
-                gguf_files = sorted(
-                    [p for p in model_dir.rglob("*.gguf") if not p.name.startswith("mmproj")]
-                )
-            if gguf_files:
-                ctx = m.get("ctx_size") or 8192
-                vram = gguf_meta.estimate_vram(gguf_files[0], context_sizes=[ctx])
-                if vram and vram["estimates"]:
-                    m["vram_mb"] = vram["estimates"][0]["total_mb"]
-                    m["vram_estimates"] = vram
-        except Exception:
-            pass
+        v = snap_vram.get(m["model_id"])
+        if v:
+            m["vram_mb"] = v.get("vram_mb")
+            m["vram_estimates"] = v.get("vram_estimates")
 
     def _test_best_speed(m):
         return m.get("best_speed") or 0
@@ -609,7 +596,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             "loaded": f"npu/{name}" in loaded,
         })
 
-    status = _collect_status()
+    status = snap.get("collect_status") or _collect_status()
 
     from .. import power, registry
     power_state = power.get_state()

@@ -21,6 +21,11 @@ from .. import registry, swap_config, system
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["root_path"] = settings.root_path
+try:
+    from .. import github_watch
+    templates.env.globals["gh_watch"] = github_watch.load_state
+except Exception:
+    pass
 
 router = APIRouter(tags=["benchmark"])
 

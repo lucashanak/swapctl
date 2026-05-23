@@ -41,6 +41,19 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         log.warning("job persistence load skipped: %s", exc)
     try:
+        resumed = 0
+        for j in list(downloader.list_jobs()):
+            if j.get("status") == "interrupted" and j.get("error", "").startswith("swapctl restarted"):
+                try:
+                    downloader.resume_job(j["job_id"])
+                    resumed += 1
+                except Exception as exc:
+                    log.warning("auto-resume failed for %s: %s", j.get("job_id"), exc)
+        if resumed:
+            log.info("auto-resumed %d job(s) interrupted by restart", resumed)
+    except Exception as exc:
+        log.warning("auto-resume skipped: %s", exc)
+    try:
         from . import auto_update
         auto_update.start_scheduler()
     except Exception as exc:
@@ -64,6 +77,11 @@ async def lifespan(app: FastAPI):
                 log.warning("socket TDP restore failed: %s", result.get("error") or result.get("errors"))
     except Exception as exc:
         log.warning("socket TDP boot-apply skipped: %s", exc)
+    try:
+        from . import background
+        background.start_worker()
+    except Exception as exc:
+        log.warning("snapshot worker failed to start: %s", exc)
     yield
 
 

@@ -21,6 +21,11 @@ from ..validation import (
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["root_path"] = settings.root_path
+try:
+    from .. import github_watch
+    templates.env.globals["gh_watch"] = github_watch.load_state
+except Exception:
+    pass
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -128,6 +133,9 @@ def remove_model(request: Request, model_id: str):
         downloader.remove_model(model_id)
     except SwapctlError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    from .. import background
+    background.invalidate_now()
 
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Refresh": "true"})
@@ -622,6 +630,9 @@ def switch_model_backend(
         except Exception:
             pass
         raise HTTPException(status_code=500, detail=f"{exc}; reverted") from exc
+
+    from .. import background
+    background.invalidate_now()
 
     if _is_htmx(request):
         return Response(status_code=204, headers={"HX-Refresh": "true"})
@@ -1195,6 +1206,15 @@ def power_dump():
         return Response(f"dump failed: {exc}", media_type="text/plain", status_code=502)
     body = p.stdout or p.stderr or "(empty)"
     return Response(body, media_type="text/plain")
+
+
+@router.post("/github-watch/dismiss/{key:path}")
+def github_watch_dismiss(request: Request, key: str):
+    from .. import github_watch
+    github_watch.dismiss(key)
+    if _is_htmx(request):
+        return Response(status_code=204)
+    return JSONResponse({"ok": True})
 
 
 @router.post("/power/socket-tdp")
