@@ -511,6 +511,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
         models.append({
             "model_id": r.model_id,
             "repo_id": r.repo_id,
+            "filename": r.filename,
             "size_bytes": r.size_bytes,
             "quant": r.quant,
             "mmproj": r.mmproj,
@@ -648,9 +649,10 @@ def npu_page(request: Request) -> HTMLResponse:
 @router.get("/options", response_class=HTMLResponse)
 def options_page(request: Request) -> HTMLResponse:
     from .. import auto_update, registry
-    from ..config import get_parallel_slots, get_iq_parallel
+    from ..config import get_parallel_slots, get_iq_parallel, get_judge_model
     settings_data = auto_update.get_settings()
     models_with_repo = [r for r in registry.list_all() if r.repo_id]
+    all_models = sorted(r.model_id for r in registry.list_all())
     return templates.TemplateResponse(
         request,
         "options.html",
@@ -660,5 +662,7 @@ def options_page(request: Request) -> HTMLResponse:
             "models_with_repo_count": len(models_with_repo),
             "parallel_slots": get_parallel_slots(),
             "iq_parallel": get_iq_parallel(),
+            "judge_model": get_judge_model(),
+            "all_models": all_models,
         },
     )

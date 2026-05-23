@@ -39,6 +39,22 @@
           KV cache slot sharing). Off by default — sequential testing is more reliable.
         </p>
       </form>
+
+      <form hx-post="{{ root_path }}/api/judge-model" hx-swap="none" class="mt-4">
+        <label class="flex flex-col gap-1">
+          <span class="text-sm">IQ test judge model</span>
+          <select name="model_id" onchange="this.form.requestSubmit()"
+                  class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm">
+            {% for m in all_models %}
+            <option value="{{ m }}" {% if m == judge_model %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-[10px] text-slate-500 mt-1">
+            Model used to re-grade failed answers (PASS/FAIL). Bigger = stricter but slower.
+            Default: <code>qwen3.6-35b-a3b</code>.
+          </p>
+        </label>
+      </form>
     </div>
   </div>
 

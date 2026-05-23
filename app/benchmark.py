@@ -230,10 +230,9 @@ def auto_bench_backends(model_id: str) -> list[str]:
         skip_vulkan_baseline = rec is not None and has_mtp_heads(rec)
 
         result = [] if skip_vulkan_baseline else ["vulkan"]
-        if spec_capable_ids:
-            first_spec = spec_capable_ids[0]
-            if first_spec not in result:
-                result.append(first_spec)
+        for sid in spec_capable_ids:
+            if sid not in result:
+                result.append(sid)
         return result or ["vulkan"]
     except Exception:
         log.warning("auto_bench_backends: failed to resolve backends, returning ['vulkan']")

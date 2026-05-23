@@ -57,6 +57,11 @@ def has_mtp_heads(model: "ModelRecord") -> bool:
     if "-mtp-" in mid or mid.endswith("-mtp") or mid.startswith("mtp-"):
         return True
 
+    # Explicit MTP draft pairing: model has draft_model pointing to a -mtp- draft
+    draft_mid = (getattr(model, "draft_model", "") or "").lower()
+    if "-mtp-" in draft_mid or "mtp-" in draft_mid or "-mtp" in draft_mid:
+        return True
+
     return False
 
 
@@ -64,6 +69,31 @@ def is_moe(model: "ModelRecord") -> bool:
     """Return True if the model is a Mixture-of-Experts model."""
     tags = getattr(model, "model_tags", None) or []
     return "moe" in tags
+
+
+def is_qwen3_nextn(model: "ModelRecord") -> bool:
+    """Return True if model is Qwen3.x — NextN speculative decoding uses same main GGUF as draft.
+
+    Qwen3, Qwen3.5, Qwen3.6 all support NextN. Excludes draft/mtp companion files.
+    """
+    mid = (getattr(model, "model_id", "") or "").lower()
+    fn = (getattr(model, "filename", "") or "").lower()
+    if "mtp" in mid or "mtp" in fn or "draft" in mid:
+        return False
+    return ("qwen3" in mid) or ("qwen3" in fn)
+
+
+def is_zaya_arch(model: "ModelRecord") -> bool:
+    """Return True if the model uses the Zyphra ZAYA1 'zaya' architecture.
+
+    Detected by 'zaya' tag (set by gguf_meta) or 'zaya' substring in model_id/filename.
+    """
+    tags = getattr(model, "model_tags", None) or []
+    if "zaya" in tags:
+        return True
+    mid = (getattr(model, "model_id", "") or "").lower()
+    fn = (getattr(model, "filename", "") or "").lower()
+    return "zaya" in mid or "zaya" in fn
 
 
 def is_gemma4_main(model: "ModelRecord") -> bool:
@@ -82,6 +112,8 @@ PREDICATES: dict[str, object] = {
     "has_mtp_heads": has_mtp_heads,
     "is_moe": is_moe,
     "is_gemma4_main": is_gemma4_main,
+    "is_qwen3_nextn": is_qwen3_nextn,
+    "is_zaya_arch": is_zaya_arch,
 }
 
 
@@ -138,6 +170,64 @@ _DEFAULT_BACKENDS: list[dict] = [
         "version_hint": "am17an b9206",
         "builtin": False,
     },
+    {
+        "id": "vulkan-atomic-turbo",
+        "binary_path": "/usr/local/bin/llama-server-vulkan-atomic",
+        "label": "Vulkan + TurboQuant KV",
+        "caps": ["vulkan", "turboquant"],
+        "default_flags": ["--cache-type-k turbo3", "--cache-type-v turbo3"],
+        "required_flags": [],
+        "incompatible_flag_patterns": [r"--cache-type-k\s+(?!turbo)", r"--cache-type-v\s+(?!turbo)"],
+        "model_predicate": None,
+        "version_hint": "AtomicBot/atomic-llama-cpp-turboquant",
+        "builtin": False,
+    },
+    {
+        "id": "vulkan-atomic-nextn",
+        "binary_path": "/usr/local/bin/llama-server-vulkan-atomic",
+        "label": "Vulkan + Qwen NextN",
+        "caps": ["vulkan", "nextn"],
+        "default_flags": ["--spec-type nextn", "--draft-max 3"],
+        "required_flags": ["--parallel 1"],
+        "incompatible_flag_patterns": [
+            r"--parallel\s+([2-9]|\d{2,})",
+            r"--spec-draft-n-max\s+\d+",
+            r"--cache-type-k\s+turbo\d",
+            r"--cache-type-v\s+turbo\d",
+        ],
+        "model_predicate": "is_qwen3_nextn",
+        "version_hint": "AtomicBot/atomic-llama-cpp-turboquant",
+        "builtin": False,
+    },
+    {
+        "id": "vulkan-zaya",
+        "binary_path": "/usr/local/bin/llama-server-vulkan-zaya",
+        "label": "Vulkan + ZAYA1",
+        "caps": ["vulkan", "zaya"],
+        "default_flags": [],
+        "required_flags": [],
+        "incompatible_flag_patterns": [],
+        "model_predicate": "is_zaya_arch",
+        "version_hint": "Juste-Leo2 PR #23112 draft",
+        "builtin": False,
+    },
+    {
+        "id": "vulkan-atomic-gemma4-mtp",
+        "binary_path": "/usr/local/bin/llama-server-vulkan-atomic",
+        "label": "Vulkan + Gemma4 MTP",
+        "caps": ["vulkan", "mtp", "gemma4-mtp"],
+        "default_flags": ["--spec-type mtp", "--draft-max 3"],
+        "required_flags": ["--parallel 1"],
+        "incompatible_flag_patterns": [
+            r"--parallel\s+([2-9]|\d{2,})",
+            r"--spec-draft-n-max\s+\d+",
+            r"--cache-type-k\s+turbo\d",
+            r"--cache-type-v\s+turbo\d",
+        ],
+        "model_predicate": "is_gemma4_main",
+        "version_hint": "AtomicBot/atomic-llama-cpp-turboquant",
+        "builtin": False,
+    },
 ]
 
 
@@ -160,14 +250,20 @@ class BackendsRegistry:
         _reg.set_backends_raw(data)
 
     def seed_defaults_if_empty(self) -> None:
-        """Populate backends section with defaults if it is missing or empty."""
-        current = self._read()
-        if current:
-            return
-        data: dict = {}
+        """Populate backends section with defaults if missing.
+
+        Adds any DEFAULT_BACKENDS that are not yet in the runtime registry (does
+        not overwrite existing entries — user-edited backends are preserved).
+        """
+        current = self._read() or {}
+        added = False
         for b in _DEFAULT_BACKENDS:
-            data[b["id"]] = {k: v for k, v in b.items() if k != "id"}
-        self._write(data)
+            if b["id"] in current:
+                continue
+            current[b["id"]] = {k: v for k, v in b.items() if k != "id"}
+            added = True
+        if added or not self._read():
+            self._write(current)
 
     def list_all(self) -> list[BackendDef]:
         """Return all backends in insertion order (vulkan, hip, rock, custom…)."""

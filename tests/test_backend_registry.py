@@ -89,18 +89,20 @@ def test_seed_produces_four_backends(tmp_path: Path) -> None:
     br.seed_defaults_if_empty()
     backends = br.list_all()
     ids = [b.id for b in backends]
-    assert len(backends) == 4, f"expected 4 backends, got {len(backends)}: {ids}"
+    assert len(backends) == 7, f"expected 7 backends, got {len(backends)}: {ids}"
     assert "vulkan" in ids
     assert "hip" in ids
     assert "rock" in ids
     assert "vulkan-mtp" in ids
+    assert "vulkan-atomic-turbo" in ids
+    assert "vulkan-atomic-nextn" in ids
 
 
 def test_seed_is_idempotent(tmp_path: Path) -> None:
     br = _make_registry(tmp_path)
     br.seed_defaults_if_empty()
     br.seed_defaults_if_empty()  # second call should be a no-op
-    assert len(br.list_all()) == 4
+    assert len(br.list_all()) == 7
 
 
 def test_seed_sets_correct_mtp_fields(tmp_path: Path) -> None:

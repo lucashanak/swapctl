@@ -183,7 +183,8 @@ function modelDetail(groups, mmprojs, gpuTotalGb) {
     pick(g) {
       this.picked = g;
       const cleanQ = (g.quant || 'gguf').toLowerCase().replace(/[_\/]/g, '-');
-      this.modelId = '{{ suggested_model_id }}-' + cleanQ;
+      const isMtp = (g.primary_filename || '').toLowerCase().startsWith('mtp-');
+      this.modelId = '{{ suggested_model_id }}-' + cleanQ + (isMtp ? '-mtp-draft' : '');
       this.open = true;
     },
     get filtered() {

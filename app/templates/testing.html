@@ -761,6 +761,30 @@
 
               {# --- Manage tab --- #}
               <div x-show="tab === 'danger'" class="p-5 text-left space-y-3">
+                {% if m.repo_id or m.filename %}
+                <div class="px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-xs space-y-1">
+                  {% if m.repo_id %}
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-[10px] uppercase text-slate-500 w-16 shrink-0">Repo</span>
+                    <a href="https://huggingface.co/{{ m.repo_id }}{% if m.filename %}/blob/main/{{ m.filename }}{% endif %}"
+                       target="_blank" rel="noopener"
+                       class="font-mono text-sky-400 hover:text-sky-300 break-all">{{ m.repo_id }}</a>
+                  </div>
+                  {% endif %}
+                  {% if m.filename %}
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-[10px] uppercase text-slate-500 w-16 shrink-0">File</span>
+                    <span class="font-mono text-slate-300 break-all">{{ m.filename }}</span>
+                  </div>
+                  {% endif %}
+                  {% if m.hf_last_modified %}
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-[10px] uppercase text-slate-500 w-16 shrink-0">Modified</span>
+                    <span class="font-mono text-slate-400">{{ m.hf_last_modified[:10] }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endif %}
                 {% if m.repo_id %}
                 <button hx-post="{{ root_path }}/api/update/{{ m.model_id }}" hx-swap="none" @click="detailOpen = false"
                         class="w-full text-left text-xs px-3 py-2 rounded bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200">

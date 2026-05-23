@@ -1033,6 +1033,15 @@ def iq_parallel_set(request: Request, enabled: str = Form("0")):
     return JSONResponse({"ok": True})
 
 
+@router.post("/judge-model")
+def judge_model_set(request: Request, model_id: str = Form(...)):
+    from ..config import set_judge_model
+    set_judge_model(model_id)
+    if _is_htmx(request):
+        return Response(status_code=204, headers={"HX-Refresh": "true"})
+    return JSONResponse({"ok": True, "model_id": model_id})
+
+
 @router.post("/parallel-slots")
 def parallel_slots_set(request: Request, slots: int = Form(...)):
     from ..config import set_parallel_slots

@@ -415,7 +415,9 @@ def _score_answer(question: dict, response: str) -> bool:
     return False
 
 
-JUDGE_MODEL = "qwen3.6-35b-a3b"
+def JUDGE_MODEL() -> str:
+    from .config import get_judge_model
+    return get_judge_model()
 
 _JUDGE_PROMPT = """You are a strict exam grader. Evaluate if the student's response correctly answers the question.
 
@@ -442,7 +444,7 @@ def _llm_judge(endpoint: str, question: dict, response: str) -> bool:
         response=judge_response,
     )
     try:
-        data = _chat(endpoint, JUDGE_MODEL, prompt, 10, timeout=60.0)
+        data = _chat(endpoint, JUDGE_MODEL(), prompt, 10, timeout=60.0)
         msg = data["choices"][0]["message"]
         verdict = (msg.get("content") or "").strip().upper()
         return "PASS" in verdict
@@ -608,9 +610,9 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     if failed_indices:
         log.info("LLM judge: reviewing %d failed answers for %s", len(failed_indices), model_id)
         try:
-            _chat(endpoint, JUDGE_MODEL, "Say OK", 5, timeout=120.0)
+            _chat(endpoint, JUDGE_MODEL(), "Say OK", 5, timeout=120.0)
         except Exception:
-            log.warning("could not load judge model %s", JUDGE_MODEL)
+            log.warning("could not load judge model %s", JUDGE_MODEL())
             failed_indices = []
 
         n_failed = len(failed_indices)

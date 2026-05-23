@@ -184,6 +184,25 @@ def set_iq_parallel(enabled: bool) -> None:
     _IQ_PARALLEL_FILE.write_text("1" if enabled else "0")
 
 
+_JUDGE_MODEL_FILE = Path("/var/lib/swapctl/judge_model")
+
+
+def get_judge_model() -> str:
+    """Return model_id used by IQ test LLM judge for failed-answer review."""
+    try:
+        val = _JUDGE_MODEL_FILE.read_text().strip()
+        if val:
+            return val
+    except OSError:
+        pass
+    return "qwen3.6-35b-a3b"
+
+
+def set_judge_model(model_id: str) -> None:
+    _JUDGE_MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _JUDGE_MODEL_FILE.write_text(model_id.strip() + "\n")
+
+
 settings = Settings()
 
 __all__ = ["Settings", "settings"]
