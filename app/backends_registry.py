@@ -83,19 +83,6 @@ def is_qwen3_nextn(model: "ModelRecord") -> bool:
     return ("qwen3" in mid) or ("qwen3" in fn)
 
 
-def is_zaya_arch(model: "ModelRecord") -> bool:
-    """Return True if the model uses the Zyphra ZAYA1 'zaya' architecture.
-
-    Detected by 'zaya' tag (set by gguf_meta) or 'zaya' substring in model_id/filename.
-    """
-    tags = getattr(model, "model_tags", None) or []
-    if "zaya" in tags:
-        return True
-    mid = (getattr(model, "model_id", "") or "").lower()
-    fn = (getattr(model, "filename", "") or "").lower()
-    return "zaya" in mid or "zaya" in fn
-
-
 def is_gemma4_main(model: "ModelRecord") -> bool:
     """Return True if the model is a Gemma 4 main model (target for the assistant draft).
 
@@ -113,7 +100,6 @@ PREDICATES: dict[str, object] = {
     "is_moe": is_moe,
     "is_gemma4_main": is_gemma4_main,
     "is_qwen3_nextn": is_qwen3_nextn,
-    "is_zaya_arch": is_zaya_arch,
 }
 
 
@@ -197,30 +183,6 @@ _DEFAULT_BACKENDS: list[dict] = [
         ],
         "model_predicate": "is_qwen3_nextn",
         "version_hint": "AtomicBot/atomic-llama-cpp-turboquant",
-        "builtin": False,
-    },
-    {
-        "id": "vulkan-zaya",
-        "binary_path": "/usr/local/bin/llama-server-vulkan-zaya",
-        "label": "Vulkan + ZAYA1",
-        "caps": ["vulkan", "zaya"],
-        "default_flags": [],
-        "required_flags": [],
-        "incompatible_flag_patterns": [],
-        "model_predicate": "is_zaya_arch",
-        "version_hint": "Juste-Leo2 PR #23112 draft",
-        "builtin": False,
-    },
-    {
-        "id": "hip-zaya",
-        "binary_path": "/usr/local/bin/llama-server-hip-zaya",
-        "label": "HIP + ZAYA1",
-        "caps": ["hip", "zaya"],
-        "default_flags": [],
-        "required_flags": [],
-        "incompatible_flag_patterns": [],
-        "model_predicate": "is_zaya_arch",
-        "version_hint": "Juste-Leo2 PR #23112 draft, ROCm 7.2.3 gfx1151",
         "builtin": False,
     },
     {
