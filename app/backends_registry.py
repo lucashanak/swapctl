@@ -212,6 +212,18 @@ _DEFAULT_BACKENDS: list[dict] = [
         "builtin": False,
     },
     {
+        "id": "hip-zaya",
+        "binary_path": "/usr/local/bin/llama-server-hip-zaya",
+        "label": "HIP + ZAYA1",
+        "caps": ["hip", "zaya"],
+        "default_flags": [],
+        "required_flags": [],
+        "incompatible_flag_patterns": [],
+        "model_predicate": "is_zaya_arch",
+        "version_hint": "Juste-Leo2 PR #23112 draft, ROCm 7.2.3 gfx1151",
+        "builtin": False,
+    },
+    {
         "id": "vulkan-atomic-gemma4-mtp",
         "binary_path": "/usr/local/bin/llama-server-vulkan-atomic",
         "label": "Vulkan + Gemma4 MTP",
