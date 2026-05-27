@@ -1098,7 +1098,7 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
     else:
         raise ConfigError(f"cannot switch backend for {model_id!r}: no existing cmd and no registry record")
 
-        block["cmd"] = cmd
+    block["cmd"] = cmd
     save(data, path)
 
 
