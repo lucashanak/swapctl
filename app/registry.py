@@ -29,6 +29,7 @@ class ModelRecord:
     extra_args: str = ""
     reasoning_format: str = ""
     reasoning_effort: str = ""
+    architecture: str = ""
     draft_model: str = ""
     draft_max: int = 0
     draft_min: int = 0
@@ -43,6 +44,7 @@ class ModelRecord:
     model_tags: list[str] = field(default_factory=list)
     test_results: dict = field(default_factory=dict)
     speed_history: list[dict] = field(default_factory=list)
+    binary_override: str = ""
     events: list[dict] = field(default_factory=list)
 
 
@@ -106,6 +108,7 @@ def _record_from_dict(model_id: str, d: dict) -> ModelRecord:
         extra_args=str(d.get("extra_args", "") or ""),
         reasoning_format=str(d.get("reasoning_format", "") or ""),
         reasoning_effort=str(d.get("reasoning_effort", "") or ""),
+        architecture=str(d.get("architecture", "") or ""),
         draft_model=str(d.get("draft_model", "") or ""),
         draft_max=int(d.get("draft_max", 0) or 0),
         draft_min=int(d.get("draft_min", 0) or 0),
@@ -209,8 +212,25 @@ def set_socket_tdp_config(
     _write_raw(data, path)
 
 
+def _ensure_architecture(rec: "ModelRecord") -> str:
+    """Return rec.architecture, parsing from GGUF and caching in registry if missing."""
+    if rec.architecture:
+        return rec.architecture
+    try:
+        from .gguf_meta import read_architecture
+        path = settings.models_dir / rec.model_id / rec.filename
+        arch = read_architecture(path) or ""
+    except Exception:
+        arch = ""
+    if arch:
+        rec.architecture = arch
+        upsert(rec)
+    return arch
+
+
 __all__ = [
     "ModelRecord", "get", "upsert", "delete", "list_all", "recent_events",
     "get_backends_raw", "set_backends_raw",
     "get_socket_tdp_config", "set_socket_tdp_config",
+    "_ensure_architecture",
 ]

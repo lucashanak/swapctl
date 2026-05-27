@@ -291,7 +291,7 @@ def edit_model(
         flags_to_update["extra_args"] = extra_args
         rec.extra_args = extra_args
 
-    _VALID_REASONING = {"", "deepseek"}
+    _VALID_REASONING = {"", "deepseek", "off"}
     if reasoning_format not in _VALID_REASONING:
         raise HTTPException(status_code=400, detail=f"invalid reasoning_format: {reasoning_format}")
     if reasoning_format != (rec.reasoning_format or ""):
@@ -516,6 +516,19 @@ def update_swap_config(
     return JSONResponse({"ok": True})
 
 
+@router.post("/backends/scan")
+def scan_backends(request: Request):
+    """Scan /usr/local/bin for llama-server-* binaries not yet in registry.
+
+    Newly-detected binaries are added as stub entries with empty flags
+    and version_hint pulled from --version output.
+    """
+    from ..backends_registry import BackendsRegistry
+    br = BackendsRegistry()
+    added = br.scan_binaries()
+    return {"added": added, "count": len(added)}
+
+
 @router.get("/backends")
 def list_backends(request: Request, model_id: str | None = None):
     """Return all registered backends, optionally filtered by compatibility with a model.
@@ -688,9 +701,15 @@ def test_batch(
     types = set(test_type)
     do_iq = "intelligence" in types
 
+    # Same threshold as testing.html — small models are UI-hidden by default,
+    # so don't auto-enqueue them in batch runs.
+    SMALL_THRESHOLD = 10 * 1024 * 1024 * 1024
+
     records = registry.list_all()
     queued = 0
     for r in records:
+        if (r.size_bytes or 0) < SMALL_THRESHOLD:
+            continue
         tr = r.test_results or {}
         if do_iq:
             if scope != "missing" or not tr.get("intelligence"):

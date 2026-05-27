@@ -61,6 +61,10 @@ async def lifespan(app: FastAPI):
     try:
         from .backends_registry import BackendsRegistry
         BackendsRegistry().seed_defaults_if_empty()
+        try:
+            BackendsRegistry().scan_binaries()
+        except Exception:
+            log.warning("backend binary auto-scan failed", exc_info=True)
     except Exception as exc:
         log.warning("backends registry seed skipped: %s", exc)
     try:
@@ -92,7 +96,16 @@ def _is_public(path: str) -> bool:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="swapctl", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="swapctl", version="0.2.0", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def no_cache_html(request: Request, call_next):
+        resp = await call_next(request)
+        ct = resp.headers.get("content-type", "")
+        if "text/html" in ct:
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
+        return resp
 
     @app.middleware("http")
     async def auth_gate(request: Request, call_next):

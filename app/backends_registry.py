@@ -29,6 +29,13 @@ class BackendDef:
     model_predicate: str | None = None
     version_hint: str = ""
     builtin: bool = True
+    incompatible_architectures: list[str] = field(default_factory=list)
+
+    def supports_architecture(self, arch: str) -> bool:
+        """Return False iff arch is in incompatible_architectures."""
+        if not arch:
+            return True
+        return arch not in self.incompatible_architectures
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +126,7 @@ _DEFAULT_BACKENDS: list[dict] = [
         "model_predicate": None,
         "version_hint": "",
         "builtin": True,
+        "incompatible_architectures": ["gemma4_assistant", "qwen3_assistant"],
     },
     {
         "id": "hip",
@@ -131,6 +139,7 @@ _DEFAULT_BACKENDS: list[dict] = [
         "model_predicate": None,
         "version_hint": "",
         "builtin": True,
+        "incompatible_architectures": ["gemma4_assistant", "qwen3_assistant"],
     },
     {
         "id": "rock",
@@ -143,6 +152,7 @@ _DEFAULT_BACKENDS: list[dict] = [
         "model_predicate": None,
         "version_hint": "",
         "builtin": True,
+        "incompatible_architectures": ["gemma4_assistant", "qwen3_assistant"],
     },
     {
         "id": "vulkan-mtp",
@@ -155,6 +165,7 @@ _DEFAULT_BACKENDS: list[dict] = [
         "model_predicate": "has_mtp_heads",
         "version_hint": "am17an b9206",
         "builtin": False,
+        "incompatible_architectures": ["gemma4_assistant", "qwen3_assistant"],
     },
     {
         "id": "vulkan-atomic-turbo",
@@ -239,6 +250,60 @@ class BackendsRegistry:
         if added or not self._read():
             self._write(current)
 
+    def scan_binaries(self, bin_dir: str = "/usr/local/bin") -> list[str]:
+        """Discover llama-server-* binaries not yet in registry; add stub entries.
+
+        Returns list of newly-added backend ids. Stub entries have empty flags
+        and a TODO version_hint; the operator is expected to fill them in.
+        """
+        import os, subprocess
+        try:
+            names = sorted(os.listdir(bin_dir))
+        except OSError:
+            return []
+        known = {b.binary_path for b in self.list_all()}
+        added: list[str] = []
+        raw = self._read() or {}
+        for name in names:
+            if not (name.startswith("llama-server-") or name == "llama-server"):
+                continue
+            if any(name.endswith(suf) for suf in (".bak", ".old", ".orig", ".save", ".tmp")) or ".bak" in name or ".old" in name:
+                continue
+            path = os.path.join(bin_dir, name)
+            if path in known:
+                continue
+            if not (os.path.isfile(path) or os.path.islink(path)):
+                continue
+            if not os.access(path, os.X_OK):
+                continue
+            bid = name[len("llama-server-"):] if name.startswith("llama-server-") else "default"
+            if not bid or bid in raw:
+                continue
+            version_hint = ""
+            try:
+                out = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
+                lines = (out.stdout or out.stderr or "").splitlines()
+                if lines:
+                    version_hint = lines[0].strip()[:120]
+            except Exception:
+                pass
+            raw[bid] = {
+                "binary_path": path,
+                "label": bid,
+                "caps": [],
+                "default_flags": [],
+                "required_flags": [],
+                "incompatible_flag_patterns": [],
+                "model_predicate": None,
+                "version_hint": version_hint or "TODO: auto-detected; set flags/predicate",
+                "builtin": False,
+                "auto_detected": True,
+            }
+            added.append(bid)
+        if added:
+            self._write(raw)
+        return added
+
     def list_all(self) -> list[BackendDef]:
         """Return all backends in insertion order (vulkan, hip, rock, custom…)."""
         raw = self._read()
@@ -259,17 +324,29 @@ class BackendsRegistry:
         """Return backends compatible with the given model.
 
         A backend is compatible if:
-        - it has no model_predicate, OR
-        - its predicate function returns True for the model.
+        - it has no model_predicate, OR its predicate returns True for the model, AND
+        - it supports the draft model's architecture (if a draft is configured).
         """
+        draft_arch: str = ""
+        if model.draft_model:
+            try:
+                from . import registry as _reg
+                from .registry import _ensure_architecture
+                draft_rec = _reg.get(model.draft_model)
+                if draft_rec is not None:
+                    draft_arch = _ensure_architecture(draft_rec)
+            except Exception:
+                pass
+
         result: list[BackendDef] = []
         for b in self.list_all():
-            if b.model_predicate is None:
-                result.append(b)
-            else:
+            if b.model_predicate is not None:
                 fn = PREDICATES.get(b.model_predicate)
-                if fn is not None and fn(model):  # type: ignore[operator]
-                    result.append(b)
+                if fn is None or not fn(model):  # type: ignore[operator]
+                    continue
+            if draft_arch and not b.supports_architecture(draft_arch):
+                continue
+            result.append(b)
         return result
 
 
@@ -322,6 +399,7 @@ def _backend_from_dict(bid: str, d: dict) -> BackendDef:
         model_predicate=d.get("model_predicate") or None,
         version_hint=str(d.get("version_hint", "")),
         builtin=bool(d.get("builtin", True)),
+        incompatible_architectures=list(d.get("incompatible_architectures") or []),
     )
 
 

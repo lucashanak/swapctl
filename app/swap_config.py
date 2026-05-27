@@ -1006,34 +1006,70 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
     block = models[model_id]
     cmd = block.get("cmd", "")
 
+    # Validate draft model architecture compatibility
+    try:
+        from . import registry as _reg_check
+        main_rec = _reg_check.get(model_id)
+        if main_rec is not None and main_rec.draft_model:
+            draft_id = main_rec.draft_model
+            draft_rec = _reg_check.get(draft_id)
+            if draft_rec is not None:
+                from .registry import _ensure_architecture
+                draft_arch = _ensure_architecture(draft_rec)
+                if draft_arch and not backend.supports_architecture(draft_arch):
+                    raise ConfigError(
+                        f"backend {backend_id!r} cannot load draft model {draft_id!r}"
+                        f" (arch={draft_arch!r}). Drop the draft model first or pick a compatible backend."
+                    )
+    except ConfigError:
+        raise
+    except Exception:
+        pass
+
     # Preserve existing port (don't reallocate)
     port_m = _PORT_RE.search(cmd)
     port = int(port_m.group(1)) if port_m else next_free_port(path=path)
 
-    # Try to rebuild from registry — clean, no cruft
+    # Determine binary: per-model override beats the backend default
+    target_binary = backend.binary_path
+    rec = None
     try:
         from . import registry as _reg
         rec = _reg.get(model_id)
+        if rec is not None and getattr(rec, "binary_override", "") :
+            target_binary = rec.binary_override
     except Exception:
         rec = None
 
-    if rec is not None and rec.filename:
+    # Prefer in-place patching to preserve manual flags (-md, -ngld, custom args).
+    # Only rebuild from the registry record when the cmd has no binary to splice.
+    has_binary = bool(_BINARY_RE.search(cmd))
+
+    if has_binary:
+        current_id = _detect_backend(cmd)
+        if current_id != "unknown" and current_id != backend_id:
+            current_backend = reg.get(current_id)
+            if current_backend is not None:
+                cmd = _strip_all_backend_flags(cmd, current_backend)
+        new_cmd, n = _BINARY_RE.subn(target_binary, cmd, count=1)
+        if n == 0:
+            raise ConfigError(f"no llama-server binary found in cmd for {model_id!r}")
+        cmd = _inject_backend_flags(new_cmd, backend)
+    elif rec is not None and rec.filename:
         model_dir = settings.models_dir / model_id
         gguf_path = model_dir / rec.filename
         mmproj_path = (model_dir / rec.mmproj) if rec.mmproj else None
-        # Resolve draft GGUF path from draft_model id
         draft_path_str = ""
         if rec.draft_model:
             draft_dir = settings.models_dir / rec.draft_model
             if draft_dir.is_dir():
                 draft_gguf = next(
-                    (p for p in sorted(draft_dir.iterdir())
-                     if p.suffix == ".gguf" and p.is_file()),
+                    (q for q in sorted(draft_dir.iterdir())
+                     if q.suffix == ".gguf" and q.is_file()),
                     None,
                 )
                 if draft_gguf is not None:
                     draft_path_str = str(draft_gguf)
-        # Heuristic: keep --no-mmap if it was in the original cmd
         no_mmap = "--no-mmap" in cmd
         new_cmd = _build_cmd(
             gguf_path=gguf_path,
@@ -1056,22 +1092,13 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
             sampling_top_p=rec.sampling_top_p if rec.sampling_top_p is not None else 0.95,
             sampling_min_p=rec.sampling_min_p if rec.sampling_min_p is not None else 0.05,
             sampling_repeat_penalty=rec.sampling_repeat_penalty if rec.sampling_repeat_penalty is not None else 1.1,
-            binary_path=backend.binary_path,
+            binary_path=target_binary,
         )
         cmd = _inject_backend_flags(new_cmd, backend)
     else:
-        # Fallback to in-place patching when registry record is missing
-        current_id = _detect_backend(cmd)
-        if current_id != "unknown" and current_id != backend_id:
-            current_backend = reg.get(current_id)
-            if current_backend is not None:
-                cmd = _strip_all_backend_flags(cmd, current_backend)
-        new_cmd, n = _BINARY_RE.subn(backend.binary_path, cmd, count=1)
-        if n == 0:
-            raise ConfigError(f"no llama-server binary found in cmd for {model_id!r}")
-        cmd = _inject_backend_flags(new_cmd, backend)
+        raise ConfigError(f"cannot switch backend for {model_id!r}: no existing cmd and no registry record")
 
-    block["cmd"] = cmd
+        block["cmd"] = cmd
     save(data, path)
 
 
