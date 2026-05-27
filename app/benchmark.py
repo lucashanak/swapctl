@@ -195,6 +195,20 @@ def _append_speed_history(model_id: str, record: dict) -> None:
                 else:
                     kept.append(e)
             history = kept
+        # Sync best gen result into test_results so installed_row UI displays it
+        try:
+            best_record = None
+            for e in history:
+                if e.get('test') == 'gen' and e.get('gen_tps') is not None:
+                    if best_record is None or e['gen_tps'] > best_record['gen_tps']:
+                        best_record = e
+            if best_record is not None:
+                tr = dict(rec.test_results or {})
+                tr['best_speed'] = round(float(best_record['gen_tps']), 1)
+                tr['best_backend'] = best_record.get('backend_id', '')
+                rec.test_results = tr
+        except Exception:
+            log.exception('benchmark: failed to sync test_results for %s', model_id)
         rec.speed_history = history
         reg_mod.upsert(rec)
     except Exception:
