@@ -327,6 +327,29 @@ def _run_benchmark_locked(
         log.warning("benchmark: could not detect original backend for %s, defaulting to vulkan", model_id)
         original_backend = "vulkan"
 
+    # Snapshot the original cmd string verbatim so each backend iteration starts clean.
+    # Without this, switch_model_backend's flag-strip logic doesn't catch every prior backend's
+    # leftover flags (different backends inject different flag forms), and cmd accumulates cruft
+    # across iterations. _ORIGINAL_CMD_SNAPSHOT is restored before each switch_model_backend call.
+    _ORIGINAL_CMD_SNAPSHOT = None
+    try:
+        _orig_data = swap_config.load()
+        _ORIGINAL_CMD_SNAPSHOT = (_orig_data.get("models") or {}).get(model_id, {}).get("cmd", "") or None
+    except Exception:
+        log.warning("benchmark: could not snapshot original cmd for %s", model_id)
+
+    def _restore_cmd_snapshot():
+        if not _ORIGINAL_CMD_SNAPSHOT:
+            return
+        try:
+            data = swap_config.load()
+            models = data.get("models") or {}
+            if model_id in models and isinstance(models[model_id], dict):
+                models[model_id]["cmd"] = _ORIGINAL_CMD_SNAPSHOT
+                swap_config.save(data)
+        except Exception:
+            log.exception("benchmark: failed to restore cmd snapshot for %s", model_id)
+
     results: list[dict] = []
 
     # Determine whether to restore (avoid unnecessary restart if last backend == original)
@@ -337,6 +360,7 @@ def _run_benchmark_locked(
             log.info("benchmark: switching %s to backend %s", model_id, backend_id)
             vram_start = _read_vram_bytes()
 
+            _restore_cmd_snapshot()
             try:
                 swap_config.switch_model_backend(model_id, backend_id)
             except Exception as exc:
@@ -377,6 +401,7 @@ def _run_benchmark_locked(
             _append_speed_history(model_id, gen_record)
 
     finally:
+        _restore_cmd_snapshot()
         if should_restore:
             try:
                 log.info("benchmark: restoring original backend %s for %s", original_backend, model_id)
