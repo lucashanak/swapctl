@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% block title %}Voices - swapctl{% endblock %}
+{% block content %}
+<div x-data="voicesApp()" x-init="init()">
+
+  {# ── transcription panel ── #}
+  <section class="mb-8" x-data="sttApp()">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">Speech-to-Text (Whisper)</h2>
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4 max-w-xl">
+      <div class="flex gap-3 items-start flex-wrap">
+        <div class="flex-1 min-w-0">
+          <label class="block text-xs text-slate-400 mb-1">Audio file</label>
+          <input type="file" accept="audio/*" @change="fileSelected($event)"
+                 class="block w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer" />
+        </div>
+        <div class="pt-5">
+          <button @click="transcribe()" :disabled="!file || loading"
+                  class="px-4 py-1.5 text-sm rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium whitespace-nowrap">
+            <span x-show="!loading">Transcribe</span>
+            <span x-show="loading">...</span>
+          </button>
+        </div>
+      </div>
+      <div x-show="result !== null" class="mt-3">
+        <label class="block text-xs text-slate-400 mb-1">Result</label>
+        <textarea x-text="result" rows="4" readonly
+                  class="w-full rounded bg-slate-900 border border-slate-600 text-slate-100 text-sm px-3 py-2 resize-y focus:outline-none"></textarea>
+      </div>
+      <div x-show="error" class="mt-2 text-xs text-rose-400" x-text="error"></div>
+    </div>
+  </section>
+
+  {# ── toast ── #}
+  <div x-show="toast" x-cloak x-transition
+       :class="toastError ? 'bg-red-600' : 'bg-emerald-600'"
+       class="fixed top-4 right-4 z-50 max-w-sm text-white px-4 py-2 rounded-md shadow-lg flex items-start gap-2">
+    <span x-text="toast"></span>
+    <button @click="toast=null" class="ml-auto text-white/80 hover:text-white">&times;</button>
+  </div>
+
+  {# ── test modal ── #}
+  <div x-show="testModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @click.self="testModal=null">
+    <div class="bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md border border-slate-700" @click.stop>
+      <h3 class="text-sm font-semibold text-slate-100 mb-3">Test voice: <span class="text-emerald-400" x-text="testModal?.key"></span></h3>
+      <textarea x-model="testText" rows="3"
+                class="w-full rounded bg-slate-900 border border-slate-600 text-slate-100 text-sm px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500"></textarea>
+      <div class="mt-3 flex gap-2 items-center">
+        <button @click="runTest()" :disabled="testLoading"
+                class="px-4 py-1.5 text-sm rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium">
+          <span x-show="!testLoading">Speak</span>
+          <span x-show="testLoading">...</span>
+        </button>
+        <button @click="testModal=null" class="px-3 py-1.5 text-sm rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Cancel</button>
+        <audio x-ref="audioEl" class="hidden"></audio>
+      </div>
+      <div x-show="testError" class="mt-2 text-xs text-rose-400" x-text="testError"></div>
+    </div>
+  </div>
+
+  {# ── delete confirm modal ── #}
+  <div x-show="deleteModal" x-cloak class="fixed inset-0 z-40 flex items-center justify-center bg-black/60" @click.self="deleteModal=null">
+    <div class="bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-sm border border-slate-700" @click.stop>
+      <h3 class="text-sm font-semibold text-slate-100 mb-2">Delete voice?</h3>
+      <p class="text-slate-400 text-sm mb-4">Remove <span class="font-mono text-rose-300" x-text="deleteModal?.key"></span> from disk?</p>
+      <div class="flex gap-2">
+        <button @click="confirmDelete()" class="px-4 py-1.5 text-sm rounded bg-rose-600 hover:bg-rose-500 text-white font-medium">Delete</button>
+        <button @click="deleteModal=null" class="px-3 py-1.5 text-sm rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-6">
+    <h1 class="text-xl font-semibold text-slate-100">Piper Voices</h1>
+    <p class="text-xs text-slate-400 mt-1">Manage installed voices and browse the rhasspy/piper-voices catalog.</p>
+  </div>
+
+  {# ── installed voices ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">Installed</h2>
+    {% if installed_voices %}
+    <div class="overflow-x-auto rounded-lg border border-slate-700">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-800 text-slate-400 text-xs uppercase tracking-wide">
+          <tr>
+            <th class="px-3 py-2 text-left">Voice</th>
+            <th class="px-3 py-2 text-left">Language</th>
+            <th class="px-3 py-2 text-left">Quality</th>
+            <th class="px-3 py-2 text-left">Speakers</th>
+            <th class="px-3 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for v in installed_voices %}
+          <tr class="bg-slate-900 hover:bg-slate-800/50" id="installed-row-{{ v.key }}">
+            <td class="px-3 py-2 font-mono text-xs text-slate-200">{{ v.key }}</td>
+            <td class="px-3 py-2 text-slate-300 text-xs">
+              {{ v.language_name_native or v.language or '—' }}
+              {% if v.language_country %}<span class="text-slate-500">({{ v.language_country }})</span>{% endif %}
+            </td>
+            <td class="px-3 py-2">
+              {% if v.quality == 'high' %}<span class="text-emerald-400 text-xs">high</span>
+              {% elif v.quality == 'medium' %}<span class="text-amber-400 text-xs">medium</span>
+              {% elif v.quality == 'low' %}<span class="text-slate-400 text-xs">low</span>
+              {% else %}<span class="text-slate-500 text-xs">{{ v.quality or '—' }}</span>{% endif %}
+            </td>
+            <td class="px-3 py-2 text-slate-400 text-xs">{{ v.num_speakers }}</td>
+            <td class="px-3 py-2 text-right">
+              <div class="flex gap-1.5 justify-end">
+                <button @click='openTest({{ v | tojson }})'
+                        class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-emerald-700 text-slate-200 hover:text-white">
+                  Test
+                </button>
+                <button @click='openDelete({{ v | tojson }})'
+                        class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-rose-700 text-slate-200 hover:text-white">
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-slate-500 text-sm bg-slate-800/50 rounded-lg px-4 py-6 text-center">
+      No voices installed. Install one from the catalog below.
+    </div>
+    {% endif %}
+  </section>
+
+  {# ── catalog ── #}
+  <section>
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide">Catalog</h2>
+      <span class="text-xs text-slate-500">({{ catalog | length }} voices)</span>
+      <input x-model="filterLang" type="text" placeholder="Filter by language (e.g. cs, en, de)"
+             class="ml-auto px-3 py-1 text-xs rounded bg-slate-800 border border-slate-600 text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-52" />
+      <input x-model="filterSearch" type="text" placeholder="Search name…"
+             class="px-3 py-1 text-xs rounded bg-slate-800 border border-slate-600 text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-40" />
+    </div>
+
+    {% if catalog %}
+    <div class="overflow-x-auto rounded-lg border border-slate-700">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-800 text-slate-400 text-xs uppercase tracking-wide">
+          <tr>
+            <th class="px-3 py-2 text-left">Key</th>
+            <th class="px-3 py-2 text-left">Name</th>
+            <th class="px-3 py-2 text-left">Language</th>
+            <th class="px-3 py-2 text-left">Quality</th>
+            <th class="px-3 py-2 text-left">Spk</th>
+            <th class="px-3 py-2 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for v in catalog %}
+          <tr class="bg-slate-900 hover:bg-slate-800/50 catalog-row"
+              data-lang="{{ v.language_family }}" data-key="{{ v.key }}" data-name="{{ v.name }}"
+              id="catalog-row-{{ v.key }}"
+              x-show='matchesFilter({{ v | tojson }})'>
+            <td class="px-3 py-2 font-mono text-xs text-slate-300">{{ v.key }}</td>
+            <td class="px-3 py-2 text-slate-200 text-xs">{{ v.name }}</td>
+            <td class="px-3 py-2 text-xs text-slate-400">
+              {{ v.language_name_native or v.language or '—' }}
+            </td>
+            <td class="px-3 py-2 text-xs">
+              {% if v.quality == 'high' %}<span class="text-emerald-400">high</span>
+              {% elif v.quality == 'medium' %}<span class="text-amber-400">medium</span>
+              {% elif v.quality == 'low' %}<span class="text-slate-500">low</span>
+              {% else %}<span class="text-slate-500">{{ v.quality }}</span>{% endif %}
+            </td>
+            <td class="px-3 py-2 text-slate-500 text-xs">{{ v.num_speakers }}</td>
+            <td class="px-3 py-2 text-right">
+              {% if v.installed %}
+                <span class="text-xs text-emerald-400 font-medium">Installed</span>
+              {% else %}
+                <button @click='installVoice({{ v | tojson }}, $el)'
+                        :id="'install-btn-{{ v.key }}'"
+                        class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-emerald-700 text-slate-200 hover:text-white disabled:opacity-50">
+                  Install
+                </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-slate-500 text-sm bg-slate-800/50 rounded-lg px-4 py-6 text-center">
+      Catalog unavailable — check network connectivity.
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+const _ROOT = {{ root_path | tojson }};
+const _DEFAULT_TEXT = {{ {
+  'cs': 'Ahoj, jmenuju se Jirka. Toto je test českého hlasu.',
+  'en': 'Hello, this is a test of the English voice.',
+  'de': 'Hallo, dies ist ein Test der deutschen Stimme.',
+  'fr': 'Bonjour, ceci est un test de la voix française.',
+  'es': 'Hola, esta es una prueba de la voz en español.',
+} | tojson }};
+
+function sttApp() {
+  return {
+    file: null,
+    loading: false,
+    result: null,
+    error: null,
+
+    fileSelected(evt) {
+      this.file = evt.target.files[0] || null;
+      this.result = null;
+      this.error = null;
+    },
+
+    async transcribe() {
+      if (!this.file) return;
+      this.loading = true;
+      this.result = null;
+      this.error = null;
+      try {
+        const fd = new FormData();
+        fd.append('model', 'whisper-large-v3-turbo-q4-1');
+        fd.append('file', this.file, this.file.name);
+        const resp = await fetch(_ROOT + '/api/v1/audio/transcriptions', {
+          method: 'POST',
+          body: fd,
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          this.error = `Error ${resp.status}: ${txt}`;
+          return;
+        }
+        const data = await resp.json();
+        this.result = data.text || JSON.stringify(data);
+      } catch (e) {
+        this.error = 'Network error — check uplink';
+      } finally {
+        this.loading = false;
+      }
+    },
+  };
+}
+
+function voicesApp() {
+  return {
+    toast: null,
+    toastError: false,
+    testModal: null,
+    testText: '',
+    testLoading: false,
+    testError: null,
+    deleteModal: null,
+    filterLang: '',
+    filterSearch: '',
+
+    init() {},
+
+    showToast(msg, isError) {
+      this.toast = msg;
+      this.toastError = !!isError;
+      setTimeout(() => this.toast = null, 5000);
+    },
+
+    matchesFilter(v) {
+      const lang = this.filterLang.trim().toLowerCase();
+      const search = this.filterSearch.trim().toLowerCase();
+      if (lang && !v.language_family.startsWith(lang) && !v.language.toLowerCase().startsWith(lang)) return false;
+      if (search && !v.key.toLowerCase().includes(search) && !v.name.toLowerCase().includes(search)) return false;
+      return true;
+    },
+
+    openTest(voice) {
+      this.testModal = voice;
+      this.testError = null;
+      const lang = voice.language_family || (voice.language || '').split('_')[0];
+      this.testText = _DEFAULT_TEXT[lang] || _DEFAULT_TEXT['en'];
+    },
+
+    async runTest() {
+      this.testLoading = true;
+      this.testError = null;
+      try {
+        const resp = await fetch(_ROOT + '/api/v1/audio/speech', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({model: 'tts-1', voice: this.testModal.key, input: this.testText}),
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          this.testError = txt || `Error ${resp.status}`;
+          return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = this.$refs.audioEl;
+        audio.src = url;
+        audio.classList.remove('hidden');
+        audio.play();
+      } catch (e) {
+        this.testError = 'Network error — check uplink';
+      } finally {
+        this.testLoading = false;
+      }
+    },
+
+    openDelete(voice) {
+      this.deleteModal = voice;
+    },
+
+    async confirmDelete() {
+      const key = this.deleteModal.key;
+      this.deleteModal = null;
+      try {
+        const resp = await fetch(_ROOT + '/api/v1/audio/voices/' + encodeURIComponent(key), {
+          method: 'DELETE',
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          this.showToast('Delete failed: ' + txt, true);
+          return;
+        }
+        this.showToast('Voice removed: ' + key, false);
+        const row = document.getElementById('installed-row-' + key);
+        if (row) row.remove();
+        // Mark catalog row as not installed
+        const catBtn = document.getElementById('install-btn-' + key);
+        if (catBtn) catBtn.disabled = false;
+      } catch (e) {
+        this.showToast('Network error — check uplink', true);
+      }
+    },
+
+    async installVoice(voice, btn) {
+      btn.disabled = true;
+      btn.textContent = '…';
+      try {
+        const resp = await fetch(_ROOT + '/api/v1/audio/install', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({voice: voice.key}),
+        });
+        if (resp.status === 409) {
+          this.showToast('Already installed: ' + voice.key, false);
+          btn.textContent = 'Installed';
+          return;
+        }
+        if (!resp.ok) {
+          const txt = await resp.text();
+          this.showToast('Install failed: ' + txt, true);
+          btn.disabled = false;
+          btn.textContent = 'Install';
+          return;
+        }
+        const data = await resp.json();
+        const mb = data.size_bytes ? (data.size_bytes / 1024 / 1024).toFixed(1) + ' MB' : '';
+        this.showToast('Installed ' + voice.key + (mb ? ' (' + mb + ')' : ''), false);
+        btn.textContent = 'Installed';
+        // Reload page to update installed table
+        setTimeout(() => window.location.reload(), 1200);
+      } catch (e) {
+        this.showToast('Network error — check uplink', true);
+        btn.disabled = false;
+        btn.textContent = 'Install';
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

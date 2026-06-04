@@ -85,6 +85,8 @@ class Settings:
     session_hours: int = field(default_factory=lambda: _env_int("SWAPCTL_SESSION_HOURS", 720))
     cookie_secure: bool = field(default_factory=lambda: _env("SWAPCTL_COOKIE_SECURE", "1") not in ("0", "false", "False", ""))
     root_path: str = field(default_factory=lambda: _env("SWAPCTL_ROOT_PATH", "").rstrip("/"))
+    public_base: str = field(default_factory=lambda: _env("SWAPCTL_PUBLIC_BASE", "https://ai.hanaktech.org").rstrip("/"))
+    llm_public_prefix: str = field(default_factory=lambda: "/" + _env("SWAPCTL_LLM_PUBLIC_PREFIX", "llm").strip("/"))
 
 
 _DL_SPEED_FILE = Path("/var/lib/swapctl/dl_speed_limit")
@@ -195,7 +197,7 @@ def get_judge_model() -> str:
             return val
     except OSError:
         pass
-    return "qwen3.6-35b-a3b"
+    return "gpt-oss-120b"
 
 
 def set_judge_model(model_id: str) -> None:

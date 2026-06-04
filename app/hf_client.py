@@ -260,10 +260,22 @@ def search_models(
     if library and library != "all":
         kwargs["filter"] = [library]
 
-    try:
-        items = list(api.list_models(**kwargs))
-    except (HfHubHTTPError, TypeError) as exc:
-        raise DownloadError(f"HF search failed: {exc}") from exc
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            items = list(api.list_models(**kwargs))
+            break
+        except (HfHubHTTPError, TypeError) as exc:
+            raise DownloadError(f"HF search failed: {exc}") from exc
+        except (OSError, ConnectionError) as exc:
+            last_exc = exc
+            if attempt < 2:
+                import time as _t
+                _t.sleep(0.5 * (attempt + 1))
+                continue
+            raise DownloadError(
+                f"HF unreachable after 3 attempts (network/DNS issue, check router): {exc}"
+            ) from exc
 
     out: list[ModelSummary] = []
     for m in items[offset : offset + limit]:

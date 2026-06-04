@@ -163,8 +163,9 @@
                 <label class="block">
                   <span class="text-xs uppercase text-slate-400 tracking-wide">Thinking format</span>
                   <select name="reasoning_format" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono">
-                    <option value="" {% if not m.reasoning_format %}selected{% endif %}>off</option>
+                    <option value="" {% if not m.reasoning_format %}selected{% endif %}>auto</option>
                     <option value="deepseek" {% if m.reasoning_format == 'deepseek' %}selected{% endif %}>deepseek</option>
+                    <option value="off" {% if m.reasoning_format == 'off' %}selected{% endif %}>off</option>
                   </select>
                 </label>
                 <label class="block">

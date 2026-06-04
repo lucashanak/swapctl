@@ -48,17 +48,28 @@ def _load_benchmark() -> dict:
         return json.load(f)
 
 
+# Thinking budgets calibrated to gpt-oss reasoning_effort tier token consumption,
+# so IQ test duration is comparable across thinking models regardless of backend.
+# MEDIUM = 1024: empirical sweet spot for qwen3.6 from A/B on qwen3.6-35b-a3b-mtp-iq4xs.
+#   2048: score 88.5, 1173s (non-binding, model overthought past it)
+#   1024: score 89.0,  983s, math 100 / reasoning 90  <- best speed/quality
+#    512: score 84.5,  814s, math 70 / reasoning 70    <- gpt-oss token level (~324/101)
+#         was too aggressive; qwen3.6 needs more thinking room than gpt-oss-120b.
+_TIER_LOW = 512
+_TIER_MEDIUM = 1024
+_TIER_HIGH = 8192
+
 _THINKING_BUDGET_BY_CATEGORY = {
-    "reasoning": 512,
-    "math": 512,
-    "code": 256,
+    "reasoning": _TIER_MEDIUM,
+    "math": _TIER_MEDIUM,
+    "code": _TIER_LOW,
+    "sysadmin": _TIER_LOW,
+    "knowledge": _TIER_LOW,
     "coding": 0,
     "instruction": 0,
     "structured": 0,
     "czech": 0,
     "summarization": 0,
-    "sysadmin": 128,
-    "knowledge": 128,
 }
 
 
@@ -91,24 +102,38 @@ def _chat(
             body["min_p"] = sampling["min_p"]
         if "repeat_penalty" in sampling:
             body["repeat_penalty"] = sampling["repeat_penalty"]
-    if reasoning_effort and reasoning_effort != "auto":
-        body["reasoning_effort"] = reasoning_effort
-    if thinking_budget == 0:
-        body["chat_template_kwargs"] = {"enable_thinking": False}
-    elif enable_thinking and thinking_budget is None:
-        # auto mode: do not override, let server decide
-        pass
-    elif enable_thinking:
-        body["chat_template_kwargs"] = {"enable_thinking": True}
-        if thinking_budget > 0:
-            body["thinking_budget_tokens"] = thinking_budget
-    elif not reasoning_effort:
-        body["chat_template_kwargs"] = {"enable_thinking": False}
+    # gpt-oss uses Harmony format — only supports reasoning_effort tier (low/medium/high),
+    # ignores thinking_budget_tokens. Map per-category budget to effort tier.
+    is_gpt_oss = "gpt-oss" in (model or "").lower()
+    if is_gpt_oss:
+        # gpt-oss has no off-switch; budget=0 falls back to "low" (~200 token overhead).
+        if thinking_budget is None or thinking_budget <= _TIER_LOW:
+            effort = "low"
+        elif thinking_budget <= _TIER_MEDIUM:
+            effort = "medium"
+        else:
+            effort = "high"
+        body["chat_template_kwargs"] = {"reasoning_effort": effort}
+        body["reasoning_effort"] = effort
+    else:
+        if reasoning_effort and reasoning_effort != "auto":
+            body["reasoning_effort"] = reasoning_effort
+        if thinking_budget == 0:
+            body["chat_template_kwargs"] = {"enable_thinking": False}
+        elif enable_thinking and thinking_budget is None:
+            # auto mode: do not override, let server decide
+            pass
+        elif enable_thinking:
+            body["chat_template_kwargs"] = {"enable_thinking": True}
+            if thinking_budget > 0:
+                body["thinking_budget_tokens"] = thinking_budget
+        elif not reasoning_effort:
+            body["chat_template_kwargs"] = {"enable_thinking": False}
     with httpx.Client(timeout=timeout) as client:
-        for attempt in range(6):
+        for attempt in range(3):
             resp = client.post(f"{endpoint}/v1/chat/completions", json=body)
-            if resp.status_code in (502, 503) and attempt < 5:
-                time.sleep(30 * (attempt + 1))
+            if resp.status_code in (502, 503) and attempt < 2:
+                time.sleep(5 * (attempt + 1))
                 continue
             resp.raise_for_status()
             return resp.json()
@@ -469,6 +494,36 @@ def _get_model_sampling(rec) -> dict | None:
     return s or None
 
 
+def _detect_thinking_support(endpoint: str, model_id: str) -> bool | None:
+    """Probe whether a model emits reasoning content by default.
+
+    Sends a minimal chat request (no chat_template_kwargs to avoid triggering
+    segfaults in chat templates that don't define `enable_thinking`) and checks
+    if the response carries reasoning_content or <think>/Harmony markers.
+
+    Returns True/False on a successful probe, or None on transport error
+    (so the caller can leave the registry flag unset for re-probe next time).
+    """
+    body = {
+        "model": model_id,
+        "messages": [{"role": "user", "content": "2+2?"}],
+        "max_tokens": 50,
+        "temperature": 0,
+    }
+    try:
+        with httpx.Client(timeout=300.0) as client:
+            resp = client.post(f"{endpoint}/v1/chat/completions", json=body)
+            if resp.status_code != 200:
+                return None
+            msg = resp.json()["choices"][0]["message"]
+            if (msg.get("reasoning_content") or "").strip():
+                return True
+            content = msg.get("content") or ""
+            return "<think>" in content or "<|channel|>analysis" in content
+    except Exception:
+        return None
+
+
 def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = False) -> dict:
     from . import registry as _reg
     endpoint = settings.swap_endpoint.rstrip("/")
@@ -479,7 +534,22 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     effort = rec.reasoning_effort if rec else ""
     sampling = _get_model_sampling(rec)
     sys_prompt = (rec.system_prompt if rec and rec.system_prompt else "")
-    thinking = bool(rec and rec.reasoning_format)
+
+    # Auto-detect thinking support when reasoning_format is unset.
+    # gpt-oss is always thinking-capable; skip probe.
+    if rec and (rec.reasoning_format or "") == "" and "gpt-oss" not in model_id.lower():
+        detected = _detect_thinking_support(endpoint, model_id)
+        if detected is None:
+            raise SwapctlError(
+                f"{model_id}: model failed to respond to probe — likely won't load. "
+                f"Check llama-swap logs and fix the backend before retrying."
+            )
+        rec.reasoning_format = "deepseek" if detected else "off"
+        _reg.upsert(rec)
+        log.info("%s: auto-detected thinking=%s -> reasoning_format=%s",
+                 model_id, detected, rec.reasoning_format)
+
+    thinking = bool(rec and rec.reasoning_format and rec.reasoning_format != "off")
 
     prev_details = []
     failed_ids: set = set()
@@ -500,7 +570,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     total_q = len(questions)
     workers = max(1, min(get_parallel_slots(), total_q)) if get_iq_parallel() else 1
 
-    def _answer_one(q: dict) -> tuple[dict, str, float]:
+    def _answer_one(q: dict) -> tuple[dict, str, float, int]:
         max_tok = q.get("max_tokens", 100)
         budget = _THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 128) if thinking else None
         if thinking and budget and budget > 0:
@@ -510,11 +580,13 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             q_sys_prompt = q_sys_prompt.replace("<|think|>", "").strip()
         content = ""
         tg = 0.0
+        tokens = 0
         try:
             data = _chat(endpoint, model_id, q["prompt"], max_tok, reasoning_effort=effort,
                          sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
                          thinking_budget=budget)
             tg = (data.get("timings") or {}).get("predicted_per_second", 0) or 0
+            tokens = (data.get("usage") or {}).get("completion_tokens", 0) or 0
             msg = data["choices"][0]["message"]
             content = _strip_think_tags(msg.get("content") or "")
             if not content.strip() and msg.get("reasoning_content"):
@@ -531,11 +603,12 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     content2 = _strip_think_tags(msg2["reasoning_content"])
                 if content2.strip():
                     content = content2
+                    tokens = (data2.get("usage") or {}).get("completion_tokens", 0) or tokens
         except Exception:
             pass
-        return (q, content, tg)
+        return (q, content, tg, tokens)
 
-    responses_by_idx: dict[int, tuple[dict, str]] = {}
+    responses_by_idx: dict[int, tuple[dict, str, int]] = {}
     tg_speeds: list[float] = []
     completed = 0
 
@@ -547,8 +620,8 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     f.cancel()
                 raise SwapctlError("cancelled")
             idx = futures[fut]
-            q, content, tg = fut.result()
-            responses_by_idx[idx] = (q, content)
+            q, content, tg, tokens = fut.result()
+            responses_by_idx[idx] = (q, content, tokens)
             if tg > 0:
                 tg_speeds.append(tg)
             completed += 1
@@ -569,9 +642,9 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                             "eta_sec": eta,
                         }
 
-    responses: list[tuple[dict, str]] = [responses_by_idx[i] for i in range(total_q)]
+    responses: list[tuple[dict, str, int]] = [responses_by_idx[i] for i in range(total_q)]
 
-    empty_count = sum(1 for _, c in responses if not c.strip())
+    empty_count = sum(1 for _, c, _ in responses if not c.strip())
     if empty_count > len(responses) * 0.2:
         log.warning("%s: %d/%d responses empty — model may not be working", model_id, empty_count, len(responses))
 
@@ -580,16 +653,17 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     details: list[dict] = []
     failed_indices: list[int] = []
 
-    for i, (q, content) in enumerate(responses):
+    for i, (q, content, tokens) in enumerate(responses):
         cat = q["category"]
         diff = q.get("difficulty", "medium")
         if cat not in categories:
-            categories[cat] = {"total": 0, "passed": 0}
+            categories[cat] = {"total": 0, "passed": 0, "tokens": 0}
         if diff not in difficulties:
             difficulties[diff] = {"total": 0, "passed": 0}
 
         passed = _score_answer(q, content)
         categories[cat]["total"] += 1
+        categories[cat]["tokens"] += tokens
         difficulties[diff]["total"] += 1
         if passed:
             categories[cat]["passed"] += 1
@@ -601,6 +675,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             "difficulty": diff,
             "passed": passed,
             "judge": None,
+            "tokens": tokens,
             "response": content[:300],
         })
 
@@ -624,7 +699,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     j = _jobs.get(job_id)
                     if j is not None:
                         j["progress"] = {"step": "judging", "current": ji, "total": n_failed, "percent": round(ji / n_failed * 100, 1)}
-            q, content = responses[i]
+            q, content, _ = responses[i]
             verdict = _llm_judge(endpoint, q, content)
             details[i]["judge"] = "pass" if verdict else "fail"
             if verdict:
@@ -646,9 +721,10 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             merged_details.append(d)
             cat = d["category"]
             diff = d.get("difficulty", "medium")
-            categories.setdefault(cat, {"total": 0, "passed": 0})
+            categories.setdefault(cat, {"total": 0, "passed": 0, "tokens": 0})
             difficulties.setdefault(diff, {"total": 0, "passed": 0})
             categories[cat]["total"] += 1
+            categories[cat]["tokens"] += d.get("tokens", 0) or 0
             difficulties[diff]["total"] += 1
             if d.get("passed"):
                 categories[cat]["passed"] += 1
@@ -657,14 +733,18 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
 
     total = sum(c["total"] for c in categories.values())
     total_passed = sum(c["passed"] for c in categories.values())
+    total_tokens = sum(c.get("tokens", 0) for c in categories.values())
     score = round((total_passed / total) * 100, 1) if total > 0 else 0
 
     cat_scores = {}
     for cat, vals in categories.items():
+        toks = vals.get("tokens", 0)
         cat_scores[cat] = {
             "score": round((vals["passed"] / vals["total"]) * 100, 1) if vals["total"] > 0 else 0,
             "passed": vals["passed"],
             "total": vals["total"],
+            "tokens": toks,
+            "avg_tokens": round(toks / vals["total"], 1) if vals["total"] > 0 else 0,
         }
 
     diff_scores = {}
@@ -688,6 +768,8 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         "passed": total_passed,
         "total": total,
         "duration": duration,
+        "total_tokens": total_tokens,
+        "avg_tokens": round(total_tokens / total, 1) if total > 0 else 0,
         "tested_at": _now(),
         "categories": cat_scores,
         "difficulties": diff_scores,

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}API Keys - swapctl{% endblock %}
+{% block content %}
+<div x-data="apiKeysApp()" x-init="init()">
+
+  <h1 class="text-xl font-bold text-slate-100 mb-1">API Keys</h1>
+  <p class="text-sm text-slate-400 mb-6">
+    Manage API keys for the audio endpoints (<code class="text-amber-300 text-xs">/v1/audio/speech</code>,
+    <code class="text-amber-300 text-xs">/v1/audio/transcriptions</code>).
+    When no keys exist, endpoints are public. Once at least one key is created, all requests must
+    supply <code class="text-amber-300 text-xs">Authorization: Bearer &lt;key&gt;</code> or
+    <code class="text-amber-300 text-xs">?api_key=&lt;key&gt;</code>.
+  </p>
+
+  {# ── Create key form ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">Create New Key</h2>
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+      <form @submit.prevent="createKey()" class="flex gap-3 items-end">
+        <div class="flex-1">
+          <label class="block text-xs text-slate-400 mb-1">Label</label>
+          <input type="text" x-model="newLabel" placeholder="e.g. openwebui, home-assistant"
+                 class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
+                        placeholder-slate-500 focus:outline-none focus:border-sky-500" />
+        </div>
+        <button type="submit"
+                :disabled="creating || !newLabel.trim()"
+                class="px-4 py-1.5 rounded bg-sky-700 hover:bg-sky-600 disabled:opacity-50
+                       text-sm text-white font-medium whitespace-nowrap">
+          <span x-show="!creating">Generate Key</span>
+          <span x-show="creating" x-cloak>Generating…</span>
+        </button>
+      </form>
+      <p x-show="createError" x-cloak class="mt-2 text-xs text-rose-400" x-text="createError"></p>
+    </div>
+  </section>
+
+  {# ── One-time key reveal modal ── #}
+  <div x-show="revealKey" x-cloak
+       class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+       @keydown.escape.window="revealKey = null">
+    <div class="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+      <h3 class="text-base font-semibold text-slate-100 mb-2">Key Created — Copy It Now</h3>
+      <p class="text-sm text-amber-400 mb-4">This is the only time the raw key will be shown. It cannot be recovered.</p>
+      <div class="flex gap-2 items-center mb-4">
+        <code class="flex-1 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-emerald-300 font-mono break-all"
+              x-text="revealKey"></code>
+        <button @click="copyKey()"
+                class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 whitespace-nowrap">
+          <span x-show="!keyCopied">Copy</span>
+          <span x-show="keyCopied" x-cloak class="text-emerald-400">Copied!</span>
+        </button>
+      </div>
+      <button @click="revealKey = null; keyCopied = false"
+              class="w-full px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm text-slate-300">
+        Close
+      </button>
+    </div>
+  </div>
+
+  {# ── Key list ── #}
+  <section>
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">Active Keys</h2>
+    <div x-show="loading" class="text-sm text-slate-500">Loading…</div>
+    <div x-show="!loading && keys.length === 0" x-cloak
+         class="text-sm text-slate-500 bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+      No API keys configured. Audio endpoints are public.
+    </div>
+    <div x-show="!loading && keys.length > 0" x-cloak
+         class="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-700">
+            <th class="text-left px-4 py-2 text-slate-300 font-medium">Label</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium">Created</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium">Last Used</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium w-20">Status</th>
+            <th class="px-4 py-2 w-20"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="k in keys" :key="k.id">
+            <tr class="border-b border-slate-700/50 last:border-0">
+              <td class="px-4 py-2 text-slate-200 font-medium" x-text="k.label"></td>
+              <td class="px-4 py-2 text-slate-400 text-xs" x-text="fmtDate(k.created_at)"></td>
+              <td class="px-4 py-2 text-slate-400 text-xs" x-text="k.last_used_at ? fmtDate(k.last_used_at) : '—'"></td>
+              <td class="px-4 py-2">
+                <span x-show="k.enabled" class="text-xs bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">active</span>
+                <span x-show="!k.enabled" x-cloak class="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded">revoked</span>
+              </td>
+              <td class="px-4 py-2 text-right">
+                <button x-show="k.enabled"
+                        @click="revokeKey(k.id)"
+                        class="text-xs px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-800/80 text-rose-300">
+                  Revoke
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const _ROOT = {{ root_path | tojson }};
+
+function apiKeysApp() {
+  return {
+    keys: [],
+    loading: true,
+    newLabel: '',
+    creating: false,
+    createError: null,
+    revealKey: null,
+    keyCopied: false,
+
+    async init() {
+      await this.loadKeys();
+    },
+
+    async loadKeys() {
+      this.loading = true;
+      try {
+        const resp = await fetch(_ROOT + '/api/keys');
+        const data = await resp.json();
+        this.keys = data.keys || [];
+      } catch (e) {
+        console.error('Failed to load keys', e);
+      }
+      this.loading = false;
+    },
+
+    async createKey() {
+      this.createError = null;
+      this.creating = true;
+      try {
+        const resp = await fetch(_ROOT + '/api/keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: this.newLabel.trim() }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          this.createError = err.detail || 'Failed to create key.';
+          return;
+        }
+        const data = await resp.json();
+        this.revealKey = data.key;
+        this.newLabel = '';
+        await this.loadKeys();
+      } catch (e) {
+        this.createError = 'Network error: ' + e.message;
+      } finally {
+        this.creating = false;
+      }
+    },
+
+    async revokeKey(id) {
+      if (!confirm('Revoke this key? Existing integrations using it will lose access.')) return;
+      try {
+        await fetch(_ROOT + '/api/keys/' + id, { method: 'DELETE' });
+        await this.loadKeys();
+      } catch (e) {
+        console.error('Revoke failed', e);
+      }
+    },
+
+    copyKey() {
+      navigator.clipboard.writeText(this.revealKey).then(() => {
+        this.keyCopied = true;
+        setTimeout(() => this.keyCopied = false, 2000);
+      });
+    },
+
+    fmtDate(iso) {
+      if (!iso) return '—';
+      try {
+        return new Date(iso).toLocaleString();
+      } catch {
+        return iso;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

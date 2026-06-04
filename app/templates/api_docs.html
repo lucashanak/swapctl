@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% block title %}API Reference - swapctl{% endblock %}
+{% block content %}
+<div x-data="apiDocsApp()" x-init="init()">
+
+  <h1 class="text-xl font-bold text-slate-100 mb-1">API Reference</h1>
+  <p class="text-sm text-slate-400 mb-6">All public and management endpoints for swapctl / llama-swap. No auth required for audio endpoints; session cookie required for management UI routes.</p>
+
+  {# ── Base URLs ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">Base URLs</h2>
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-700">
+            <th class="text-left px-4 py-2 text-slate-300 font-medium w-40">Context</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium">URL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-slate-700/50">
+            <td class="px-4 py-2 text-slate-400">LAN (swapctl UI)</td>
+            <td class="px-4 py-2 font-mono text-sky-300">http://192.168.1.94:8090{{ root_path }}</td>
+          </tr>
+          <tr class="border-b border-slate-700/50">
+            <td class="px-4 py-2 text-slate-400">Internet (swapctl UI)</td>
+            <td class="px-4 py-2 font-mono text-sky-300">{{ public_base }}{{ root_path }}</td>
+          </tr>
+          <tr class="border-b border-slate-700/50">
+            <td class="px-4 py-2 text-slate-400">Internet (audio API)</td>
+            <td class="px-4 py-2 font-mono text-sky-300">{{ public_base }}/api/v1</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-2 text-slate-400">Internet (LLM OpenAI)</td>
+            <td class="px-4 py-2 font-mono text-sky-300">{{ llm_base }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ── LLM (llama-swap OpenAI-compat) ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">LLM — OpenAI-compatible (via llama-swap)</h2>
+    <p class="text-sm text-slate-400 mb-3">Proxied directly by the reverse proxy to llama-swap.
+      {% if llm_models %}<strong class="text-slate-300">{{ llm_models|length }} models</strong> available right now{% else %}<span class="text-amber-400">llama-swap unreachable — live model list unavailable</span>{% endif %}
+      — see <a href="{{ root_path }}/testing" class="text-sky-400 hover:text-sky-300 underline">Models</a> for the full list. <strong class="text-slate-300">Note:</strong> base path moved from <code class="text-amber-300 text-xs">/api</code> to <code class="text-amber-300 text-xs">/llm</code> (2026-06) — <code class="text-amber-300 text-xs">/api/*</code> now belongs to Open WebUI.</p>
+
+    <div class="space-y-4">
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/llm/v1/chat/completions</code>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">Standard OpenAI chat completions. Supports streaming (<code class="text-amber-300 text-xs">stream: true</code>), tool use, and structured output.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.code0.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code0">curl {{ llm_base }}/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "{{ example_model }}",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": false
+  }'</pre>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button @click="testChatCompletions()"
+                  :disabled="tests.chat.loading"
+                  class="text-xs px-3 py-1 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200 font-medium">
+            <span x-show="!tests.chat.loading">Test</span>
+            <span x-show="tests.chat.loading" x-cloak>Testing...</span>
+          </button>
+        </div>
+        <div x-show="tests.chat.result !== null" x-cloak
+             class="mt-2 border border-slate-600 rounded p-2 bg-slate-900 text-xs font-mono">
+          <span :class="statusColor(tests.chat.status)" x-text="tests.chat.status ? 'HTTP ' + tests.chat.status : ''"></span>
+          <span class="text-slate-500 ml-2" x-text="tests.chat.ms ? tests.chat.ms + ' ms' : ''"></span>
+          <div class="mt-1 text-slate-300 break-all whitespace-pre-wrap" x-text="tests.chat.result"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-sky-900/60 text-sky-300 px-2 py-0.5 rounded">GET</span>
+          <code class="text-sm text-slate-200">/llm/v1/models</code>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">List all loaded/available models in OpenAI format.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.code1.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code1">curl {{ llm_base }}/models | python3 -m json.tool</pre>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button @click="testModels()"
+                  :disabled="tests.models.loading"
+                  class="text-xs px-3 py-1 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200 font-medium">
+            <span x-show="!tests.models.loading">Test</span>
+            <span x-show="tests.models.loading" x-cloak>Testing...</span>
+          </button>
+        </div>
+        <div x-show="tests.models.result !== null" x-cloak
+             class="mt-2 border border-slate-600 rounded p-2 bg-slate-900 text-xs font-mono">
+          <span :class="statusColor(tests.models.status)" x-text="tests.models.status ? 'HTTP ' + tests.models.status : ''"></span>
+          <span class="text-slate-500 ml-2" x-text="tests.models.ms ? tests.models.ms + ' ms' : ''"></span>
+          <div class="mt-1 text-slate-300 break-all whitespace-pre-wrap" x-text="tests.models.result"></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {# ── TTS ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">TTS — Text-to-Speech (Piper + XTTS-v2, via swapctl)</h2>
+    <p class="text-sm text-slate-400 mb-3">Public endpoints — no authentication required. Two engines available: <strong class="text-slate-300">Piper</strong> (fast, ONNX, ~0.3 s) and <strong class="text-slate-300">XTTS-v2</strong> (neural, multilingual, ~3–8 s CPU). Select engine via voice prefix: <code class="text-amber-300 text-xs">xtts:</code> routes to XTTS-v2, any other voice routes to Piper.</p>
+
+    <div class="space-y-4">
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/api/v1/audio/speech</code>
+        </div>
+        <p class="text-sm text-slate-400 mb-2">Synthesize text to audio. Body: <code class="text-amber-300 text-xs">{"voice": "...", "input": "...", "language": "auto", "response_format": "wav"}</code>.</p>
+        <div class="mb-2 text-xs text-slate-500">
+          <strong class="text-slate-400">Piper voices</strong> (fast): see <a href="{{ root_path }}/voices" class="text-sky-400 hover:text-sky-300 underline">Voices page</a> or <code class="text-amber-300">GET /api/v1/audio/voices</code><br>
+          <strong class="text-slate-400">XTTS-v2</strong> (neural, multilingual): prefix voice with <code class="text-amber-300">xtts:</code> — e.g. <code class="text-amber-300">xtts:default</code> or <code class="text-amber-300">xtts:default_en</code>. Supports <code class="text-amber-300">language: "auto"</code> (auto-detects CS/EN from text). First request ~30 s (model load), subsequent ~3–8 s. CPU-only for now.
+        </div>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.code2.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code2">curl -X POST {{ public_base }}/api/v1/audio/speech \
+  -H 'Content-Type: application/json' \
+  -d '{"voice":"{{ example_voice }}","input":"Ahoj, jak se máš?","model":"tts-1"}' \
+  -o output.wav
+
+# XTTS-v2 (neural, auto-detects Czech/English):
+curl -X POST {{ public_base }}/api/v1/audio/speech \
+  -H 'Content-Type: application/json' \
+  -d '{"voice":"xtts:default","input":"Hello, jak se máš?","language":"auto","response_format":"mp3"}' \
+  -o out.mp3</pre>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button @click="testTTS()"
+                  :disabled="tests.tts.loading"
+                  class="text-xs px-3 py-1 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200 font-medium">
+            <span x-show="!tests.tts.loading">Test</span>
+            <span x-show="tests.tts.loading" x-cloak>Testing...</span>
+          </button>
+        </div>
+        <div x-show="tests.tts.result !== null" x-cloak
+             class="mt-2 border border-slate-600 rounded p-2 bg-slate-900 text-xs font-mono">
+          <span :class="statusColor(tests.tts.status)" x-text="tests.tts.status ? 'HTTP ' + tests.tts.status : ''"></span>
+          <span class="text-slate-500 ml-2" x-text="tests.tts.ms ? tests.tts.ms + ' ms' : ''"></span>
+          <div class="mt-1 text-slate-300" x-text="tests.tts.result"></div>
+          <audio x-ref="ttsAudio" class="mt-2 w-full" x-show="tests.tts.audioUrl" :src="tests.tts.audioUrl" controls></audio>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-sky-900/60 text-sky-300 px-2 py-0.5 rounded">GET</span>
+          <code class="text-sm text-slate-200">/api/v1/audio/voices</code>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">List installed voice IDs — <strong class="text-slate-300">{{ voices|length }}</strong> currently installed{% if voices %} ({{ voices[:3]|join(', ') }}{% if voices|length > 3 %}, …{% endif %}){% endif %}.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.code3.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code3">curl {{ public_base }}/api/v1/audio/voices</pre>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button @click="testVoices()"
+                  :disabled="tests.voices.loading"
+                  class="text-xs px-3 py-1 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200 font-medium">
+            <span x-show="!tests.voices.loading">Test</span>
+            <span x-show="tests.voices.loading" x-cloak>Testing...</span>
+          </button>
+        </div>
+        <div x-show="tests.voices.result !== null" x-cloak
+             class="mt-2 border border-slate-600 rounded p-2 bg-slate-900 text-xs font-mono">
+          <span :class="statusColor(tests.voices.status)" x-text="tests.voices.status ? 'HTTP ' + tests.voices.status : ''"></span>
+          <span class="text-slate-500 ml-2" x-text="tests.voices.ms ? tests.voices.ms + ' ms' : ''"></span>
+          <div class="mt-1 text-slate-300 break-all whitespace-pre-wrap" x-text="tests.voices.result"></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {# ── STT ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">STT — Speech-to-Text (Whisper, via swapctl → llama-swap)</h2>
+    <p class="text-sm text-slate-400 mb-3">Public endpoints — no authentication required. Proxied to the llama-swap whisper-server backend.</p>
+
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+        <code class="text-sm text-slate-200">/api/v1/audio/transcriptions</code>
+      </div>
+      <p class="text-sm text-slate-400 mb-2">Transcribe audio file. Multipart form: <code class="text-amber-300 text-xs">file=@audio.wav</code> and <code class="text-amber-300 text-xs">model=whisper-large-v3-turbo-q4-1</code>. Returns <code class="text-amber-300 text-xs">{"text": "..."}</code>.</p>
+      <div x-data="{ copied: false }" class="relative">
+        <button @click="navigator.clipboard.writeText($refs.code4.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+          <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+        </button>
+        <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code4">curl -X POST {{ public_base }}/api/v1/audio/transcriptions \
+  -F 'file=@recording.wav' \
+  -F 'model=whisper-large-v3-turbo-q4-1'</pre>
+      </div>
+      <div class="mt-2 flex items-center gap-2">
+        <button @click="testSTT()"
+                :disabled="tests.stt.loading"
+                class="text-xs px-3 py-1 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200 font-medium">
+          <span x-show="!tests.stt.loading">Test</span>
+          <span x-show="tests.stt.loading" x-cloak>Testing... (TTS→STT chain)</span>
+        </button>
+        <span class="text-xs text-slate-500" x-show="tests.stt.loading" x-cloak>synthesizing audio first...</span>
+      </div>
+      <div x-show="tests.stt.result !== null" x-cloak
+           class="mt-2 border border-slate-600 rounded p-2 bg-slate-900 text-xs font-mono">
+        <span :class="statusColor(tests.stt.status)" x-text="tests.stt.status ? 'HTTP ' + tests.stt.status : ''"></span>
+        <span class="text-slate-500 ml-2" x-text="tests.stt.ms ? tests.stt.ms + ' ms' : ''"></span>
+        <div class="mt-1 text-slate-300 break-all whitespace-pre-wrap" x-text="tests.stt.result"></div>
+      </div>
+    </div>
+  </section>
+
+  {# ── swapctl API endpoints (autogenerated from live routes) ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">swapctl API Endpoints</h2>
+    <p class="text-sm text-slate-400 mb-3">Generated from the live FastAPI routes — always in sync with the running code. Session routes require login at <a href="{{ root_path }}/login" class="text-sky-400 hover:text-sky-300 underline">{{ root_path }}/login</a> first, then use <code class="text-amber-300 text-xs">-b cookies.txt / -c cookies.txt</code> with curl, or just use the browser.</p>
+
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden mb-4">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-700">
+            <th class="text-left px-4 py-2 text-slate-300 font-medium w-12">Method</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium w-72">Path</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium w-20">Auth</th>
+            <th class="text-left px-4 py-2 text-slate-300 font-medium">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ep in api_endpoints %}
+          <tr class="{% if not loop.last %}border-b border-slate-700/50{% endif %}">
+            <td class="px-4 py-2"><span class="text-xs font-mono {% if ep.method == 'POST' %}text-emerald-300{% elif ep.method == 'DELETE' %}text-rose-300{% else %}text-sky-300{% endif %}">{{ ep.method }}</span></td>
+            <td class="px-4 py-2 font-mono text-xs text-slate-200">{{ ep.path }}</td>
+            <td class="px-4 py-2 text-xs">{% if ep.public %}<span class="text-emerald-400">public*</span>{% else %}<span class="text-amber-400">session</span>{% endif %}</td>
+            <td class="px-4 py-2 text-slate-400">{{ ep.desc }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="text-xs text-slate-500 px-4 py-2 border-t border-slate-700">*public endpoints require <code class="text-amber-300">Authorization: Bearer sk-…</code> once any <a href="{{ root_path }}/api-keys" class="text-sky-400 hover:underline">API key</a> is configured.</p>
+    </div>
+
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-3 mb-4 text-sm text-slate-400">
+      Quick auth check — <code class="text-amber-300 text-xs">POST {{ root_path }}/api/v1/audio/install</code> ({{ example_voice }}; 409 = already installed, auth OK):
+      <button @click="testVoiceInstall()"
+              :disabled="tests.install.loading"
+              class="ml-2 text-xs px-2 py-0.5 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200">
+        <span x-show="!tests.install.loading">Test</span>
+        <span x-show="tests.install.loading" x-cloak>Testing...</span>
+      </button>
+      <span x-show="tests.install.result !== null" x-cloak class="ml-2 font-mono text-xs">
+        <span :class="statusColor(tests.install.status)" x-text="tests.install.status ? 'HTTP ' + tests.install.status : ''"></span>
+        <span class="text-slate-500 ml-1" x-text="tests.install.ms ? tests.install.ms + ' ms' : ''"></span>
+        <span class="text-slate-300 ml-1" x-text="tests.install.result"></span>
+      </span>
+    </div>
+
+    <div x-data="{ copied: false }" class="relative">
+      <p class="text-xs text-slate-500 mb-1">Example: install a voice via API (with session cookie)</p>
+      <button @click="navigator.clipboard.writeText($refs.code5.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+              class="absolute top-6 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+        <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+      </button>
+      <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code5"># First log in and save the session cookie
+curl -c cookies.txt -X POST {{ public_base }}{{ root_path }}/login \
+  -F 'password=YOUR_PASSWORD'
+
+# Then install a voice
+curl -b cookies.txt -X POST {{ public_base }}{{ root_path }}/api/v1/audio/install \
+  -H 'Content-Type: application/json' \
+  -d '{"voice": "en_US-ryan-medium"}'</pre>
+    </div>
+  </section>
+
+  {# ── OpenWebUI integration ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">OpenWebUI Integration Tips</h2>
+    <p class="text-sm text-slate-400 mb-3">Configure OpenWebUI to use this server for TTS and STT:</p>
+    <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4 space-y-3 text-sm">
+      <div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mb-1">TTS</div>
+        <ul class="space-y-1 text-slate-300">
+          <li><span class="text-slate-500">Admin Panel → Settings → Audio → TTS Engine:</span> <code class="text-amber-300 text-xs">OpenAI</code> (or "OpenAI Compatible" on newer builds)</li>
+          <li><span class="text-slate-500">API Base URL:</span> <code class="font-mono text-sky-300 text-xs">{{ public_base }}/api/v1</code></li>
+          <li><span class="text-slate-500">API Key:</span> <code class="text-amber-300 text-xs">sk-dummy</code> (any non-empty string — backend doesn't validate)</li>
+          <li><span class="text-slate-500">TTS Model:</span> <code class="text-amber-300 text-xs">tts-1</code></li>
+          <li><span class="text-slate-500">TTS Voice:</span> <code class="text-amber-300 text-xs">{{ example_voice }}</code> (any from <a href="{{ root_path }}/voices" class="text-sky-400 hover:underline">voices list</a>)</li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mb-1">STT</div>
+        <ul class="space-y-1 text-slate-300">
+          <li><span class="text-slate-500">Admin Panel → Settings → Audio → STT Engine:</span> <code class="text-amber-300 text-xs">OpenAI</code></li>
+          <li><span class="text-slate-500">API Base URL:</span> <code class="font-mono text-sky-300 text-xs">{{ public_base }}/api/v1</code></li>
+          <li><span class="text-slate-500">API Key:</span> <code class="text-amber-300 text-xs">sk-dummy</code></li>
+          <li><span class="text-slate-500">STT Model:</span> <code class="text-amber-300 text-xs">whisper-1</code> or <code class="text-amber-300 text-xs">whisper-large-v3-turbo-q4-1</code> — model name is forwarded to whisper-server and ignored, both work.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-xs text-slate-500 uppercase tracking-wide mb-1">LLM (Chat completions)</div>
+        <ul class="space-y-1 text-slate-300">
+          <li><span class="text-slate-500">Admin Panel → Settings → Connections → OpenAI API:</span></li>
+          <li><span class="text-slate-500">API Base URL:</span> <code class="font-mono text-sky-300 text-xs">{{ llm_base }}</code> (LAN: <code class="font-mono text-sky-300 text-xs">http://192.168.1.94:8080/v1</code>)</li>
+          <li><span class="text-slate-500">API Key:</span> <code class="text-amber-300 text-xs">sk-dummy</code></li>
+          <li><span class="text-slate-500">Available models:</span> see <code class="text-amber-300 text-xs">GET /models</code> test above{% if llm_models %} ({{ llm_models|length }} models){% endif %}</li>
+        </ul>
+      </div>
+      <div class="text-xs text-slate-500 pt-2 border-t border-slate-700">
+        <strong class="text-slate-400">API Key auth:</strong> By default audio endpoints are public (no keys configured).
+        To restrict access, create a key at <a href="{{ root_path }}/api-keys" class="text-sky-400 hover:underline">API Keys</a>
+        and paste the <code class="text-amber-300">sk-…</code> value into OpenWebUI's API Key field.
+        Once any key is created, all audio requests must supply <code class="text-amber-300">Authorization: Bearer &lt;key&gt;</code>.
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const _ROOT = {{ root_path | tojson }};
+
+function apiDocsApp() {
+  return {
+    tests: {
+      chat:    { loading: false, status: null, ms: null, result: null },
+      models:  { loading: false, status: null, ms: null, result: null },
+      tts:     { loading: false, status: null, ms: null, result: null, audioUrl: null },
+      voices:  { loading: false, status: null, ms: null, result: null },
+      stt:     { loading: false, status: null, ms: null, result: null },
+      install: { loading: false, status: null, ms: null, result: null },
+    },
+
+    init() {},
+
+    // LLM goes to llama-swap. On public domain that's same-origin {{ llm_prefix }}/v1 (NPM forwards;
+    // /api/* belongs to Open WebUI since 2026-06). Prefix comes from SWAPCTL_LLM_PUBLIC_PREFIX.
+    // On LAN access (192.168.1.x:8090) swapctl has no {{ llm_prefix }} route, so go direct to llama-swap port 8080.
+    llmBase() {
+      const host = window.location.hostname;
+      if (host.includes('hanaktech')) return window.location.origin + {{ (llm_prefix ~ '/v1') | tojson }};
+      return window.location.protocol + '//' + host + ':8080/v1';
+    },
+
+    statusColor(status) {
+      if (!status) return 'text-slate-400';
+      if (status >= 200 && status < 300) return 'text-emerald-400 font-semibold';
+      if (status >= 400 && status < 500) return 'text-amber-400 font-semibold';
+      return 'text-rose-400 font-semibold';
+    },
+
+    async _doFetch(slot, url, opts) {
+      slot.loading = true;
+      slot.status = null;
+      slot.ms = null;
+      slot.result = null;
+      const t0 = performance.now();
+      try {
+        const resp = await fetch(url, opts || {});
+        slot.status = resp.status;
+        slot.ms = Math.round(performance.now() - t0);
+        return resp;
+      } catch (e) {
+        slot.ms = Math.round(performance.now() - t0);
+        slot.result = 'Network error: ' + e.message;
+        slot.loading = false;
+        return null;
+      }
+    },
+
+    async testChatCompletions() {
+      const slot = this.tests.chat;
+      const resp = await this._doFetch(slot, this.llmBase() + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: {{ example_model | tojson }},
+          messages: [{ role: 'user', content: 'Say hi in one word.' }],
+          max_tokens: 5,
+          stream: false,
+        }),
+      });
+      if (!resp) return;
+      try {
+        const data = await resp.json();
+        const content = data?.choices?.[0]?.message?.content || JSON.stringify(data);
+        slot.result = content.slice(0, 100);
+      } catch (e) {
+        slot.result = 'Parse error: ' + e.message;
+      }
+      slot.loading = false;
+    },
+
+    async testModels() {
+      const slot = this.tests.models;
+      const resp = await this._doFetch(slot, this.llmBase() + '/models');
+      if (!resp) return;
+      try {
+        const data = await resp.json();
+        const models = data?.data || [];
+        const first3 = models.slice(0, 3).map(m => m.id).join(', ');
+        slot.result = models.length + ' models. First 3: ' + (first3 || '—');
+      } catch (e) {
+        slot.result = 'Parse error: ' + e.message;
+      }
+      slot.loading = false;
+    },
+
+    async testTTS() {
+      const slot = this.tests.tts;
+      slot.audioUrl = null;
+      const resp = await this._doFetch(slot, window.location.origin + _ROOT + '/api/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'tts-1', voice: {{ example_voice | tojson }}, input: 'Ahoj, test.' }),
+      });
+      if (!resp) return;
+      if (resp.ok) {
+        try {
+          const blob = await resp.blob();
+          slot.audioUrl = URL.createObjectURL(blob);
+          slot.result = 'Played in browser (' + (blob.size / 1024).toFixed(1) + ' KB WAV)';
+        } catch (e) {
+          slot.result = 'Blob error: ' + e.message;
+        }
+      } else {
+        slot.result = await resp.text().catch(() => 'Error ' + resp.status);
+      }
+      slot.loading = false;
+    },
+
+    async testVoices() {
+      const slot = this.tests.voices;
+      const resp = await this._doFetch(slot, window.location.origin + _ROOT + '/api/v1/audio/voices');
+      if (!resp) return;
+      try {
+        const data = await resp.json();
+        // data may be array of strings or array of objects
+        const voices = Array.isArray(data) ? data : (data.voices || []);
+        const ids = voices.slice(0, 5).map(v => typeof v === 'string' ? v : v.key || v.id || JSON.stringify(v));
+        slot.result = voices.length + ' voices. Sample: ' + (ids.join(', ') || '—');
+      } catch (e) {
+        slot.result = 'Parse error: ' + e.message;
+      }
+      slot.loading = false;
+    },
+
+    async testSTT() {
+      const slot = this.tests.stt;
+      slot.loading = true;
+      slot.status = null;
+      slot.ms = null;
+      slot.result = null;
+
+      // Step 1: TTS to get a WAV blob
+      let wavBlob;
+      try {
+        const ttsResp = await fetch(window.location.origin + _ROOT + '/api/v1/audio/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'tts-1', voice: {{ example_voice | tojson }}, input: 'Ahoj, test.' }),
+        });
+        if (!ttsResp.ok) {
+          slot.result = 'TTS step failed: HTTP ' + ttsResp.status;
+          slot.loading = false;
+          return;
+        }
+        wavBlob = await ttsResp.blob();
+      } catch (e) {
+        slot.result = 'TTS step error: ' + e.message;
+        slot.loading = false;
+        return;
+      }
+
+      // Step 2: STT with the WAV blob
+      const t0 = performance.now();
+      try {
+        const fd = new FormData();
+        fd.append('model', 'whisper-large-v3-turbo-q4-1');
+        fd.append('file', wavBlob, 'test.wav');
+        const resp = await fetch(window.location.origin + _ROOT + '/api/v1/audio/transcriptions', {
+          method: 'POST',
+          body: fd,
+        });
+        slot.status = resp.status;
+        slot.ms = Math.round(performance.now() - t0);
+        if (resp.ok) {
+          const data = await resp.json();
+          slot.result = '"' + (data.text || JSON.stringify(data)).slice(0, 120) + '"';
+        } else {
+          slot.result = await resp.text().catch(() => 'Error ' + resp.status);
+        }
+      } catch (e) {
+        slot.ms = Math.round(performance.now() - t0);
+        slot.result = 'Network error: ' + e.message;
+      }
+      slot.loading = false;
+    },
+
+    async testVoiceInstall() {
+      const slot = this.tests.install;
+      // Use a voice that is likely already installed — 409 = already installed (not an error for test purposes)
+      const resp = await this._doFetch(slot, window.location.origin + _ROOT + '/api/v1/audio/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice: {{ example_voice | tojson }} }),
+      });
+      if (!resp) return;
+      if (resp.status === 409) {
+        slot.result = 'Already installed (auth OK)';
+      } else if (resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        slot.result = 'Installed' + (data.voice ? ': ' + data.voice : '');
+      } else {
+        slot.result = await resp.text().catch(() => 'Error ' + resp.status);
+      }
+      slot.loading = false;
+    },
+  };
+}
+</script>
+{% endblock %}

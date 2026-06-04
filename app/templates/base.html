@@ -50,7 +50,7 @@
       <div class="flex items-center gap-3 sm:gap-6 min-w-0">
         <a href="{{ root_path }}/" class="font-semibold tracking-tight text-slate-100 shrink-0">swapctl</a>
         <div class="flex gap-0.5 sm:gap-1 text-xs sm:text-sm overflow-x-auto scrollbar-hide -mx-1 px-1">
-          {% set tabs = [('models', root_path + '/testing', 'Models'), ('browse', root_path + '/browse', 'Browse'), ('jobs', root_path + '/jobs', 'Jobs'), ('swap', root_path + '/swap-config', 'Matrix'), ('benchmark', root_path + '/benchmark', 'Benchmark'), ('npu', root_path + '/npu', 'NPU'), ('options', root_path + '/options', 'Options')] %}
+          {% set tabs = [('models', root_path + '/testing', 'Models'), ('browse', root_path + '/browse', 'Browse'), ('jobs', root_path + '/jobs', 'Jobs'), ('swap', root_path + '/swap-config', 'Matrix'), ('benchmark', root_path + '/benchmark', 'Benchmark'), ('npu', root_path + '/npu', 'NPU'), ('voices', root_path + '/voices', 'Voices'), ('api-docs', root_path + '/api-docs', 'API'), ('api-keys', root_path + '/api-keys', 'Keys'), ('options', root_path + '/options', 'Options')] %}
           {% for key, href, label in tabs %}
             <a href="{{ href }}"
                class="px-2 sm:px-3 py-1.5 rounded-md whitespace-nowrap {% if active_tab == key %}bg-slate-700 text-white{% else %}text-slate-300 hover:bg-slate-700 hover:text-white{% endif %}">
@@ -75,7 +75,7 @@
                class="absolute right-0 mt-2 w-96 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
             <div class="px-3 py-2 border-b border-slate-700 text-[10px] uppercase text-slate-400 tracking-wide flex justify-between">
               <span>GitHub watch</span>
-              <span class="text-slate-500 normal-case tracking-normal">{{ _gw.get('last_check','')[:16] }}</span>
+              <span class="text-slate-500 normal-case tracking-normal">{{ (_gw.get('last_check') or '')[:16] }}</span>
             </div>
             {% if not _gw.get('items') %}
             <div class="px-3 py-4 text-sm text-slate-500">no items tracked</div>

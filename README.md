@@ -1,10 +1,9 @@
 # swapctl
 
-swapctl is a small self-hosted web UI that manages the full lifecycle of GGUF models for
-[llama-swap](https://github.com/mostlygeek/llama-swap). It replaces the manual workflow of
-`hf download + edit yaml + systemctl restart` with a browser interface: browse Hugging Face,
-pick a quant, download it, auto-register it in `/etc/llama-swap/config.yaml`, and manage
-removals and updates — all without touching the command line.
+swapctl is a self-hosted web UI that manages the full lifecycle of GGUF models for
+[llama-swap](https://github.com/mostlygeek/llama-swap). Browse Hugging Face, pick a
+quant, download it, auto-register it in `/etc/llama-swap/config.yaml`, run IQ
+benchmarks, manage TTS voices, and transcribe audio — all from the browser.
 
 ## Architecture
 
@@ -12,25 +11,32 @@ removals and updates — all without touching the command line.
 Browser
   |
   v
-swapctl :8090
+swapctl :8090  (FastAPI + HTMX + Alpine.js)
   |
   +-- HF API (search, file list, download)
   +-- /etc/llama-swap/config.yaml  (ruamel round-trip edit)
   +-- systemctl restart llama-swap
   +-- /models/<model-id>/          (GGUF files on disk)
+  +-- /models/voices/              (Piper ONNX voice files)
   |
   v
 llama-swap :8080
+  +-- llama.cpp backends (LLM, Whisper STT)
 ```
 
 ## Quickstart (deploy from dev machine)
 
 ```bash
+# Sync app/ only (safe when remote has no internet — skips pip)
+rsync -a app/ pve2-llm:/opt/swapctl/app/
+ssh pve2-llm 'systemctl restart swapctl'
+
+# Full deploy (installs venv + deps — requires internet on remote)
 ./deploy.sh
 ```
 
-The script rsyncs the source to `llm-gpu:/opt/swapctl`, installs dependencies in a venv,
-installs the systemd unit, enables and starts the service, then verifies the API responds.
+> **Note:** Do not run `deploy.sh` if the remote host has no internet access. Use the
+> `rsync app/` pattern instead — it only ships Python source, which needs no pip step.
 
 Override the SSH target with `--host`:
 
@@ -48,9 +54,50 @@ uvicorn app.main:app --reload
 
 The app is then available at `http://localhost:8090`.
 
+## Features
+
+### Model management
+Browse Hugging Face, download GGUF files, auto-register in llama-swap config, run
+removal and updates, view VRAM estimates.
+
+### IQ benchmark
+Automated LLM intelligence testing with configurable categories (math, reasoning,
+code, Czech, …). Thinking mode is auto-detected per model (no manual flag needed).
+Results include per-question token counts and total duration for effectivity ranking
+(IQ × 0.7 + speed × 0.3).
+
+### Speed benchmark
+Measures generation tokens/sec and time-to-first-token per model. History is
+preserved across restarts.
+
+### Backend registry / per-model backend switching
+Each model can be assigned a specific llama-swap backend (e.g. `llama-cpp-vulkan`,
+`llama-cpp-rocm`, `whisper-server`). The registry performs an architecture
+compatibility check before writing the config — mismatched backends are rejected with
+a clear error. Speculative decoding draft pairings are configured separately per
+model in the UI.
+
+### Audio — TTS (Piper)
+`POST /api/v1/audio/speech` synthesizes text to WAV. Voices are loaded in-process via
+the `piper-tts` ONNX package on first use (~3 s) and cached in RAM for subsequent
+calls (~0.3 s). RAM cost: ~150 MB per medium-quality voice. Manage voices at
+`/manage/voices` or via the install/uninstall API endpoints.
+
+### Audio — STT (Whisper)
+`POST /api/v1/audio/transcriptions` transcribes audio via a llama-swap
+whisper-server backend. Compatible with the OpenAI `/v1/audio/transcriptions` shape.
+
+### Voice manager page
+`/manage/voices` lists installed voices, shows the full Piper catalog, and lets you
+install or remove voices with one click. Includes an in-browser preview player.
+
+### API reference page
+`/manage/api-docs` documents all public and management endpoints with copy-pastable
+`curl` examples. See it for full endpoint details.
+
 ## Configuration
 
-swapctl is configured entirely through environment variables (or `/etc/swapctl.env`):
+swapctl is configured through environment variables (or `/etc/swapctl.env`):
 
 | Variable | Default | Description |
 |---|---|---|
@@ -66,22 +113,21 @@ swapctl is configured entirely through environment variables (or `/etc/swapctl.e
 
 ## Security model
 
-swapctl runs **as root** inside its LXC (it edits `/etc/llama-swap/config.yaml` and calls
-`systemctl restart llama-swap`) and has **no authentication**. Mutating routes validate
-`model_id` / `repo_id` / `filename` with strict regexes and `Path.resolve()` / `is_relative_to`
-checks, so a malicious URL cannot escape `/models/` or inject llama-server flags — that is
-the first line of defence. The second line is the network: swapctl must stay LAN-only.
+swapctl runs **as root** inside its LXC (it edits `/etc/llama-swap/config.yaml` and
+calls `systemctl restart llama-swap`). The UI requires a session cookie (login page at
+`/manage/login`). Audio API endpoints (`/api/v1/audio/*`) are public — no auth
+required, by design, for OpenWebUI and external integrator compatibility.
 
-Before exposing it beyond the LAN, add at least one of:
+HTML responses carry `Cache-Control: no-store` headers so browsers never serve a
+stale management page.
 
-- Reverse proxy with HTTP basic auth or OIDC (nginx, Caddy, Tailscale Funnel)
-- Bind it to `127.0.0.1` via `SWAPCTL_BIND_HOST=127.0.0.1` and tunnel via SSH / WireGuard
-- A CSRF-aware middleware (swapctl does not set one; simple cross-origin POSTs from a
-  malicious page on the same LAN would otherwise succeed)
+Mutating routes validate `model_id` / `repo_id` / `filename` with strict regexes and
+`Path.resolve()` / `is_relative_to` checks to prevent path traversal.
 
-Known limitations (documented, not yet fixed):
-- Service runs as root; a future hardening pass should move `systemctl restart llama-swap`
-  behind a narrow sudoers rule and drop to an unprivileged user
+**Before exposing beyond the LAN**, add at minimum a reverse proxy with HTTPS and
+consider HTTP basic auth or OIDC for the management routes.
+
+Known limitations:
 - No per-IP rate limiting on install/update endpoints
 - CDN-hosted Tailwind/HTMX/Alpine.js without SRI hashes
 

@@ -40,8 +40,12 @@
         {{ v.score }}%
       </span>
       <span class="text-[10px] text-slate-500 w-10 text-right">{{ v.passed }}/{{ v.total }}</span>
+      {% if v.avg_tokens %}<span class="text-[10px] text-slate-500 w-14 text-right" title="avg completion tokens per question">{{ v.avg_tokens|int }}t</span>{% endif %}
     </div>
     {% endfor %}
+    {% if iq.avg_tokens %}
+    <div class="text-[10px] text-slate-500 pt-1">total {{ iq.total_tokens }} tokens · avg {{ iq.avg_tokens|int }}/q</div>
+    {% endif %}
   </div>
 
   {% if iq.details %}

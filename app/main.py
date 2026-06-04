@@ -12,13 +12,22 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import bootstrap, downloader
 from .config import settings
-from .routers import api, auth, benchmark, views
+from .routers import api, auth, benchmark, stt, tts, views
+from .routers.api_keys_router import router as api_keys_router
 
 APP_DIR = Path(__file__).resolve().parent
 log = logging.getLogger("swapctl")
 
 PREFIX = settings.root_path
-_PUBLIC_EXACT = {f"{PREFIX}/login", f"{PREFIX}/logout", f"{PREFIX}/healthz", f"{PREFIX}/favicon.ico"}
+_PUBLIC_EXACT = {
+    f"{PREFIX}/login",
+    f"{PREFIX}/logout",
+    f"{PREFIX}/healthz",
+    f"{PREFIX}/favicon.ico",
+    f"{PREFIX}/api/v1/audio/voices",
+    f"{PREFIX}/api/v1/audio/speech",
+    f"{PREFIX}/api/v1/audio/transcriptions",
+}
 _PUBLIC_PREFIXES = (f"{PREFIX}/assets/",)
 
 
@@ -96,7 +105,7 @@ def _is_public(path: str) -> bool:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="swapctl", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="swapctl", version="0.3.0", lifespan=lifespan)
 
     @app.middleware("http")
     async def no_cache_html(request: Request, call_next):
@@ -141,6 +150,9 @@ def create_app() -> FastAPI:
     app.include_router(views.router, prefix=PREFIX)
     app.include_router(api.router, prefix=PREFIX)
     app.include_router(benchmark.router, prefix=PREFIX)
+    app.include_router(tts.router, prefix=f"{PREFIX}/api")
+    app.include_router(stt.router, prefix=f"{PREFIX}/api")
+    app.include_router(api_keys_router, prefix=PREFIX)
 
     @app.get(f"{PREFIX}/healthz")
     def healthz():

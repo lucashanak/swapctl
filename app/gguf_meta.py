@@ -233,6 +233,17 @@ def read_tensor_names(path: Path) -> list[str]:
     return names
 
 
+def read_architecture(path: Path) -> str | None:
+    """Extract general.architecture string from GGUF header. Returns None on failure."""
+    import logging
+    meta = read_gguf_metadata(path, ("general.architecture",))
+    for k, v in meta.items():
+        if k == "general.architecture" and isinstance(v, str):
+            return v
+    logging.warning("gguf_meta: general.architecture not found in %s", path)
+    return None
+
+
 def read_model_tags(path: Path) -> list[str]:
     """Return list of tag strings (e.g. 'moe', 'hybrid', 'mtp_heads') derived from GGUF metadata."""
     meta = read_gguf_metadata(path, ("expert_count", "general.architecture"))
