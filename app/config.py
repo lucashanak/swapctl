@@ -87,6 +87,8 @@ class Settings:
     root_path: str = field(default_factory=lambda: _env("SWAPCTL_ROOT_PATH", "").rstrip("/"))
     public_base: str = field(default_factory=lambda: _env("SWAPCTL_PUBLIC_BASE", "https://ai.hanaktech.org").rstrip("/"))
     llm_public_prefix: str = field(default_factory=lambda: "/" + _env("SWAPCTL_LLM_PUBLIC_PREFIX", "llm").strip("/"))
+    image_endpoint: str = field(default_factory=lambda: _env("SWAPCTL_IMAGE_ENDPOINT", "http://127.0.0.1:8190").rstrip("/"))
+    image_public_prefix: str = field(default_factory=lambda: "/" + _env("SWAPCTL_IMAGE_PUBLIC_PREFIX", "image").strip("/"))
 
 
 _DL_SPEED_FILE = Path("/var/lib/swapctl/dl_speed_limit")

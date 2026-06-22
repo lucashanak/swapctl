@@ -30,9 +30,13 @@
             <td class="px-4 py-2 text-slate-400">Internet (audio API)</td>
             <td class="px-4 py-2 font-mono text-sky-300">{{ public_base }}/api/v1</td>
           </tr>
-          <tr>
+          <tr class="border-b border-slate-700/50">
             <td class="px-4 py-2 text-slate-400">Internet (LLM OpenAI)</td>
             <td class="px-4 py-2 font-mono text-sky-300">{{ llm_base }}</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-2 text-slate-400">Image (SD, OpenAI)</td>
+            <td class="px-4 py-2 font-mono text-sky-300">{{ image_base }} <span class="text-amber-400 text-xs">(LAN: http://192.168.1.94:8190/v1)</span></td>
           </tr>
         </tbody>
       </table>
@@ -235,6 +239,59 @@ curl -X POST {{ public_base }}/api/v1/audio/speech \
     </div>
   </section>
 
+  {# ── Image generation ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">Image Generation (Stable Diffusion, via sd-server)</h2>
+    <p class="text-sm text-slate-400 mb-3">OpenAI-compatible image endpoints served by <strong class="text-slate-300">stable-diffusion.cpp</strong> (<code class="text-amber-300 text-xs">sd-server</code>, Vulkan/RADV) on the GPU host, separate from llama-swap.
+      {% if image_models %}Model loaded: <strong class="text-slate-300">{{ image_model }}</strong> (Z-Image-Turbo).{% else %}<span class="text-amber-400">sd-server unreachable — is the service up on :8190?</span>{% endif %}
+      ~67 s / 1024² image (8 steps, Vulkan). <strong class="text-slate-300">Note:</strong> currently <strong class="text-amber-400">LAN-only</strong> (<code class="text-amber-300 text-xs">http://192.168.1.94:8190/v1</code>); the public <code class="text-amber-300 text-xs">{{ image_prefix }}/v1</code> path needs an NPM route (<code class="text-amber-300 text-xs">location {{ image_prefix }}/ → 192.168.1.94:8190/</code>, mirrors {{ llm_prefix }}).</p>
+
+    <div class="space-y-4">
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/v1/images/generations</code>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">Generate an image. Body: <code class="text-amber-300 text-xs">{"prompt": "...", "n": 1, "size": "1024x1024"}</code>. Returns <code class="text-amber-300 text-xs">{"data": [{"b64_json": "..."}]}</code>. Z-Image-Turbo defaults: 8 steps, CFG 1.0 (set on the server).</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.code6.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="code6">curl -X POST http://192.168.1.94:8190/v1/images/generations \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"a red panda barista making coffee, warm light","n":1,"size":"1024x1024"}' \
+  | python3 -c 'import json,sys,base64; open("out.png","wb").write(base64.b64decode(json.load(sys.stdin)["data"][0]["b64_json"]))'</pre>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button @click="testImageGen()"
+                  :disabled="tests.image.loading"
+                  class="text-xs px-3 py-1 rounded bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-sky-200 font-medium">
+            <span x-show="!tests.image.loading">Test</span>
+            <span x-show="tests.image.loading" x-cloak>Generating... (~60-90 s)</span>
+          </button>
+        </div>
+        <div x-show="tests.image.result !== null" x-cloak
+             class="mt-2 border border-slate-600 rounded p-2 bg-slate-900 text-xs font-mono">
+          <span :class="statusColor(tests.image.status)" x-text="tests.image.status ? 'HTTP ' + tests.image.status : ''"></span>
+          <span class="text-slate-500 ml-2" x-text="tests.image.ms ? tests.image.ms + ' ms' : ''"></span>
+          <div class="mt-1 text-slate-300" x-text="tests.image.result"></div>
+          <img x-ref="genImg" class="mt-2 max-w-xs rounded" x-show="tests.image.imgUrl" :src="tests.image.imgUrl" alt="generated"/>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/v1/images/edits</code>
+        </div>
+        <p class="text-sm text-slate-400">Image-to-image / editing — multipart form with <code class="text-amber-300 text-xs">image=@in.png</code> and <code class="text-amber-300 text-xs">prompt=...</code>. Same sd-server backend.</p>
+      </div>
+
+    </div>
+  </section>
+
   {# ── swapctl API endpoints (autogenerated from live routes) ── #}
   <section class="mb-8">
     <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">swapctl API Endpoints</h2>
@@ -352,9 +409,19 @@ function apiDocsApp() {
       voices:  { loading: false, status: null, ms: null, result: null },
       stt:     { loading: false, status: null, ms: null, result: null },
       install: { loading: false, status: null, ms: null, result: null },
+      image:   { loading: false, status: null, ms: null, result: null, imgUrl: null },
     },
 
     init() {},
+
+    // Image gen goes to sd-server (stable-diffusion.cpp). On the public domain that's
+    // same-origin {{ image_prefix }}/v1 (needs an NPM route — not added yet);
+    // on LAN go direct to sd-server port 8190.
+    imgBase() {
+      const host = window.location.hostname;
+      if (host.includes('hanaktech')) return window.location.origin + {{ (image_prefix ~ '/v1') | tojson }};
+      return window.location.protocol + '//' + host + ':8190/v1';
+    },
 
     // LLM goes to llama-swap. On public domain that's same-origin {{ llm_prefix }}/v1 (NPM forwards;
     // /api/* belongs to Open WebUI since 2026-06). Prefix comes from SWAPCTL_LLM_PUBLIC_PREFIX.
@@ -423,6 +490,33 @@ function apiDocsApp() {
         const models = data?.data || [];
         const first3 = models.slice(0, 3).map(m => m.id).join(', ');
         slot.result = models.length + ' models. First 3: ' + (first3 || '—');
+      } catch (e) {
+        slot.result = 'Parse error: ' + e.message;
+      }
+      slot.loading = false;
+    },
+
+    async testImageGen() {
+      const slot = this.tests.image;
+      slot.imgUrl = null;
+      const resp = await this._doFetch(slot, this.imgBase() + '/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: 'a red panda barista making coffee, warm light, detailed', n: 1, size: '1024x1024' }),
+      });
+      if (!resp) return;
+      try {
+        const data = await resp.json();
+        const item = (data?.data || [])[0] || {};
+        if (item.b64_json) {
+          slot.imgUrl = 'data:image/png;base64,' + item.b64_json;
+          slot.result = 'Generated (' + Math.round(item.b64_json.length * 3 / 4 / 1024) + ' KB PNG)';
+        } else if (item.url) {
+          slot.imgUrl = item.url;
+          slot.result = 'Generated: ' + item.url;
+        } else {
+          slot.result = JSON.stringify(data).slice(0, 200);
+        }
       } catch (e) {
         slot.result = 'Parse error: ' + e.message;
       }
