@@ -218,7 +218,12 @@ def _build_cmd(
         parts.append("--no-mmap")
     if mmproj_path is not None:
         parts.append(f"--mmproj {mmproj_path}")
-    if reasoning_format:
+    if reasoning_format == "off":
+        # "off" = disable thinking at serve time. llama-server has no
+        # `--reasoning-format off` value; use --reasoning-budget 0 (immediate
+        # end of thinking) instead — emitting the bogus format crashes the server.
+        parts.append("--reasoning-budget 0")
+    elif reasoning_format:
         parts.append(f"--reasoning-format {reasoning_format}")
     if spec_default:
         parts.append("--spec-default")
@@ -417,6 +422,7 @@ _CACHE_V_RE = re.compile(r"(--cache-type-v\s+)\S+")
 _THREADS_RE = re.compile(r"--threads\s+\d+")
 _FLASH_RE = re.compile(r"--flash-attn\s+\S+")
 _REASONING_RE = re.compile(r"--reasoning-format\s+\S+")
+_REASONING_BUDGET_RE = re.compile(r"--reasoning-budget\s+-?\d+")
 _SPEC_DEFAULT_RE = re.compile(r"--spec-default")
 _DRAFT_RE = re.compile(r"-md\s+\S+")
 _DRAFT_NGLD_RE = re.compile(r"-ngld\s+\d+")
@@ -494,8 +500,11 @@ def update_model_flags(
 
     if reasoning_format is not None:
         cmd = _REASONING_RE.sub("", cmd).strip()
+        cmd = _REASONING_BUDGET_RE.sub("", cmd).strip()
         cmd = re.sub(r"  +", " ", cmd)
-        if reasoning_format:
+        if reasoning_format == "off":
+            cmd += " --reasoning-budget 0"
+        elif reasoning_format:
             cmd += f" --reasoning-format {reasoning_format}"
 
     if spec_default is not None:
@@ -1093,6 +1102,7 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
             sampling_min_p=rec.sampling_min_p if rec.sampling_min_p is not None else 0.05,
             sampling_repeat_penalty=rec.sampling_repeat_penalty if rec.sampling_repeat_penalty is not None else 1.1,
             binary_path=target_binary,
+            parallel=getattr(rec, "parallel", None),
         )
         cmd = _inject_backend_flags(new_cmd, backend)
     else:
@@ -1111,11 +1121,20 @@ def update_parallel_slots(slots: int, path: Path | None = None) -> int:
     data = load(path)
     models = data.get("models") or {}
     count = 0
-    for block in models.values():
+    from . import registry as _reg
+    for mid, block in models.items():
         if not isinstance(block, dict):
             continue
         cmd = block.get("cmd", "")
         if "flm serve" in cmd or not cmd:
+            continue
+        # Respect per-model --parallel override (e.g. MTP needs --parallel 1):
+        # skip models whose registry record pins a parallel value.
+        try:
+            rec = _reg.get(mid)
+        except Exception:
+            rec = None
+        if rec is not None and getattr(rec, "parallel", None) is not None:
             continue
         if _PARALLEL_RE.search(cmd):
             new_cmd = _PARALLEL_RE.sub(f"--parallel {n}", cmd)
