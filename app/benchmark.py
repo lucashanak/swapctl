@@ -382,7 +382,9 @@ def _run_benchmark_locked(
             # on a backend that can't load the model.
             try:
                 log.info("benchmark: warming up %s on %s", model_id, backend_id)
-                _chat_simple(endpoint, model_id, "Say OK", 5, timeout=60.0)
+                # 180s: large models with --no-mmap + a draft (MTP) can take >60s to
+                # cold-load after a backend switch (esp. first Vulkan shader compile).
+                _chat_simple(endpoint, model_id, "Say OK", 5, timeout=180.0)
             except Exception as exc:
                 log.warning("benchmark: warmup failed for %s / %s: %s — skipping pp/gen", model_id, backend_id, exc)
                 _add_error_records(results, backend_id, f"warmup failed: {exc}")

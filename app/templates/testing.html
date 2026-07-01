@@ -360,7 +360,7 @@
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-700/50" x-ref="tbody">
-      {% set small_threshold = 10 * 1024 * 1024 * 1024 %}
+      {% set small_threshold = 3 * 1024 * 1024 * 1024 %}
       {% set small_count = models | selectattr('size_bytes') | map(attribute='size_bytes') | select('lt', small_threshold) | list | length %}
       {% for m in models %}
       {% set iq_score = m.intelligence.score if m.intelligence else 0 %}

@@ -45,6 +45,7 @@ class ModelRecord:
     test_results: dict = field(default_factory=dict)
     speed_history: list[dict] = field(default_factory=list)
     binary_override: str = ""
+    parallel: int | None = None
     events: list[dict] = field(default_factory=list)
 
 
@@ -118,6 +119,8 @@ def _record_from_dict(model_id: str, d: dict) -> ModelRecord:
         test_results=dict(d.get("test_results") or {}),
         speed_history=list(d.get("speed_history") or []),
         events=list(d.get("events", []) or []),
+        binary_override=str(d.get("binary_override", "") or ""),
+        parallel=(int(d["parallel"]) if d.get("parallel") is not None else None),
     )
 
 
