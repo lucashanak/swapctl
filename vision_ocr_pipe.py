@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 class Pipe:
     class Valves(BaseModel):
         LLAMA_SWAP_URL: str = Field(
-            default="http://192.168.1.94:8080",
+            default="http://localhost:8080",
             description="llama-swap base URL",
         )
         VISION_MODEL: str = Field(
