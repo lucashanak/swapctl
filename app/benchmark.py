@@ -219,8 +219,29 @@ def _append_speed_history(model_id: str, record: dict) -> None:
 # Auto backend selection
 # ---------------------------------------------------------------------------
 
+def _configured_backend_id(model_id: str) -> str | None:
+    """Backend the model is *actually* configured to run on, from its llama-swap cmd.
+
+    This one is known-good by definition, while `BackendsRegistry.compatible()` is
+    predicate-based and can miss pinned/specialised runtimes (e.g. a ROCmFPX build
+    serving Step-3.7-Flash). Without it, auto-bench can pick only backends that
+    cannot load the model at all and store no result.
+    """
+    try:
+        from . import swap_config
+        blk = (swap_config.load().get("models") or {}).get(model_id) or {}
+        cmd = blk.get("cmd") or ""
+        if not cmd:
+            return None
+        bid = swap_config._detect_backend(cmd)
+        return bid if bid and bid != "unknown" else None
+    except Exception:
+        return None
+
+
 def auto_bench_backends(model_id: str) -> list[str]:
-    """Return ordered list of backends to bench: ['vulkan'] + first spec-capable compatible backend.
+    """Return ordered list of backends to bench: the model's configured (known-good)
+    backend first, then ['vulkan'] + spec-capable compatible backends.
 
     Spec-capable = backend has non-empty default_flags OR caps contains 'mtp'/'draft'/'gemma4-assistant'.
     """
@@ -247,6 +268,15 @@ def auto_bench_backends(model_id: str) -> list[str]:
         for sid in spec_capable_ids:
             if sid not in result:
                 result.append(sid)
+
+        # The backend the model is pinned to always works; put it first so a
+        # result is stored even when every predicate-matched backend fails.
+        configured = _configured_backend_id(model_id)
+        if configured:
+            if configured in result:
+                result.remove(configured)
+            result.insert(0, configured)
+
         return result or ["vulkan"]
     except Exception:
         log.warning("auto_bench_backends: failed to resolve backends, returning ['vulkan']")
