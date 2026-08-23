@@ -75,3 +75,60 @@ def test_read_architecture_real_model() -> None:
     result = read_architecture(path)
     # result may be None for malformed/partial files; just check it doesn't raise
     assert result is None or isinstance(result, str)
+
+
+def _write_gguf_kv(path: Path, pairs: dict) -> None:
+    """Minimal GGUF carrying typed KV pairs: str values as (8, str), ints as (4, int)."""
+    def pack_str(s: bytes) -> bytes:
+        return struct.pack("<Q", len(s)) + s
+
+    blocks = b""
+    for key, (vtype, value) in pairs.items():
+        blocks += pack_str(key.encode())
+        blocks += struct.pack("<I", vtype)
+        blocks += pack_str(value.encode()) if vtype == 8 else struct.pack("<I", int(value))
+
+    with open(path, "wb") as f:
+        f.write(b"GGUF")
+        f.write(struct.pack("<I", 3))
+        f.write(struct.pack("<Q", 0))
+        f.write(struct.pack("<Q", len(pairs)))
+        f.write(blocks)
+
+
+_QWEN35_GEOMETRY = {
+    "general.architecture": (8, "qwen35"),
+    "qwen35.block_count": (4, 64),
+    "qwen35.attention.head_count": (4, 24),
+    "qwen35.attention.head_count_kv": (4, 4),
+    "qwen35.attention.key_length": (4, 256),
+    "qwen35.attention.value_length": (4, 256),
+}
+
+
+def test_kv_bytes_per_token_hybrid_counts_only_full_attention_layers(tmp_path: Path) -> None:
+    """Qwen3.8-27B grows KV in 16 of 64 layers; counting all 64 over-reserves 4x."""
+    from app.gguf_meta import kv_bytes_per_token
+
+    gguf = tmp_path / "hybrid.gguf"
+    _write_gguf_kv(gguf, {**_QWEN35_GEOMETRY,
+                          "qwen35.full_attention_interval": (4, 4)})
+    # 4 kv-heads * (256+256) * 2 bytes * (64/4) layers = 65536 B/token = 64 KiB
+    assert kv_bytes_per_token(gguf) == 4 * (256 + 256) * 2 * 16
+    assert kv_bytes_per_token(gguf) == 64 * 1024
+
+
+def test_kv_bytes_per_token_dense_counts_every_layer(tmp_path: Path) -> None:
+    from app.gguf_meta import kv_bytes_per_token
+
+    gguf = tmp_path / "dense.gguf"
+    _write_gguf_kv(gguf, _QWEN35_GEOMETRY)          # no full_attention_interval
+    assert kv_bytes_per_token(gguf) == 4 * (256 + 256) * 2 * 64
+
+
+def test_kv_bytes_per_token_returns_none_without_geometry(tmp_path: Path) -> None:
+    from app.gguf_meta import kv_bytes_per_token
+
+    gguf = tmp_path / "bare.gguf"
+    _write_minimal_gguf(gguf, "llama")
+    assert kv_bytes_per_token(gguf) is None

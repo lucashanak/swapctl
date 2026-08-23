@@ -97,7 +97,61 @@ _VRAM_KEYS = (
     "attention.head_count", "attention.head_count_kv",
     "attention.key_length", "attention.value_length",
     "attention.sliding_window_size", "attention.sliding_window",
+    "full_attention_interval",
 )
+
+# Cache header reads: keyed by (path, mtime, size) so an updated file re-reads.
+_KV_BPT_CACHE: dict[tuple, int | None] = {}
+
+
+def kv_bytes_per_token(path: Path) -> int | None:
+    """f16 KV-cache bytes per token, counting ONLY layers whose cache grows
+    with context. None if the header lacks what we need.
+
+    Hybrid linear-attention models (arch `qwen35`: 48 Gated DeltaNet + 16 full
+    attention, `full_attention_interval` = 4) hold constant-size recurrent state
+    in their linear layers. Counting every block overestimates their KV by that
+    interval — 4x for Qwen3.8-27B, which is the difference between a 32 GiB and
+    an 8 GiB reserve at 256k context."""
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    ck = (str(path), st.st_mtime_ns, st.st_size)
+    if ck in _KV_BPT_CACHE:
+        return _KV_BPT_CACHE[ck]
+
+    result = None
+    meta = read_gguf_metadata(path, _VRAM_KEYS)
+    if meta:
+        def _get(suffix: str) -> int | None:
+            for k, v in meta.items():
+                if k == suffix or k.endswith("." + suffix):
+                    if isinstance(v, int):
+                        return v
+                    if isinstance(v, list) and v and isinstance(v[0], int):
+                        return max(v)
+            return None
+
+        n_layers = _get("block_count")
+        n_head = _get("attention.head_count")
+        n_head_kv = _get("attention.head_count_kv") or n_head
+        n_embd_k = _get("attention.key_length")
+        n_embd_v = _get("attention.value_length")
+        if not n_embd_k or not n_embd_v:
+            n_embd = _get("embedding_length")
+            if n_embd and n_head:
+                head_dim = n_embd // n_head
+                n_embd_k = n_embd_k or head_dim
+                n_embd_v = n_embd_v or head_dim
+        if all((n_layers, n_head_kv, n_embd_k, n_embd_v)):
+            interval = _get("full_attention_interval") or 1
+            growing = n_layers // interval if interval > 1 else n_layers
+            growing = max(1, growing)
+            result = n_head_kv * (n_embd_k + n_embd_v) * 2 * growing
+
+    _KV_BPT_CACHE[ck] = result
+    return result
 
 
 def estimate_vram(path: Path, context_sizes: list[int] | None = None, overhead_gib: float = 2.0) -> dict | None:
