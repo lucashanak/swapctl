@@ -220,3 +220,56 @@ def test_add_model_vulkan_mtp_injects_backend_flags(tmp_path: Path) -> None:
     assert mtp_binary in cmd, f"Expected MTP binary in cmd: {cmd}"
     assert "--spec-type draft-mtp" in cmd, f"Expected --spec-type draft-mtp in cmd: {cmd}"
     assert "--parallel 1" in cmd, f"Expected --parallel 1 in cmd: {cmd}"
+
+
+# --- KV-aware co-residency budget -----------------------------------------
+
+def test_cmd_kv_params_reads_ctx_and_cache_type() -> None:
+    ctx, factor = swap_config._cmd_kv_params(
+        "llama-server --ctx-size 262144 --cache-type-k q8_0 --cache-type-v q8_0"
+    )
+    assert ctx == 262144
+    assert factor == 1.0
+
+
+def test_cmd_kv_params_defaults_to_f16_when_unflagged() -> None:
+    """llama.cpp defaults to f16, i.e. 2x the q8_0 baseline the tiers assume —
+    an unflagged model must reserve MORE, not less."""
+    ctx, factor = swap_config._cmd_kv_params("llama-server --ctx-size 65536")
+    assert ctx == 65536
+    assert factor == 2.0
+
+
+def test_cmd_kv_params_accepts_short_flags_and_averages_mixed_types() -> None:
+    ctx, factor = swap_config._cmd_kv_params("llama-server -c 32768 -ctk f16 -ctv q8_0")
+    assert ctx == 32768
+    assert factor == pytest.approx(1.5)
+
+
+def test_cmd_kv_params_handles_empty_cmd() -> None:
+    ctx, factor = swap_config._cmd_kv_params("")
+    assert ctx is None
+    assert factor == 2.0
+
+
+def test_kv_reserve_scales_with_cache_type() -> None:
+    gib = 1024 ** 3
+    assert swap_config._kv_reserve_bytes(262144, 1.0) == 32 * gib
+    assert swap_config._kv_reserve_bytes(262144, 2.0) == 64 * gib
+    assert swap_config._kv_reserve_bytes(262144, 0.5) == 16 * gib
+
+
+def test_kv_bytes_falls_back_to_tiers_when_gguf_unreadable(monkeypatch) -> None:
+    monkeypatch.setattr(swap_config, "_main_gguf", lambda _mid: None)
+    assert swap_config._kv_bytes("absent-model", 65536, 1.0) == 8 * 1024 ** 3
+    assert swap_config._kv_bytes("absent-model", 65536, 2.0) == 16 * 1024 ** 3
+
+
+def test_kv_bytes_prefers_exact_gguf_geometry_over_tiers(monkeypatch, tmp_path: Path) -> None:
+    """A hybrid 27B at 256k needs 8 GiB of q8_0 KV — the tier would claim 32."""
+    fake = tmp_path / "w.gguf"
+    fake.write_bytes(b"x")
+    monkeypatch.setattr(swap_config, "_main_gguf", lambda _mid: fake)
+    monkeypatch.setattr("app.gguf_meta.kv_bytes_per_token", lambda _p: 64 * 1024)
+    assert swap_config._kv_bytes("hybrid", 262144, 1.0) == 8 * 1024 ** 3
+    assert swap_config._kv_bytes("hybrid", 262144, 2.0) == 16 * 1024 ** 3

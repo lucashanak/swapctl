@@ -77,7 +77,10 @@ class Settings:
     swap_endpoint: str = field(default_factory=lambda: _env("SWAPCTL_ENDPOINT", "http://127.0.0.1:8080"))
     port_base: int = field(default_factory=lambda: _env_int("SWAPCTL_PORT_BASE", 9100))
     ctx_default: int = field(default_factory=lambda: _env_int("SWAPCTL_CTX_DEFAULT", 65536))
-    gpu_budget_gb: int = field(default_factory=lambda: _env_int("SWAPCTL_GPU_BUDGET_GB", 70))
+    # LIVE co-residency budget in GiB: sum of (weights + KV reserve) across
+    # co-resident models must stay under this. Sized to leave host headroom
+    # under the 112 GiB amdgpu GTT cap / 124 GiB RAM (guard #5 is the backstop).
+    gpu_budget_gb: int = field(default_factory=lambda: _env_int("SWAPCTL_GPU_BUDGET_GB", 85))
     bind_host: str = field(default_factory=lambda: _env("SWAPCTL_BIND_HOST", "0.0.0.0"))
     bind_port: int = field(default_factory=lambda: _env_int("SWAPCTL_BIND_PORT", 8090))
     password: str = field(default_factory=lambda: _env("SWAPCTL_PASSWORD", ""))

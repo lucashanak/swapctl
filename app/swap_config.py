@@ -282,7 +282,8 @@ def rebuild_matrix(path: Path | None = None, max_group_size: int = 3) -> None:
             priorities[m] = "medium"
 
     budget_bytes = settings.gpu_budget_gb * 1024 ** 3
-    combos = _auto_generate_combos(declared, budget_bytes, max_group_size)
+    combos = _auto_generate_combos(declared, budget_bytes, max_group_size,
+                                   models_block=models_block)
 
     vars_d = {shortcuts[m]: m for m in declared}
     costs = {shortcuts[m]: _PRIORITY_TO_COST[priorities[m]] for m in declared}
@@ -685,14 +686,125 @@ def _parse_combos_from_sets(sets: dict, vars_map: dict) -> list[list[str]]:
     return out
 
 
-def _model_sizes() -> dict[str, int]:
-    """Get model sizes from registry, returns {model_id: size_bytes}."""
+# Conservative KV-cache reserve by context length (q8_0 cache, ~35B class as
+# upper bound). KV is the biggest hidden footprint: a "small-weights" model at
+# 256k ctx can add tens of GiB. Co-residency of two 256k models was the 2026-07
+# host-wide OOM. Adding this to each model's size makes the budget KV-honest and
+# naturally pushes toward capping ctx to enable safe co-residency.
+_KV_RESERVE_TIERS_GIB = [
+    (8192, 2),
+    (32768, 4),
+    (65536, 8),
+    (131072, 16),
+    (262144, 32),
+]
+_KV_RESERVE_MAX_GIB = 32
+
+# Bytes-per-element relative to the q8_0 baseline the tiers above assume.
+# llama.cpp's default when no --cache-type is given is f16, i.e. TWICE the
+# baseline — so an unflagged model must reserve more, not less.
+_KV_TYPE_FACTOR = {
+    "f32": 4.0,
+    "f16": 2.0, "bf16": 2.0,
+    "q8_0": 1.0,
+    "q5_0": 0.65, "q5_1": 0.65,
+    "q4_0": 0.5, "q4_1": 0.5, "iq4_nl": 0.5,
+}
+_KV_DEFAULT_FACTOR = _KV_TYPE_FACTOR["f16"]
+
+_CTX_VAL_RE = re.compile(r"(?:--ctx-size|-c)\s+(\d+)")
+_CACHE_K_VAL_RE = re.compile(r"(?:--cache-type-k|-ctk)\s+(\S+)")
+_CACHE_V_VAL_RE = re.compile(r"(?:--cache-type-v|-ctv)\s+(\S+)")
+
+
+def _cmd_kv_params(cmd: str) -> tuple[int | None, float]:
+    """(ctx_size, kv_factor) parsed from a llama-swap cmd.
+
+    The cmd is the source of truth: the registry's ctx_size drifts whenever
+    config.yaml is edited directly, and drift toward a *larger* real ctx would
+    silently under-reserve — the failure direction that caused the 2026-07 OOM.
+    """
+    if not cmd:
+        return None, _KV_DEFAULT_FACTOR
+    m = _CTX_VAL_RE.search(cmd)
+    ctx = int(m.group(1)) if m else None
+    # K and V are equal-sized, so averaging their factors is exact.
+    factors = []
+    for rx in (_CACHE_K_VAL_RE, _CACHE_V_VAL_RE):
+        mm = rx.search(cmd)
+        factors.append(_KV_TYPE_FACTOR.get(mm.group(1).lower(), _KV_DEFAULT_FACTOR)
+                       if mm else _KV_DEFAULT_FACTOR)
+    return ctx, sum(factors) / len(factors)
+
+
+def _kv_reserve_bytes(ctx_size: int, kv_factor: float = 1.0) -> int:
+    for max_ctx, gib in _KV_RESERVE_TIERS_GIB:
+        if ctx_size <= max_ctx:
+            return int(gib * kv_factor * 1024 ** 3)
+    return int(_KV_RESERVE_MAX_GIB * kv_factor * 1024 ** 3)
+
+
+def _disk_weight_bytes(model_id: str) -> int:
+    """Sum of on-disk *.gguf shards for a model (registry size_bytes can
+    undercount multi-shard models). 0 if the dir is missing/unreadable."""
+    try:
+        d = settings.models_dir / model_id
+        # recursive: shards may live in a quant subdir (e.g. UD-Q4_K_XL/*.gguf)
+        return sum(f.stat().st_size for f in d.rglob("*.gguf") if f.is_file())
+    except OSError:
+        return 0
+
+
+def _model_sizes(models_block: dict | None = None) -> dict[str, int]:
+    """Effective live GPU footprint per model = max(registry, on-disk) weights
+    plus a KV reserve scaled by the model's actual ctx and cache type.
+
+    Feeds co-residency combo generation so the budget reflects real GTT usage,
+    not just weights. ctx and cache type come from the llama-swap cmd when the
+    model is declared there, falling back to the registry otherwise."""
     from . import registry
+    models_block = models_block or {}
     sizes = {}
     for rec in registry.list_all():
-        if rec.size_bytes and rec.size_bytes > 0:
-            sizes[rec.model_id] = rec.size_bytes
+        weights = max(int(rec.size_bytes or 0), _disk_weight_bytes(rec.model_id))
+        if weights <= 0:
+            continue
+        blk = models_block.get(rec.model_id) or {}
+        ctx, factor = _cmd_kv_params(blk.get("cmd") or "")
+        if ctx is None:
+            ctx = int(rec.ctx_size or 0)
+        sizes[rec.model_id] = weights + _kv_bytes(rec.model_id, ctx, factor)
     return sizes
+
+
+def _main_gguf(model_id: str) -> Path | None:
+    """Largest non-mmproj *.gguf for a model — its weights file."""
+    try:
+        d = settings.models_dir / model_id
+        cands = [f for f in d.rglob("*.gguf")
+                 if f.is_file() and "mmproj" not in f.name.lower()]
+        return max(cands, key=lambda f: f.stat().st_size) if cands else None
+    except OSError:
+        return None
+
+
+def _kv_bytes(model_id: str, ctx_size: int, kv_factor: float) -> int:
+    """Exact KV footprint from GGUF geometry when readable, else the tier table.
+
+    Exactness matters for hybrid models: Qwen3.8-27B grows KV in only 16 of its
+    64 layers, so the conservative tier over-reserves it 4x and would block
+    co-residency that actually fits."""
+    gguf = _main_gguf(model_id)
+    if gguf is not None and ctx_size > 0:
+        from .gguf_meta import kv_bytes_per_token
+        try:
+            bpt_f16 = kv_bytes_per_token(gguf)
+        except Exception:
+            bpt_f16 = None
+        if bpt_f16:
+            # bpt_f16 is 2 bytes/element; kv_factor is bytes/element.
+            return int((bpt_f16 // 2) * ctx_size * kv_factor)
+    return _kv_reserve_bytes(ctx_size, kv_factor)
 
 
 _COMBO_LIMIT = 950
@@ -702,6 +814,7 @@ def _auto_generate_combos(
     model_ids: list[str],
     budget_bytes: int,
     max_group_size: int = 3,
+    models_block: dict | None = None,
 ) -> list[list[str]]:
     """Generate all valid concurrent model groups that fit within GPU budget.
 
@@ -710,7 +823,7 @@ def _auto_generate_combos(
     from itertools import combinations
     from math import comb
 
-    sizes = _model_sizes()
+    sizes = _model_sizes(models_block)
     sized_models = [(m, sizes.get(m, 0)) for m in model_ids if sizes.get(m, 0) > 0]
     n = len(sized_models)
     while max_group_size > 2:
@@ -746,7 +859,8 @@ def get_simple_config() -> dict:
         priorities.setdefault(m, "medium")
     budget_bytes = settings.gpu_budget_gb * 1024 ** 3
     combos = _auto_generate_combos(
-        [m for m in all_known if m in declared], budget_bytes
+        [m for m in all_known if m in declared], budget_bytes,
+        models_block=models_block,
     )
     enabled = {m: (m in declared) for m in all_known}
     return {
@@ -809,7 +923,8 @@ def set_simple_config(payload: dict) -> None:
 
     budget_bytes = settings.gpu_budget_gb * 1024 ** 3
     max_group = int(payload.get("max_group_size", 3) or 3)
-    combos = _auto_generate_combos(active, budget_bytes, max_group)
+    combos = _auto_generate_combos(active, budget_bytes, max_group,
+                                   models_block=models_block)
 
     vars_d = {shortcuts[m]: m for m in active}
     costs = {shortcuts[m]: _PRIORITY_TO_COST[priorities[m]] for m in active}

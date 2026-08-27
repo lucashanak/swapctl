@@ -265,3 +265,63 @@ def test_benchmark_lock_still_works():
             run_benchmark("some-model", ["vulkan"])
     finally:
         _BENCHMARK_LOCK.release()
+
+
+def test_auto_bench_backends_includes_pinned_backend():
+    """A model pinned to a specialised runtime gets that backend benched first.
+
+    Regression: Step-3.7-Flash runs on a ROCmFPX build that compatible() does not
+    return, so auto-bench only tried backends that cannot load it and stored no
+    result at all.
+    """
+    from app.benchmark import auto_bench_backends
+
+    vulkan_b = _make_backend_def("vulkan")
+
+    mock_model = MagicMock()
+    mock_model.model_tags = []
+    mock_model.filename = "Step-3.7-Flash-ROCmFPX-Q3-00001-of-00009.gguf"
+
+    with (
+        patch("app.benchmark.BackendsRegistry") as mock_br_cls,
+        patch("app.benchmark.reg_mod") as mock_reg,
+        patch("app.benchmark._configured_backend_id", return_value="rocmfpx-mtp"),
+    ):
+        mock_br = MagicMock()
+        mock_br_cls.return_value = mock_br
+        mock_reg.get.return_value = mock_model
+        mock_br.compatible.return_value = [vulkan_b]  # predicate misses rocmfpx-mtp
+
+        result = auto_bench_backends("step-3.7-flash-q3")
+
+    # Without the fix this is ["vulkan"] only — nothing that can load the model.
+    assert result[0] == "rocmfpx-mtp", f"pinned backend must be first, got {result}"
+    assert "rocmfpx-mtp" in result
+
+
+def test_auto_bench_backends_pinned_backend_not_duplicated():
+    """If the pinned backend is also predicate-compatible it appears exactly once."""
+    from app.benchmark import auto_bench_backends
+
+    vulkan_b = _make_backend_def("vulkan")
+    mtp_b = _make_backend_def("vulkan-mtp", caps=["vulkan", "mtp"],
+                              default_flags=["--spec-type draft-mtp"])
+
+    mock_model = MagicMock()
+    mock_model.model_tags = []
+    mock_model.filename = "model-Q4.gguf"
+
+    with (
+        patch("app.benchmark.BackendsRegistry") as mock_br_cls,
+        patch("app.benchmark.reg_mod") as mock_reg,
+        patch("app.benchmark._configured_backend_id", return_value="vulkan-mtp"),
+    ):
+        mock_br = MagicMock()
+        mock_br_cls.return_value = mock_br
+        mock_reg.get.return_value = mock_model
+        mock_br.compatible.return_value = [vulkan_b, mtp_b]
+
+        result = auto_bench_backends("test-model")
+
+    assert result.count("vulkan-mtp") == 1, f"duplicate backend: {result}"
+    assert result[0] == "vulkan-mtp", f"pinned backend must be first, got {result}"
