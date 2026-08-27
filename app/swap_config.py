@@ -777,13 +777,26 @@ def _model_sizes(models_block: dict | None = None) -> dict[str, int]:
     return sizes
 
 
+_SHARD_FIRST_RE = re.compile(r"-0*1-of-\d+\.gguf$", re.IGNORECASE)
+
+
 def _main_gguf(model_id: str) -> Path | None:
-    """Largest non-mmproj *.gguf for a model — its weights file."""
+    """The *.gguf carrying this model's header.
+
+    For a split model that is shard 1, not the biggest shard: continuation shards
+    have no metadata block. Qwen3.8-Flash-Next makes the difference visible — its
+    shard 1 is 10 MiB while shard 2 is 46 GiB, so picking by size loses the
+    geometry and silently falls back to the coarse tier table."""
     try:
         d = settings.models_dir / model_id
         cands = [f for f in d.rglob("*.gguf")
                  if f.is_file() and "mmproj" not in f.name.lower()]
-        return max(cands, key=lambda f: f.stat().st_size) if cands else None
+        if not cands:
+            return None
+        first = [f for f in cands if _SHARD_FIRST_RE.search(f.name)]
+        if first:
+            return min(first, key=lambda f: len(f.name))
+        return max(cands, key=lambda f: f.stat().st_size)
     except OSError:
         return None
 

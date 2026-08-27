@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from ruamel.yaml import YAML
@@ -273,3 +274,26 @@ def test_kv_bytes_prefers_exact_gguf_geometry_over_tiers(monkeypatch, tmp_path: 
     monkeypatch.setattr("app.gguf_meta.kv_bytes_per_token", lambda _p: 64 * 1024)
     assert swap_config._kv_bytes("hybrid", 262144, 1.0) == 8 * 1024 ** 3
     assert swap_config._kv_bytes("hybrid", 262144, 2.0) == 16 * 1024 ** 3
+
+
+def test_main_gguf_prefers_first_shard_over_largest(tmp_path: Path, monkeypatch) -> None:
+    """Split models keep their header in shard 1, which can be far smaller than
+    the continuation shards — picking by size loses the geometry."""
+    d = tmp_path / "split-model"
+    d.mkdir()
+    (d / "M-00001-of-00003.gguf").write_bytes(b"x" * 100)      # header, tiny
+    (d / "M-00002-of-00003.gguf").write_bytes(b"x" * 100_000)  # biggest
+    (d / "M-00003-of-00003.gguf").write_bytes(b"x" * 50_000)
+    monkeypatch.setattr(swap_config, "settings",
+                        SimpleNamespace(models_dir=tmp_path))
+    assert swap_config._main_gguf("split-model").name == "M-00001-of-00003.gguf"
+
+
+def test_main_gguf_falls_back_to_largest_for_single_file(tmp_path: Path, monkeypatch) -> None:
+    d = tmp_path / "solo"
+    d.mkdir()
+    (d / "weights.gguf").write_bytes(b"x" * 5000)
+    (d / "mmproj-F16.gguf").write_bytes(b"x" * 9000)   # must be ignored
+    monkeypatch.setattr(swap_config, "settings",
+                        SimpleNamespace(models_dir=tmp_path))
+    assert swap_config._main_gguf("solo").name == "weights.gguf"
