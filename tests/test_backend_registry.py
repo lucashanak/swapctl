@@ -467,3 +467,18 @@ def test_batch_subs_have_short_canonical_answers() -> None:
         # the batch's own numbering must be unambiguous
         body = q["prompt"].split("\n\n", 1)[1]
         assert len(re.findall(r"^\d+\. ", body, re.M)) == 5, f"{q['id']} numbering is ambiguous"
+
+
+def test_every_test_type_persists_its_result() -> None:
+    """Each branch of _process_job must call _update_registry. The agentic branch
+    once did not: the test ran to completion, the result went onto the in-memory
+    job only, and vanished with it — no error, no data, nothing to debug."""
+    import inspect, re
+    from app import tester
+
+    src = inspect.getsource(tester._process_job)
+    body = src.split("try:", 1)[1].split("except Exception", 1)[0]
+    branches = re.findall(r'test_type == "(\w+)":(.*?)(?=elif test_type|else:)', body, re.S)
+    assert branches, "could not parse the dispatch"
+    for name, block in branches:
+        assert "_update_registry(" in block, f"test type {name!r} never persists its result"

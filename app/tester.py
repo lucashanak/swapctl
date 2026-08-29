@@ -969,6 +969,7 @@ def _process_job(job: dict) -> None:
             _update_registry(model_id, "speed_spec", result)
         elif test_type == "agentic":
             result = _run_agentic_test(model_id)
+            _update_registry(model_id, "agentic", result)
         elif test_type == "intelligence":
             result = _run_intelligence_test(model_id, job_id=job.get("job_id", ""), only_failed=job.get("only_failed", False))
             _update_registry(model_id, "intelligence", result)
