@@ -401,3 +401,13 @@ def test_sampling_round_trips_through_upsert(tmp_path: Path) -> None:
     reg.upsert(dataclasses.replace(rec, sampling_temp=0.0), path=path)
     got = next(r for r in reg.list_all(path=path) if r.model_id == "m")
     assert got.sampling_temp == 0.0
+
+
+def test_no_category_disables_thinking_outright() -> None:
+    """gpt-oss cannot turn reasoning off — _chat floors it at effort "low". A budget
+    of 0 therefore handicaps every OTHER model, which is worth ~25 points on the
+    instruction category. Every category must sit at or above that floor."""
+    from app.tester import _THINKING_BUDGET_BY_CATEGORY, _TIER_LOW
+
+    zero = [c for c, b in _THINKING_BUDGET_BY_CATEGORY.items() if b < _TIER_LOW]
+    assert not zero, f"categories below the gpt-oss floor: {zero}"

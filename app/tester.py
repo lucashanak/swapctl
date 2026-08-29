@@ -59,17 +59,24 @@ _TIER_LOW = 512
 _TIER_MEDIUM = 1024
 _TIER_HIGH = 8192
 
+# A budget of 0 disables thinking outright for most models, but gpt-oss has no
+# off-switch — _chat() floors it at reasoning_effort "low". That made five of the
+# ten categories a handicap match: measured on `instruction`, thinking is worth
+# +25 points to BOTH qwen3.8-27b (70 -> 95) and gpt-oss-120b (70 -> 95), and the
+# whole gpt-oss lead in the fleet ranking came from that category alone.
+# So the floor is _TIER_LOW everywhere: every model now gets the same small
+# allowance that gpt-oss cannot switch off.
 _THINKING_BUDGET_BY_CATEGORY = {
     "reasoning": _TIER_MEDIUM,
     "math": _TIER_MEDIUM,
     "code": _TIER_LOW,
     "sysadmin": _TIER_LOW,
     "knowledge": _TIER_LOW,
-    "coding": 0,
-    "instruction": 0,
-    "structured": 0,
-    "czech": 0,
-    "summarization": 0,
+    "coding": _TIER_LOW,
+    "instruction": _TIER_LOW,
+    "structured": _TIER_LOW,
+    "czech": _TIER_LOW,
+    "summarization": _TIER_LOW,
 }
 
 
