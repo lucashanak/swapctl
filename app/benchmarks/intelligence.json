@@ -1,6 +1,6 @@
 {
- "version": 9,
- "description": "swapctl intelligence benchmark v8 \u2014 240 questions, 12 categories. v8 added longctx (multi-hop retrieval at depth); v9 adds exec (one-shot code that is executed). NOTE: the fleet now scores 87-95%, far above the 50-70% this suite was designed for \u2014 knowledge and structured are fully saturated (zero spread across models) and contribute nothing to ranking. Sources: custom, GSM8K-inspired, MMLU-inspired.",
+ "version": 10,
+ "description": "swapctl intelligence benchmark v10 \u2014 260 questions, 13 categories. v8 added longctx (multi-hop retrieval at depth); v9 exec (one-shot code that is executed); v10 batch (five questions per prompt, all-or-nothing). NOTE: the fleet scores 87-95% on the older categories, far above the 50-70% this suite was designed for \u2014 knowledge and structured are fully saturated and contribute nothing to ranking.",
  "categories": {
   "math": {
    "weight": 1.0,
@@ -49,6 +49,10 @@
   "exec": {
    "weight": 1.0,
    "description": "One-shot executable Python: the model gets no retry and no error feedback, and its code is run against asserts covering empty input, boundaries and the edge case most attempts skip. Unlike code/coding this grades behaviour, not prose."
+  },
+  "batch": {
+   "weight": 1.0,
+   "description": "Five short-answer questions in a single prompt, all of which must be answered correctly in a numbered reply. Drawn from questions the suite also asks individually, so the gap against those isolates the cost of batching: dropped items, mis-numbering, and losing the format partway through."
   }
  },
  "questions": [
@@ -2409,6 +2413,552 @@
    "match": "python_exec",
    "tests": "assert median_of_two([1,3],[2]) == 2.0\nassert median_of_two([1,2],[3,4]) == 2.5\nassert median_of_two([],[1]) == 1.0\nassert median_of_two([5],[]) == 5.0\nassert median_of_two([1,2,3],[4,5,6]) == 3.5\n",
    "max_tokens": 900
+  },
+  {
+   "id": "batch_01",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. In the Raft consensus algorithm, what specifically happens when a follower's log conflicts with a new leader's AppendEntries RPC (i.e., the follower has an entry at the same index but different term)?\nA) The follower keeps its own entry and rejects the leader\nB) The follower deletes its conflicting entry and all entries after it, then appends the leader's entries\nC) The leader adopts the follower's entry if the follower's term is higher\nD) Both nodes enter a special reconciliation phase\nReply with just the letter.\n\n2. Napi\u0161 spr\u00e1vn\u00fd tvar slova 'p\u0159\u00edtel' v instrument\u00e1lu plur\u00e1lu. (Vzor v\u011bty: '\u0160el jsem s ...'). Odpov\u011bz jen t\u00edm jedn\u00edm tvarem.\n\n3. Jak\u00fd je spr\u00e1vn\u00fd p\u0159echodn\u00edk p\u0159\u00edtomn\u00fd od slovesa '\u010d\u00edst' (mu\u017esk\u00fd rod)?\nA) \u010dtouc\u00ed\nB) \u010dta\nC) \u010dteje\nD) \u010dt\u00edc\nOdpov\u011bz jen p\u00edsmenem.\n\n4. In a compiler, what is the difference between a 'LL parser' and a 'LR parser'?\nA) LL parsers handle left recursion natively; LR parsers cannot\nB) LL parsers read input left-to-right and expand leftmost nonterminal; LR parsers read left-to-right and reduce rightmost nonterminal\nC) LR parsers require more memory but parse fewer grammars\nD) LL parsers use a stack; LR parsers use a queue\nReply with just the letter.\n\n5. You need to set up a Linux bridge 'br0' with two interfaces eth0 and eth1, assign IP 10.0.0.1/24 to the bridge, and bring it up. Write the exact sequence of 'ip' commands (not brctl, not nmcli). List each command on its own line.",
+   "expected": "know_12|czech_05|czech_07|know_05|sysadm_13",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "contains_ci",
+     "expected": "p\u0159\u00e1teli"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "ip link add",
+     "regex": "(?i)ip link add.*br0.*type bridge.*ip link set.*eth[01].*master br0.*ip addr add.*10\\.0\\.0\\.1/24.*dev br0|ip link add.*br0.*bridge.*ip link set.*master.*ip link set.*master.*ip addr.*10\\.0\\.0\\.1"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_02",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What does this Python expression evaluate to?\n\n    sum(1 for x in range(20) if x % 4 == 0)\n\nReply with just the number.\n\n2. Linux io_uring uses submission and completion queues shared between user space and the kernel. What is the key advantage of this design over epoll for high-throughput I/O?\nA) io_uring supports more file descriptor types\nB) io_uring avoids system call overhead per I/O operation by batching submissions and completions through shared ring buffers\nC) io_uring uses less memory than epoll\nD) io_uring automatically parallelizes I/O across CPU cores\nReply with just the letter.\n\n3. Jak\u00fd je spr\u00e1vn\u00fd p\u0159echodn\u00edk minul\u00fd od slovesa 'p\u0159ij\u00edt' (mu\u017esk\u00fd rod, jednotn\u00e9 \u010d\u00edslo)? P\u0159\u00edklad: '_______ dom\u016f, svl\u00e9kl si kab\u00e1t.' Odpov\u011bzte jen chyb\u011bj\u00edc\u00edm tvarem.\n\n4. Count the number of times the letter 'e' (case-insensitive) appears in the following sentence: 'Peter Piper picked a peck of pickled peppers beside the deep green hedge.' Reply with ONLY the count as a single integer.\n\n5. What does this Python code print?\n\n    results = [y := x + 1 for x in range(5) if (y := x * 2) > 3]\n    print(results)\n\nReply with the exact output.",
+   "expected": "code_01|know_14|czech_12|instr_14|code_16",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "5",
+     "regex": "\\b5\\b"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "p\u0159i\u0161ed",
+     "regex": "(?i)p\u0159i\u0161ed"
+    },
+    {
+     "match": "regex",
+     "expected": "17",
+     "regex": "\\b17\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "[3, 4, 5]",
+     "regex": "\\[3,\\s*4,\\s*5\\]"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_03",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. V\u011bta 'Star\u00fd mlyn\u00e1\u0159 \u0159\u00edkal, \u017ee ml\u00fdn mele.' obsahuje vedlej\u0161\u00ed v\u011btu. Jak\u00e1 je funkce slova '\u017ee' v t\u00e9to v\u011bt\u011b?\nA) Vzta\u017en\u00e9 z\u00e1jmeno\nB) Pod\u0159adic\u00ed spojka uvozuj\u00edc\u00ed v\u011btu p\u0159edm\u011btnou\nC) Sou\u0159adic\u00ed spojka\nD) P\u0159\u00edslovce\nOdpov\u011bz jen p\u00edsmenem.\n\n2. A Linux server's root filesystem is at 95% usage. Name 3 specific commands with flags you'd run to find large files or directories consuming space. Be precise.\n\n3. Five events (A, B, C, D, E) have these temporal constraints:\n- A happens before B\n- B happens before C\n- D happens after A but before C\n- E happens after C\n\nGiven only these constraints, must D happen before B? Answer 'yes' or 'no' and explain in one sentence.\n\n4. This Go code has a race condition. Identify the exact problem in one sentence.\n\n    var counter int\n    var wg sync.WaitGroup\n    for i := 0; i < 1000; i++ {\n        wg.Add(1)\n        go func() {\n            defer wg.Done()\n            counter++\n        }()\n    }\n    wg.Wait()\n    fmt.Println(counter)\n\n5. A perfectly rational agent knows that a bomb will explode in 10 minutes unless it receives a 4-digit PIN. The agent correctly deduces that a known adversary would set the PIN to the adversary's own birth year. The adversary was born in 1987. However, the lock has a 3-attempt limit before it permanently disables. The agent has no other information. What is the rational first action?\nA) Enter 1987\nB) Try to find more information first\nC) Enter 0000\nD) Enter 9999\nReply with just the letter.",
+   "expected": "czech_09|sysadm_03|reason_17|code_07|reason_10",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "du",
+     "regex": "(?i)(du -[sha]|find.*-size|journalctl.*vacuum|ncdu|df -[hHi]|lsof.*deleted)"
+    },
+    {
+     "match": "regex",
+     "expected": "no",
+     "regex": "(?i)\\bno\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "counter",
+     "regex": "(?i)(race condition|concurrent|atomic|mutex|lock|shared.*without|unsynchronized|data race|counter.*not.*safe|not.*thread.safe|multiple goroutines.*counter)"
+    },
+    {
+     "match": "mcq",
+     "expected": "A"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_04",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What is the precise difference between linearizability and serializability?\nA) They are the same concept applied to different layers (hardware vs. software)\nB) Serializability is strictly stronger than linearizability\nC) Linearizability applies only to distributed systems; serializability only to databases\nD) Linearizability is about single operations appearing atomic and respecting real-time order; serializability is about transactions being equivalent to some serial execution (not necessarily respecting real-time order)\nReply with just the letter.\n\n2. Alice, Bob, Carol, and Dave each have a different favorite color: red, blue, green, yellow.\n- Alice does not like red or blue.\n- Bob likes green.\n- Carol does not like yellow.\n\nWhat color does Dave like? Reply with just the color.\n\n3. Write a minimal systemd unit file for a service named 'myapp' that: runs /usr/local/bin/myapp as user 'myapp', starts after network.target, restarts on failure with 5s delay, and is enabled at boot. Output only the unit file contents.\n\n4. V \u010de\u0161tin\u011b existuje jev zvan\u00fd 'zvratn\u00e1 pasivizace' (reflexivn\u00ed pasivum). P\u0159eve\u010fte tuto v\u011btu do zvratn\u00e9ho pasiva: 'D\u011bln\u00edci stav\u011bj\u00ed d\u016fm.' Napi\u0161te jen v\u00fdslednou v\u011btu.\n\n5. In a CPU, what is the role of the TLB (Translation Lookaside Buffer)?\nA) It caches recently used virtual-to-physical address translations\nB) It stores the L1 instruction cache\nC) It manages branch prediction\nD) It buffers write operations to main memory\nReply with just the letter.",
+   "expected": "know_13|reason_03|sysadm_02|czech_19|know_01",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "mcq",
+     "expected": "D"
+    },
+    {
+     "match": "regex",
+     "expected": "red",
+     "regex": "(?i)\\bred\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "[Unit]",
+     "regex": "(?i)\\[Unit\\].*\\[Service\\]|User=myapp|RestartSec=5|Restart=on-failure|WantedBy=multi-user"
+    },
+    {
+     "match": "regex",
+     "expected": "stav\u00ed",
+     "regex": "(?i)d\u016fm se stav\u00ed"
+    },
+    {
+     "match": "mcq",
+     "expected": "A"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_05",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What does this Python code print?\n\n    def make_adder(n):\n        def adder(x):\n            return x + n\n        return adder\n    \n    add5 = make_adder(5)\n    n = 100\n    print(add5(3))\n\nReply with just the number.\n\n2. In the CAP theorem, a distributed system can guarantee at most two of: Consistency, Availability, Partition tolerance. During a network partition, a CP system does what?\nA) Returns stale data to remain available\nB) Refuses requests or returns errors to preserve consistency\nC) Repairs the partition automatically\nD) Elects a new leader and serves all requests\nReply with just the letter.\n\n3. Jak\u00fd je nominativ plur\u00e1lu slova 'oko' ve v\u00fdznamu 'org\u00e1n zraku' (nikoli 'oko na pun\u010do\u0161e')? A jak\u00fd je nominativ plur\u00e1lu slova 'ucho' ve stejn\u00e9m anatomick\u00e9m v\u00fdznamu? Napi\u0161te oba tvary odd\u011blen\u00e9 \u010d\u00e1rkou.\n\n4. Count the number of letter 'a' (case-insensitive) in the word 'abracadabra'. Reply with ONLY the integer.\n\n5. What is a 'thundering herd' problem in server systems?\nA) A memory leak that compounds exponentially\nB) When many idle processes/threads simultaneously wake and compete for the same resource, causing CPU spikes\nC) Network congestion caused by bursty traffic\nD) A deadlock involving more than two processes\nReply with just the letter.",
+   "expected": "code_02|know_03|czech_20|instr_06|know_06",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "8",
+     "regex": "\\b8\\b"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "o\u010di, u\u0161i",
+     "regex": "(?i)o\u010di.*u\u0161i|u\u0161i.*o\u010di"
+    },
+    {
+     "match": "regex",
+     "expected": "5",
+     "regex": "\\b5\\b"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_06",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. Dopl\u0148 spr\u00e1vn\u00fd tvar slovesa v podm\u00ednce: 'Kdybych _______ (v\u011bd\u011bt) o t\u00e9 sch\u016fzce, ur\u010dit\u011b bych p\u0159i\u0161el.' Napi\u0161 jen chyb\u011bj\u00edc\u00ed tvar slovesa.\n\n2. In TCP, what is the difference between 'congestion control' and 'flow control'?\nA) They are the same mechanism with different names\nB) Flow control prevents the sender from overwhelming the RECEIVER's buffer; congestion control prevents overwhelming the NETWORK\nC) Congestion control operates at layer 2; flow control at layer 4\nD) Flow control uses ACKs; congestion control uses NACKs\nReply with just the letter.\n\n3. Write the exact systemd-networkd .network file contents to configure interface eth0 with:\n- Static IP 192.168.1.100/24\n- Gateway 192.168.1.1\n- DNS servers 1.1.1.1 and 8.8.8.8\n- VLAN 100 on this interface\n\nOutput only the file contents.\n\n4. What is 'copy-on-write' (COW) in the context of Linux fork()?\nA) The child process copies all parent memory immediately at fork\nB) Parent and child share the same physical pages until either writes; only the written page is then copied\nC) The kernel writes a log of all memory changes for rollback\nD) The parent pauses while the child copies its address space\nReply with just the letter.\n\n5. What does this Python code print?\n\n    class D(type):\n        def __new__(mcs, name, bases, ns):\n            for k, v in list(ns.items()):\n                if isinstance(v, int):\n                    ns[k] = v * 2\n            return super().__new__(mcs, name, bases, ns)\n    \n    class Config(metaclass=D):\n        x = 3\n        y = 5\n        z = \"hello\"\n    \n    print(Config.x, Config.y, Config.z)\n\nReply with the exact output.",
+   "expected": "czech_02|know_07|sysadm_14|know_08|code_17",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "v\u011bd\u011bl",
+     "regex": "(?i)v\u011bd\u011bl[ai]?"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "[Match]",
+     "regex": "(?si)\\[Match\\].*Name\\s*=\\s*eth0.*\\[Network\\].*Address\\s*=\\s*192\\.168\\.1\\.100/24.*Gateway\\s*=\\s*192\\.168\\.1\\.1.*DNS\\s*=\\s*1\\.1\\.1\\.1"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "6 10 hello",
+     "regex": "6\\s+10\\s+hello"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_07",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. How many distinct ways can you arrange the letters in the word MISSISSIPPI? Reply with just the number.\n\n2. List exactly 4 prime numbers between 10 and 50, separated by commas, in ascending order. No other text.\n\n3. In a distributed database using Multi-Version Concurrency Control (MVCC), a long-running read transaction T1 started at timestamp 10. A write transaction T2 commits at timestamp 15, modifying row X. When T1 later reads row X, what does it see and why?\nA) T1 sees T2's new value because T2 committed before T1 read the row\nB) T1 is aborted due to a write-read conflict\nC) T1 sees T2's value but is flagged for potential anomalies\nD) T1 sees the version of X from before T2's commit, because T1's snapshot is at timestamp 10 and MVCC provides snapshot isolation\nReply with just the letter.\n\n4. How many characters (including spaces and punctuation) are in the following string? Count very carefully.\n\n'She sells sea-shells by the sea-shore.'\n\nReply with ONLY the integer count.\n\n5. What does this Python code print?\n\n    it = iter([1, 2, 3])\n    a = list(it)\n    b = list(it)\n    c = sum(it)\n    print(a, b, c)\n\nReply with the exact output.",
+   "expected": "math_03|instr_02|know_18|instr_19|code_19",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "34650",
+     "regex": "\\b34650\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "11, 13, 17, 19",
+     "regex": "^\\s*(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)\\s*$"
+    },
+    {
+     "match": "mcq",
+     "expected": "D"
+    },
+    {
+     "match": "regex",
+     "expected": "38",
+     "regex": "\\b38\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "[1, 2, 3] [] 0",
+     "regex": "\\[1,\\s*2,\\s*3\\]\\s*\\[\\]\\s*0"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_08",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. A train travels at 90 km/h. How many minutes does it take to travel 45 km? Reply with just the number.\n\n2. In a distributed database using optimistic concurrency control (OCC), what are the three phases of a transaction, in order?\nA) Lock, Execute, Commit\nB) Read, Validate, Write\nC) Begin, Serialize, Commit\nD) Acquire, Modify, Release\nReply with just the letter.\n\n3. A drawer contains 10 red socks, 10 blue socks, 10 green socks, and 10 black socks. The room is completely dark. What is the minimum number of socks you must draw to guarantee you have at least 3 socks of the same color? Reply with just the number.\n\n4. P\u0159elo\u017e do \u010de\u0161tiny p\u0159irozen\u011b: 'It's raining cats and dogs.' Napi\u0161 ekvivalentn\u00ed \u010deskou fr\u00e1zi (ne doslovn\u00fd p\u0159eklad).\n\n5. Vysv\u011btli jednou v\u011btou rozd\u00edl mezi 'b\u00fdt' a 'b\u00fdvat' v \u010de\u0161tin\u011b (kdy se pou\u017e\u00edv\u00e1 iterativum 'b\u00fdvat').",
+   "expected": "math_01|know_09|reason_18|czech_01|czech_03",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "30",
+     "regex": "\\b30\\b"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "9",
+     "regex": "\\b9\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "lij\u00e1k",
+     "regex": "(?i)(leje jako z konve|padaj\u00ed traka\u0159e|hust\u00fd d\u00e9\u0161\u0165|pr\u016ftr\u017e|lij\u00e1k|z\u00e1plava|prudce pr\u0161\u00ed|lije jako z konve)"
+    },
+    {
+     "match": "regex",
+     "expected": "opakovan\u011b",
+     "regex": "(?i)(opakov|opakuj|habit|frequent|used to|zvyk|pravid|iterativ|recurring|repeat|obvykle|zpravidla)"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_09",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. Write a single sentence about the sky. The sentence must end with the word 'blue'.\n\n2. In the Linux kernel, what is the difference between a softirq and a tasklet?\nA) Softirqs are statically allocated at compile time and can run concurrently on multiple CPUs; tasklets are built on softirqs but are serialized (a given tasklet cannot run on two CPUs simultaneously)\nB) Tasklets have higher priority than softirqs\nC) Softirqs run in process context; tasklets run in interrupt context\nD) Tasklets are deprecated in favor of softirqs since Linux 5.0\nReply with just the letter.\n\n3. In the MESI cache coherence protocol, what are the four states a cache line can be in, and what does the 'E' (Exclusive) state specifically mean?\nA) The line is dirty and shared across multiple caches\nB) The line has been evicted and is in a transition state\nC) The line is clean and present in exactly this one cache; main memory is up-to-date\nD) The line is locked for atomic operations\nReply with just the letter.\n\n4. This Python generator function has a subtle bug. What does it actually yield?\n\n    def gen():\n        data = [1, 2, 3]\n        yield from (x * 2 for x in data)\n        data.append(4)\n    \n    result = list(gen())\n    print(result)\n\nReply with the exact printed output.\n\n5. What is the key insight behind the 'false sharing' performance problem in multi-core CPUs?\nA) Two threads share incorrect data due to a synchronization bug\nB) Two threads modify different variables that happen to reside on the same cache line, causing constant cache invalidations\nC) A CPU branch predictor incorrectly shares state between hyperthreads\nD) Two NUMA nodes share a memory bus, causing latency\nReply with just the letter.",
+   "expected": "instr_01|know_16|know_11|code_10|know_10",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "blue",
+     "regex": "(?i)blue[.!?]?\\s*$"
+    },
+    {
+     "match": "mcq",
+     "expected": "A"
+    },
+    {
+     "match": "mcq",
+     "expected": "C"
+    },
+    {
+     "match": "regex",
+     "expected": "[2, 4, 6]",
+     "regex": "\\[2,\\s*4,\\s*6\\]"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_10",
+   "category": "batch",
+   "difficulty": "hard",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What does this Python code print?\n\n    def outer():\n        x = 10\n        def middle():\n            x = 20\n            def inner():\n                nonlocal x\n                x = 30\n                return x\n            inner()\n            return x\n        return middle()\n    \n    print(outer())\n\nReply with just the number.\n\n2. What does this Python code print?\n\n    class A:\n        def method(self):\n            return ['A']\n    \n    class B(A):\n        def method(self):\n            return ['B'] + super().method()\n    \n    class C(A):\n        def method(self):\n            return ['C'] + super().method()\n    \n    class D(B, C):\n        def method(self):\n            return ['D'] + super().method()\n    \n    print(D().method())\n\nReply with the exact output.\n\n3. Ur\u010dete druh vedlej\u0161\u00ed v\u011bty: 'Kdo se boj\u00ed, nesm\u00ed do lesa.'\nA) V\u011bta vzta\u017en\u00e1\nB) V\u011bta podm\u011btn\u00e1\nC) V\u011bta podm\u00ednkov\u00e1\nD) V\u011bta p\u0159edm\u011btn\u00e1\nOdpov\u011bzte jen p\u00edsmenem.\n\n4. A drawer contains 10 red socks, 10 blue socks, 10 green socks, and 10 black socks. The room is completely dark. What is the minimum number of socks you must draw to guarantee you have a matching pair? Reply with just the number.\n\n5. What does this Python code print?\n\n    class Plugin:\n        registry = []\n        def __init_subclass__(cls, **kwargs):\n            super().__init_subclass__(**kwargs)\n            Plugin.registry.append(cls.__name__)\n    \n    class Auth(Plugin): pass\n    class Cache(Plugin): pass\n    class Auth2(Auth): pass\n    \n    print(Plugin.registry)\n\nReply with the exact output.",
+   "expected": "code_15|code_20|czech_15|reason_11|code_18",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "30",
+     "regex": "\\b30\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "['D', 'B', 'C', 'A']",
+     "regex": "\\['D',\\s*'B',\\s*'C',\\s*'A'\\]"
+    },
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "5",
+     "regex": "\\b5\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "['Auth', 'Cache', 'Auth2']",
+     "regex": "\\['Auth',\\s*'Cache',\\s*'Auth2'\\]"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_11",
+   "category": "batch",
+   "difficulty": "expert",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What does this JavaScript code log to the console?\n\n    for (var i = 0; i < 3; i++) {\n      setTimeout(() => console.log(i), 0);\n    }\n\nList all three logged values separated by spaces.\n\n2. P\u0159elo\u017e do angli\u010dtiny: 'Kdyby b\u00fdvala p\u0159i\u0161la d\u0159\u00edve, byli bychom to stihli.' Odpov\u011bz jednou v\u011btou v angli\u010dtin\u011b.\n\n3. Which page replacement algorithm is provably optimal (lowest page fault rate) but cannot be implemented in practice because it requires future knowledge?\nA) LRU (Least Recently Used)\nB) FIFO (First In First Out)\nC) OPT / B\u00e9l\u00e1dy's algorithm\nD) Clock algorithm\nReply with just the letter.\n\n4. What is the amortized time complexity per operation for appending to a dynamic array (like Python's list) that doubles in size when full? Reply in Big-O notation only.\n\n5. Jak\u00fd je etymologick\u00fd p\u016fvod \u010desk\u00e9ho slova 'br\u00fdle'?\nA) Z francouzsk\u00e9ho 'briller' (z\u00e1\u0159it)\nB) Ze slovansk\u00e9ho ko\u0159ene 'bry-' (brvit, chr\u00e1nit)\nC) Z italsk\u00e9ho 'brillante' (briliantn\u00ed)\nD) Z n\u011bmeck\u00e9ho 'Brille' (kter\u00e9 poch\u00e1z\u00ed z latiny 'beryllus' \u2014 druh kamene pou\u017e\u00edvan\u00fd pro \u010do\u010dky)\nOdpov\u011bzte jen p\u00edsmenem.",
+   "expected": "code_03|czech_06|know_02|code_04|czech_16",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "3 3 3",
+     "regex": "3[,\\s]+3[,\\s]+3"
+    },
+    {
+     "match": "regex",
+     "expected": "had",
+     "regex": "(?i)(had.*come|if she had|would have made it|could have made it|would have caught it)"
+    },
+    {
+     "match": "mcq",
+     "expected": "C"
+    },
+    {
+     "match": "regex",
+     "expected": "O(1)",
+     "regex": "O\\(1\\)"
+    },
+    {
+     "match": "mcq",
+     "expected": "D"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_12",
+   "category": "batch",
+   "difficulty": "expert",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. In TCP, what is the purpose of the TIME_WAIT state, and how long does it last on most systems?\nA) It buffers data for retransmission; it lasts until all ACKs are received\nB) It prevents SYN flood attacks; it lasts 30 seconds\nC) It allows the kernel to reclaim socket memory; it lasts 10 seconds\nD) It ensures delayed segments from the old connection are not interpreted as belonging to a new connection on the same port; it lasts 2*MSL (typically 60 seconds)\nReply with just the letter.\n\n2. A store sells apples for $1.20 each and oranges for $0.80 each. Alice buys twice as many oranges as apples. She spends exactly $11.20 in total. How many apples did she buy? Reply with just the number.\n\n3. Jak\u00fd vid (aspekt) m\u00e1 sloveso 'v\u00edd\u00e1vat'? A jak\u00fd je jeho dokonav\u00fd prot\u011bj\u0161ek nejbli\u017e\u0161\u00ed v z\u00e1kladn\u00edm tvaru?\nA) Nedokonav\u00e9; dokonav\u00fd prot\u011bj\u0161ek: uvid\u011bt\nB) Nedokonav\u00e9 (iterativum); dokonav\u00fd prot\u011bj\u0161ek: vid\u011bt\nC) Nedokonav\u00e9 (iterativum); nem\u00e1 p\u0159\u00edm\u00fd dokonav\u00fd prot\u011bj\u0161ek \u2014 je to frekventativum od 'v\u00eddat'\nD) Dokonav\u00e9; nedokonav\u00fd prot\u011bj\u0161ek: v\u00eddat\nOdpov\u011bzte jen p\u00edsmenem.\n\n4. What is the write amplification problem in LSM-tree based storage engines (like RocksDB/LevelDB), and what causes it?\nA) Each write requires updating an on-disk B-tree index, causing random I/O\nB) Writes are duplicated across replicas, amplifying network bandwidth\nC) Data is written once to the WAL and then multiple times during compaction as SSTables are merged across levels, so the total bytes written to disk can be 10-30x the original write\nD) The filesystem journal doubles every write operation\nReply with just the letter.\n\n5. Jak\u00fd je spr\u00e1vn\u00fd tvar v dativu plur\u00e1lu: 'D\u011bkuji v\u0161em sv\u00fdm _______' (kolega, mu\u017esk\u00fd rod \u017eivotn\u00fd). Odpov\u011bzte jen chyb\u011bj\u00edc\u00edm tvarem v dativu plur\u00e1lu.",
+   "expected": "know_20|math_02|czech_13|know_19|czech_17",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "mcq",
+     "expected": "D"
+    },
+    {
+     "match": "regex",
+     "expected": "4",
+     "regex": "\\b4\\b"
+    },
+    {
+     "match": "mcq",
+     "expected": "C"
+    },
+    {
+     "match": "mcq",
+     "expected": "C"
+    },
+    {
+     "match": "contains_ci",
+     "expected": "koleg\u016fm"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_13",
+   "category": "batch",
+   "difficulty": "expert",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What is the ABA problem in lock-free programming, and which mechanism solves it?\nA) Two threads deadlock when both attempt atomic operations on values A and B. Solved by lock ordering\nB) A thread reads value A, another thread changes it to B then back to A; the first thread's CAS succeeds incorrectly. Solved by tagged/versioned pointers (adding a counter to each CAS)\nC) A compare-and-swap fails spuriously on ARM. Solved by using LL/SC instead\nD) Memory is freed and reallocated at the same address. Solved by garbage collection only\nReply with just the letter.\n\n2. Slovo 'muzeum' je v \u010de\u0161tin\u011b st\u0159edn\u00edho rodu. Jak\u00fd je jeho lok\u00e1l singul\u00e1ru? Dopl\u0148te: 'Byli jsme v _______.' Odpov\u011bzte jen chyb\u011bj\u00edc\u00edm tvarem (bez p\u0159edlo\u017eky).\n\n3. Jak\u00fd je spr\u00e1vn\u00fd genitiv plur\u00e1lu slova 'p\u0159\u00edtel'? Dopl\u0148te: 'Nem\u00e1m mnoho _______.' Odpov\u011bzte jen chyb\u011bj\u00edc\u00edm tvarem.\n\n4. This instruction is impossible to follow literally: write a sentence that is both exactly 5 words long AND exactly 10 words long. Explain in exactly one word why you cannot do it.\n\n5. Write an eBPF-compatible bpftrace one-liner that traces all TCP retransmissions on a Linux system, printing the timestamp, source IP, destination IP, and destination port for each retransmission event. Reply with just the command.",
+   "expected": "know_17|czech_14|czech_11|instr_07|sysadm_17",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "mcq",
+     "expected": "B"
+    },
+    {
+     "match": "regex",
+     "expected": "muzeu",
+     "regex": "(?i)^\\s*muzeu\\s*$"
+    },
+    {
+     "match": "contains_ci",
+     "expected": "p\u0159\u00e1tel"
+    },
+    {
+     "match": "regex",
+     "expected": "impossible",
+     "regex": "(?i)^\\s*(impossible|contradiction|paradox|conflicting|contradictory)\\s*$"
+    },
+    {
+     "match": "regex",
+     "expected": "bpftrace",
+     "regex": "(?i)bpftrace.*(-e\\s+['\"]|--unsafe).*tcp.*retransmit|bpftrace.*tracepoint:tcp:tcp_retransmit_skb|bpftrace.*kprobe:tcp_retransmit_skb"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_14",
+   "category": "batch",
+   "difficulty": "expert",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. What command shows all listening TCP and UDP ports with the process name on Linux (using ss)? Reply with just the command.\n\n2. What does this Python code print?\n\n    class Meta(type):\n        def __new__(mcs, name, bases, ns):\n            ns['x'] = ns.get('x', 0) + 10\n            return super().__new__(mcs, name, bases, ns)\n    \n    class A(metaclass=Meta):\n        x = 5\n    \n    class B(A):\n        pass\n    \n    print(A.x, B.x)\n\nReply with just the two numbers separated by a space.\n\n3. Jak\u00fd je rozd\u00edl mezi 'p\u0159ij\u00edt s n\u011b\u010d\u00edm' a 'p\u0159ij\u00edt na n\u011bco'? Vysv\u011btlete s\u00e9mantick\u00fd rozd\u00edl jednou v\u011btou \u010desky.\n\n4. What does the TCP Nagle algorithm do, and when is it problematic?\nA) Buffers small packets to reduce overhead; problematic for latency-sensitive apps like games or SSH\nB) Retransmits lost packets; problematic when bandwidth is plentiful\nC) Limits connection rate; problematic for high-concurrency servers\nD) Fragments large packets; problematic for jumbo frames\nReply with just the letter.\n\n5. What does this Python code print?\n\n    x = []\n    for i in range(3):\n        x.append(lambda: i)\n    print([f() for f in x])\n\nReply with the exact output.",
+   "expected": "sysadm_01|code_09|czech_18|know_04|code_05",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "ss",
+     "regex": "\\bss\\b.*-[a-z]*[tlup][a-z]*|-[a-z]*[tlup][a-z]*.*\\bss\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "15 10",
+     "regex": "\\b15\\s+10\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "p\u0159ij\u00edt na",
+     "regex": "(?i)(p\u0159ij\u00edt s.*p\u0159in\u00e9st|p\u0159ij\u00edt na.*objevit|p\u0159ij\u00edt na.*vymyslet|napad|p\u0159edlo\u017e|p\u0159ij\u00edt s.*n\u00e1vrh|p\u0159ij\u00edt na.*\u0159e\u0161en\u00ed|p\u0159in\u00e9st.*objevit|n\u00e1pad.*n\u00e1vrh|discover.*propose|bring.*figure out)"
+    },
+    {
+     "match": "mcq",
+     "expected": "A"
+    },
+    {
+     "match": "regex",
+     "expected": "[2, 2, 2]",
+     "regex": "\\[2,\\s*2,\\s*2\\]"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_15",
+   "category": "batch",
+   "difficulty": "expert",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. Slovo 'software' se v \u010de\u0161tin\u011b sklo\u0148uje. Napi\u0161 genitiv singul\u00e1ru: 'Instalace nov\u00e9ho _______ trvala hodinu.' Odpov\u011bz jen chyb\u011bj\u00edc\u00edm tvarem.\n\n2. What is the time complexity of this algorithm? Give Big-O and explain.\n\n    def mystery(n):\n        if n <= 1:\n            return n\n        return mystery(n // 2) + mystery(n // 2) + n\n\nReply with just the Big-O notation (e.g. O(n log n)).\n\n3. Write the exact command to create a ZFS pool named 'tank' as a RAIDZ1 using three drives: /dev/sda, /dev/sdb, /dev/sdc. Reply with just the command.\n\n4. A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in cents? Reply with just the number.\n\n5. A bag contains 4 red and 6 blue marbles. Two marbles are drawn without replacement. What is the probability both are red? Reply as a simplified fraction.",
+   "expected": "czech_08|code_08|sysadm_11|reason_01|math_04",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "softwaru",
+     "regex": "(?i)software?u"
+    },
+    {
+     "match": "regex",
+     "expected": "O(n log n)",
+     "regex": "O\\(n\\s*log\\s*n\\)|O\\(n\\s*lg\\s*n\\)|O\\(n\\s*\\*\\s*log\\s*n\\)"
+    },
+    {
+     "match": "regex",
+     "expected": "zpool create",
+     "regex": "(?i)zpool\\s+create\\s+tank\\s+raidz1?\\s+/dev/sd[abc]\\s+/dev/sd[abc]\\s+/dev/sd[abc]"
+    },
+    {
+     "match": "regex",
+     "expected": "5",
+     "regex": "\\b5\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "2/15",
+     "regex": "\\b2/15\\b|\\b2\u204415\\b"
+    }
+   ],
+   "max_tokens": 400
+  },
+  {
+   "id": "batch_16",
+   "category": "batch",
+   "difficulty": "expert",
+   "prompt": "Answer all 5 questions below. Reply with exactly 5 lines, each starting with the question number, a full stop, and then only the answer \u2014 no working, no explanation, no repetition of the question.\n\n1. In C, what is the output of this code on a typical x86-64 system? Explain why it's undefined behavior in one sentence.\n\n    #include <stdio.h>\n    int main() {\n        int a = 1;\n        printf(\"%d %d\\n\", a++, a++);\n        return 0;\n    }\n\nAnswer the question about why it's undefined behavior \u2014 what rule does it violate?\n\n2. There are 3 boxes. One contains only apples, one only oranges, one both. All labels are wrong. You may pull one fruit from one box (without looking inside). You pull from the box labeled 'Both' and get an apple. What does the box labeled 'Oranges' contain? Answer with one word.\n\n3. If all roses are flowers, and some flowers fade quickly, can we conclude that some roses fade quickly? Answer 'yes' or 'no' and explain in one sentence why.\n\n4. You are in a room with two doors. One leads to freedom, one to death. There are two guards \u2014 one always lies, one always tells the truth, but you don't know which is which. You can ask exactly ONE question to ONE guard. What single yes/no question guarantees you find the door to freedom? Reply with the question.\n\n5. In a CmRDT (operation-based CRDT) OR-Set (Observed-Remove Set), how is the 'add wins over concurrent remove' semantic implemented?\nA) Add operations have higher Lamport timestamps by convention\nB) A central coordinator resolves add/remove conflicts\nC) Each add generates a globally unique tag; remove only deletes specific observed tags, not future ones\nD) Remove operations are delayed until all concurrent adds are delivered\nReply with just the letter.",
+   "expected": "code_06|reason_06|reason_02|reason_07|know_15",
+   "match": "batch",
+   "subs": [
+    {
+     "match": "regex",
+     "expected": "sequence point",
+     "regex": "(?i)(sequence point|unspecified|undefined|order of evaluation|multiple modification|side effect|between sequence points)"
+    },
+    {
+     "match": "contains_ci",
+     "expected": "both"
+    },
+    {
+     "match": "regex",
+     "expected": "no",
+     "regex": "(?i)\\bno\\b"
+    },
+    {
+     "match": "regex",
+     "expected": "other guard",
+     "regex": "(?i)(other guard|other one|the other|would the other)"
+    },
+    {
+     "match": "mcq",
+     "expected": "C"
+    }
+   ],
+   "max_tokens": 400
   }
  ]
 }

@@ -445,3 +445,25 @@ def test_longctx_questions_are_multi_hop_and_deep() -> None:
         assert body.count(q["expected"]) == 0, \
             f"{q['id']} leaks its answer {q['expected']} into the document"
         assert "times whatever" in body, f"{q['id']} lost its second hop"
+
+
+def test_batch_subs_have_short_canonical_answers() -> None:
+    """A batch reply is one line per answer, so every sub-question must have a short
+    single-line expected value. An empty `expected` means the source question was
+    free-form ("write three sentences"), whose own enumeration collides with the
+    batch numbering and makes the item unpassable for reasons unrelated to batching."""
+    from app.tester import _load_benchmark
+    import re
+
+    for q in _load_benchmark()["questions"]:
+        if q.get("category") != "batch":
+            continue
+        subs = q.get("subs") or []
+        assert len(subs) == 5, f"{q['id']} has {len(subs)} subs"
+        for i, s in enumerate(subs, 1):
+            exp = str(s.get("expected", "")).strip()
+            assert exp, f"{q['id']} sub {i} has no expected answer"
+            assert "\n" not in exp and len(exp) <= 40, f"{q['id']} sub {i}: {exp!r}"
+        # the batch's own numbering must be unambiguous
+        body = q["prompt"].split("\n\n", 1)[1]
+        assert len(re.findall(r"^\d+\. ", body, re.M)) == 5, f"{q['id']} numbering is ambiguous"

@@ -87,6 +87,9 @@ _THINKING_BUDGET_BY_CATEGORY = {
     # one-shot code with no retry: planning before writing is part of the skill
     # being measured, so give it the same room as reasoning and math
     "exec": _TIER_MEDIUM,
+    # five questions at once: the model has to reason about each and hold the
+    # output format, so it needs at least what the individual questions get
+    "batch": _TIER_MEDIUM,
 }
 
 
@@ -382,6 +385,34 @@ def _run_python_tests(code: str, tests: str, timeout: float = 20.0) -> bool:
             return False
 
 
+# "3) 42", "3. 42", "3: 42" — models vary, so accept the common separators.
+# Every occurrence of an index is a candidate and any correct one counts: models
+# routinely restate the list before answering or add a numbered recap afterwards,
+# and penalising that would measure layout habits rather than whether all five
+# questions were actually answered.
+_BATCH_LINE = re.compile(r"^[ \t]*(\d{1,2})[.):\]]?[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+
+
+def _score_batch(question: dict, text: str) -> bool:
+    """All sub-answers must be right. Partial credit would hide the failure mode
+    this category exists to catch: dropping or mis-numbering an item when several
+    are asked at once."""
+    subs = question.get("subs") or []
+    if not subs:
+        return False
+    found: dict[int, list[str]] = {}
+    for m in _BATCH_LINE.finditer(text or ""):
+        found.setdefault(int(m.group(1)), []).append(m.group(2))
+    for i, sub in enumerate(subs, 1):
+        cands = found.get(i)
+        if not cands:
+            return False
+        mt, exp = sub.get("match", "regex"), sub.get("expected", "")
+        if not any(_score_one(mt, exp, sub, c) for c in cands):
+            return False
+    return True
+
+
 def _extract_answer(text: str) -> str:
     """Try to extract the core answer from a response that may contain reasoning."""
     parts = _ANSWER_DELIMITERS.split(text)
@@ -420,6 +451,8 @@ def _score_one(match_type: str, expected: str, question: dict, text: str) -> boo
         cleaned = re.sub(r"[^\w]", "", text.lower())
         exp_cleaned = re.sub(r"[^\w]", "", expected.lower())
         return cleaned == exp_cleaned
+    if match_type == "batch":
+        return _score_batch(question, text)
     if match_type == "python_exec":
         return _run_python_tests(_extract_code(text), question.get("tests", ""))
     if match_type == "regex":
