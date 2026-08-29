@@ -115,6 +115,17 @@ def _record_from_dict(model_id: str, d: dict) -> ModelRecord:
         draft_min=int(d.get("draft_min", 0) or 0),
         spec_default=bool(d.get("spec_default", False)),
         quant=str(d.get("quant", "") or ""),
+        # NB: plain d.get(..., default) — never `or default`. A configured
+        # temperature of 0.0 (greedy) is falsy, and `or` would silently turn it
+        # back into 0.8, which is how these six fields came to be write-only:
+        # upsert() persisted them, _record_from_dict() never read them back, and
+        # the next upsert overwrote the stored value with the dataclass default.
+        sampling_temp=float(d.get("sampling_temp", 0.8)),
+        sampling_top_k=int(d.get("sampling_top_k", 40)),
+        sampling_top_p=float(d.get("sampling_top_p", 0.95)),
+        sampling_min_p=float(d.get("sampling_min_p", 0.05)),
+        sampling_repeat_penalty=float(d.get("sampling_repeat_penalty", 1.1)),
+        system_prompt=str(d.get("system_prompt", "") or ""),
         model_tags=list(d.get("model_tags") or []),
         test_results=dict(d.get("test_results") or {}),
         speed_history=list(d.get("speed_history") or []),

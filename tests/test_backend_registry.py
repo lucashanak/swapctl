@@ -359,3 +359,45 @@ def test_switch_model_backend_api_rejects_incompatible(tmp_path: Path) -> None:
     assert resp.status_code == 400, (
         f"Expected 400 for incompatible backend, got {resp.status_code}: {resp.text}"
     )
+
+
+def test_record_from_dict_reads_sampling_and_system_prompt(tmp_path: Path) -> None:
+    """These six fields were written by upsert() but never parsed back, so any
+    per-model sampling was silently reset to defaults on the next write."""
+    from app.registry import _record_from_dict
+
+    rec = _record_from_dict("m", {
+        "sampling_temp": 0.0, "sampling_top_k": 1, "sampling_top_p": 0.5,
+        "sampling_min_p": 0.0, "sampling_repeat_penalty": 1.0,
+        "system_prompt": "be terse",
+    })
+    assert rec.sampling_temp == 0.0        # falsy — must survive, not become 0.8
+    assert rec.sampling_top_k == 1
+    assert rec.sampling_top_p == 0.5
+    assert rec.sampling_min_p == 0.0
+    assert rec.sampling_repeat_penalty == 1.0
+    assert rec.system_prompt == "be terse"
+
+
+def test_record_from_dict_defaults_when_absent() -> None:
+    from app.registry import _record_from_dict
+
+    rec = _record_from_dict("m", {})
+    assert rec.sampling_temp == 0.8
+    assert rec.sampling_top_k == 40
+    assert rec.system_prompt == ""
+
+
+def test_sampling_round_trips_through_upsert(tmp_path: Path) -> None:
+    """temp 0 must survive a write/read cycle — the whole point of the fix."""
+    import dataclasses
+    from app import registry as reg
+
+    path = tmp_path / "registry.json"
+    rec = reg.ModelRecord(
+        model_id="m", repo_id=None, filename="f.gguf", mmproj=None,
+        installed_at="", hf_last_modified=None, size_bytes=1, ctx_size=4096,
+    )
+    reg.upsert(dataclasses.replace(rec, sampling_temp=0.0), path=path)
+    got = next(r for r in reg.list_all(path=path) if r.model_id == "m")
+    assert got.sampling_temp == 0.0
