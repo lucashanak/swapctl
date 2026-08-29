@@ -1,6 +1,6 @@
 {
- "version": 8,
- "description": "swapctl intelligence benchmark v8 \u2014 220 questions, 11 categories. v8 adds longctx (multi-hop retrieval at depth). NOTE: the fleet now scores 87-95%, far above the 50-70% this suite was designed for \u2014 knowledge and structured are fully saturated (zero spread across models) and contribute nothing to ranking. Sources: custom, GSM8K-inspired, MMLU-inspired.",
+ "version": 9,
+ "description": "swapctl intelligence benchmark v8 \u2014 240 questions, 12 categories. v8 added longctx (multi-hop retrieval at depth); v9 adds exec (one-shot code that is executed). NOTE: the fleet now scores 87-95%, far above the 50-70% this suite was designed for \u2014 knowledge and structured are fully saturated (zero spread across models) and contribute nothing to ranking. Sources: custom, GSM8K-inspired, MMLU-inspired.",
  "categories": {
   "math": {
    "weight": 1.0,
@@ -45,6 +45,10 @@
   "longctx": {
    "weight": 1.0,
    "description": "Multi-hop retrieval over documents of 2K-24K tokens: each answer needs two facts placed at different depths, with a same-shape decoy in between. Tests whether long context is usable, not just configured."
+  },
+  "exec": {
+   "weight": 1.0,
+   "description": "One-shot executable Python: the model gets no retry and no error feedback, and its code is run against asserts covering empty input, boundaries and the edge case most attempts skip. Unlike code/coding this grades behaviour, not prose."
   }
  },
  "questions": [
@@ -2205,6 +2209,206 @@
    "match": "regex",
    "regex": "\\b196\\b",
    "max_tokens": 200
+  },
+  {
+   "id": "exec_01",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef parse_duration(s: str) -> int \u2014 parse a duration like '1h30m', '45s', '2h', '90m', '1h2m3s' into total seconds. Units h/m/s may appear at most once each, always in that order. Return 0 for an empty string. Raise ValueError for anything malformed (e.g. '5x', 'h', '1m2h', '1.5h').",
+   "expected": "parse_duration",
+   "match": "python_exec",
+   "tests": "assert parse_duration('1h30m') == 5400\nassert parse_duration('45s') == 45\nassert parse_duration('2h') == 7200\nassert parse_duration('1h2m3s') == 3723\nassert parse_duration('') == 0\nfor bad in ['5x','h','1m2h','1.5h','abc','-1s']:\n    try:\n        parse_duration(bad); raise SystemExit('accepted bad input: '+bad)\n    except ValueError: pass\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_02",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef merge_intervals(intervals: list) -> list \u2014 merge overlapping half-open intervals [start, end). Touching intervals like [1,2) and [2,3) do NOT overlap and must stay separate. Input may be unsorted. Return sorted by start.",
+   "expected": "merge_intervals",
+   "match": "python_exec",
+   "tests": "assert merge_intervals([]) == []\nassert merge_intervals([[1,3],[2,6],[8,10]]) == [[1,6],[8,10]]\nassert merge_intervals([[1,2],[2,3]]) == [[1,2],[2,3]]\nassert merge_intervals([[5,7],[1,3]]) == [[1,3],[5,7]]\nassert merge_intervals([[1,10],[2,3]]) == [[1,10]]\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_03",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef flatten_dict(d: dict) -> dict \u2014 flatten nested dicts into dotted keys. An empty nested dict must survive as its own key mapping to {}. Lists are values, not containers to descend into.",
+   "expected": "flatten_dict",
+   "match": "python_exec",
+   "tests": "assert flatten_dict({'a':{'b':1}}) == {'a.b':1}\nassert flatten_dict({'a':1}) == {'a':1}\nassert flatten_dict({}) == {}\nassert flatten_dict({'a':{}}) == {'a':{}}\nassert flatten_dict({'a':{'b':{'c':2}},'d':[1,2]}) == {'a.b.c':2,'d':[1,2]}\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_04",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef compare_semver(a: str, b: str) -> int \u2014 compare semantic versions, returning -1, 0 or 1. Handle prerelease tags: 1.0.0-alpha < 1.0.0. Numeric prerelease identifiers compare numerically, alphanumeric ones lexically, and numeric always sorts before alphanumeric.",
+   "expected": "compare_semver",
+   "match": "python_exec",
+   "tests": "assert compare_semver('1.0.0','1.0.1') == -1\nassert compare_semver('1.2.0','1.2.0') == 0\nassert compare_semver('2.0.0','1.9.9') == 1\nassert compare_semver('1.0.0-alpha','1.0.0') == -1\nassert compare_semver('1.0.0-alpha.1','1.0.0-alpha.2') == -1\nassert compare_semver('1.0.0-1','1.0.0-alpha') == -1\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_05",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef parse_csv_line(line: str) -> list \u2014 split one CSV line into fields. Fields may be double-quoted; a doubled quote inside a quoted field is a literal quote; commas inside quotes are not separators. Unquoted fields keep their surrounding spaces.",
+   "expected": "parse_csv_line",
+   "match": "python_exec",
+   "tests": "assert parse_csv_line('a,b,c') == ['a','b','c']\nassert parse_csv_line('a,\\\"b,c\\\",d') == ['a','b,c','d']\nassert parse_csv_line('\\\"he said \\\"\\\"hi\\\"\\\"\\\"') == ['he said \\\"hi\\\"']\nassert parse_csv_line('') == ['']\nassert parse_csv_line('a,,b') == ['a','','b']\nassert parse_csv_line(' a , b ') == [' a ',' b ']\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_06",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef topo_sort(graph: dict) -> list \u2014 topological sort of a dict mapping node to list of nodes it points to. Return None if there is a cycle. Break ties by sorting ready nodes alphabetically so the result is deterministic.",
+   "expected": "topo_sort",
+   "match": "python_exec",
+   "tests": "assert topo_sort({'a':['b'],'b':['c'],'c':[]}) == ['a','b','c']\nassert topo_sort({'a':['b'],'b':['a']}) is None\nassert topo_sort({}) == []\nassert topo_sort({'a':[],'b':[]}) == ['a','b']\nassert topo_sort({'a':['c'],'b':['c'],'c':[]}) == ['a','b','c']\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_07",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef simplify_path(path: str) -> str \u2014 canonicalise a unix absolute path, resolving '.' and '..', collapsing repeated slashes, and never leaving the root. Result must not end in a trailing slash unless it is exactly '/'.",
+   "expected": "simplify_path",
+   "match": "python_exec",
+   "tests": "assert simplify_path('/home//foo/') == '/home/foo'\nassert simplify_path('/../') == '/'\nassert simplify_path('/a/./b/../../c/') == '/c'\nassert simplify_path('/') == '/'\nassert simplify_path('/a/../..') == '/'\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_08",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef word_wrap(text: str, width: int) -> list \u2014 greedily wrap text into lines no longer than width, splitting only on single spaces and never breaking a word. A word longer than width goes on its own line unbroken. Empty text gives [].",
+   "expected": "word_wrap",
+   "match": "python_exec",
+   "tests": "assert word_wrap('', 10) == []\nassert word_wrap('a b c', 5) == ['a b c']\nassert word_wrap('aaa bbb ccc', 7) == ['aaa bbb','ccc']\nassert word_wrap('supercalifragilistic hi', 5) == ['supercalifragilistic','hi']\nassert word_wrap('one two', 3) == ['one','two']\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_09",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef rotated_search(nums: list, target: int) -> int \u2014 index of target in a sorted array rotated at an unknown pivot, or -1. Values are distinct. Must run in O(log n), so no linear scan and no calling list.index.",
+   "expected": "rotated_search",
+   "match": "python_exec",
+   "tests": "assert rotated_search([4,5,6,7,0,1,2], 0) == 4\nassert rotated_search([4,5,6,7,0,1,2], 3) == -1\nassert rotated_search([1], 1) == 0\nassert rotated_search([], 5) == -1\nassert rotated_search([3,1], 1) == 1\nimport inspect\nsrc = inspect.getsource(rotated_search)\nassert '.index(' not in src, 'used list.index'\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_10",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef dict_diff(old: dict, new: dict) -> dict \u2014 return {'added': {...}, 'removed': {...}, 'changed': {k: (old_v, new_v)}}. Keys present in both with equal values appear nowhere. All three keys always present, even empty.",
+   "expected": "dict_diff",
+   "match": "python_exec",
+   "tests": "assert dict_diff({}, {}) == {'added':{},'removed':{},'changed':{}}\nassert dict_diff({'a':1}, {'a':1}) == {'added':{},'removed':{},'changed':{}}\nassert dict_diff({'a':1}, {'a':2}) == {'added':{},'removed':{},'changed':{'a':(1,2)}}\nassert dict_diff({}, {'b':3}) == {'added':{'b':3},'removed':{},'changed':{}}\nassert dict_diff({'c':4}, {}) == {'added':{},'removed':{'c':4},'changed':{}}\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_11",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef valid_ipv4(s: str) -> bool \u2014 strict IPv4 validation. Exactly four dot-separated decimal octets 0-255, no leading zeros (except '0' itself), no spaces, no signs, no empty parts.",
+   "expected": "valid_ipv4",
+   "match": "python_exec",
+   "tests": "assert valid_ipv4('192.168.1.1') is True\nassert valid_ipv4('0.0.0.0') is True\nassert valid_ipv4('255.255.255.255') is True\nfor bad in ['01.1.1.1','1.1.1','1.1.1.256','1.1.1.-1',' 1.1.1.1','1.1.1.1.','a.b.c.d','','1.1.1.1 ']:\n    assert valid_ipv4(bad) is False, bad\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_12",
+   "category": "exec",
+   "difficulty": "hard",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef rle(s: str) -> str \u2014 run-length encode, emitting the character then the count only when the run is longer than 1 (so 'abc' stays 'abc', 'aaab' becomes 'a3b'). Digits in the input are encoded the same way.",
+   "expected": "rle",
+   "match": "python_exec",
+   "tests": "assert rle('') == ''\nassert rle('abc') == 'abc'\nassert rle('aaab') == 'a3b'\nassert rle('aabbbb') == 'a2b4'\nassert rle('111') == '13'\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_13",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef group_anagrams(words: list) -> list \u2014 group anagrams together. Return a list of groups, each group sorted alphabetically, and the outer list sorted by each group's first element. Comparison is case-sensitive.",
+   "expected": "group_anagrams",
+   "match": "python_exec",
+   "tests": "assert group_anagrams([]) == []\nassert group_anagrams(['eat','tea','tan','ate','nat','bat']) == [['ate','eat','tea'],['bat'],['nat','tan']]\nassert group_anagrams(['a']) == [['a']]\nassert group_anagrams(['ab','AB']) == [['AB'],['ab']]\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_14",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef next_permutation(nums: list) -> list \u2014 return the next lexicographic permutation, or the smallest permutation if the input is the largest. Do not mutate the input list.",
+   "expected": "next_permutation",
+   "match": "python_exec",
+   "tests": "assert next_permutation([1,2,3]) == [1,3,2]\nassert next_permutation([3,2,1]) == [1,2,3]\nassert next_permutation([1,1,5]) == [1,5,1]\nassert next_permutation([]) == []\nsrc=[2,3,1]\nnext_permutation(src)\nassert src == [2,3,1], 'mutated the input'\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_15",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef sliding_max(nums: list, k: int) -> list \u2014 maximum of every window of size k. Return [] if the list is empty or k is larger than the list. Must be O(n), so no max() over each window.",
+   "expected": "sliding_max",
+   "match": "python_exec",
+   "tests": "assert sliding_max([1,3,-1,-3,5,3,6,7],3) == [3,3,5,5,6,7]\nassert sliding_max([],3) == []\nassert sliding_max([1,2],5) == []\nassert sliding_max([4],1) == [4]\nassert sliding_max([9,8,7],2) == [9,8]\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_16",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef roman_to_int(s: str) -> int \u2014 convert a Roman numeral to an integer, handling subtractive pairs (IV, IX, XL, XC, CD, CM). Raise ValueError on invalid input such as 'IIII', 'VV', 'IC' or an empty string.",
+   "expected": "roman_to_int",
+   "match": "python_exec",
+   "tests": "assert roman_to_int('IV') == 4\nassert roman_to_int('MCMXCIV') == 1994\nassert roman_to_int('III') == 3\nfor bad in ['IIII','VV','IC','', 'ABC']:\n    try:\n        roman_to_int(bad); raise SystemExit('accepted '+repr(bad))\n    except ValueError: pass\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_17",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef balanced(s: str) -> bool \u2014 check that (), [] and {} are balanced and correctly nested. Characters other than brackets are ignored. Empty string is balanced.",
+   "expected": "balanced",
+   "match": "python_exec",
+   "tests": "assert balanced('') is True\nassert balanced('a(b)c[d]{e}') is True\nassert balanced('([)]') is False\nassert balanced('(') is False\nassert balanced(')(') is False\nassert balanced('{[()]}') is True\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_18",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef longest_common_prefix(strs: list) -> str \u2014 longest common prefix of a list of strings. Empty list gives ''. A single string is its own prefix. Case-sensitive.",
+   "expected": "longest_common_prefix",
+   "match": "python_exec",
+   "tests": "assert longest_common_prefix([]) == ''\nassert longest_common_prefix(['flower','flow','flight']) == 'fl'\nassert longest_common_prefix(['dog','racecar']) == ''\nassert longest_common_prefix(['same']) == 'same'\nassert longest_common_prefix(['ab','']) == ''\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_19",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef chunk_by_size(items: list, max_bytes: int, sizeof) -> list \u2014 greedily split items into consecutive chunks whose total sizeof() stays at or below max_bytes. An item larger than max_bytes gets its own chunk alone. Empty input gives [].",
+   "expected": "chunk_by_size",
+   "match": "python_exec",
+   "tests": "assert chunk_by_size([], 10, len) == []\nassert chunk_by_size(['ab','cd'], 4, len) == [['ab','cd']]\nassert chunk_by_size(['ab','cd'], 3, len) == [['ab'],['cd']]\nassert chunk_by_size(['abcdef'], 2, len) == [['abcdef']]\nassert chunk_by_size(['a','b','cccc','d'], 2, len) == [['a','b'],['cccc'],['d']]\n",
+   "max_tokens": 900
+  },
+  {
+   "id": "exec_20",
+   "category": "exec",
+   "difficulty": "expert",
+   "prompt": "Write a complete, self-contained Python function. Output ONLY the code in a single ```python block, no explanation, no example usage, no tests.\n\ndef median_of_two(a: list, b: list) -> float \u2014 median of two sorted lists combined. Either may be empty (but not both). Return a float.",
+   "expected": "median_of_two",
+   "match": "python_exec",
+   "tests": "assert median_of_two([1,3],[2]) == 2.0\nassert median_of_two([1,2],[3,4]) == 2.5\nassert median_of_two([],[1]) == 1.0\nassert median_of_two([5],[]) == 5.0\nassert median_of_two([1,2,3],[4,5,6]) == 3.5\n",
+   "max_tokens": 900
   }
  ]
 }

@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import subprocess
+import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -80,6 +84,9 @@ _THINKING_BUDGET_BY_CATEGORY = {
     # multi-hop retrieval over a long document: the reasoning is trivial once both
     # facts are found, so a MEDIUM budget only pays for the search, not for thinking
     "longctx": _TIER_LOW,
+    # one-shot code with no retry: planning before writing is part of the skill
+    # being measured, so give it the same room as reasoning and math
+    "exec": _TIER_MEDIUM,
 }
 
 
@@ -339,6 +346,42 @@ _ANSWER_DELIMITERS = re.compile(
 )
 
 
+_CODE_FENCE = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
+
+
+def _extract_code(text: str) -> str:
+    """Pull the model's code out of prose. Longest fenced block wins — models often
+    emit a short usage example after the real implementation."""
+    blocks = _CODE_FENCE.findall(text or "")
+    if blocks:
+        return max(blocks, key=len)
+    return text or ""
+
+
+def _run_python_tests(code: str, tests: str, timeout: float = 20.0) -> bool:
+    """Execute the model's code against the question's asserts in a throwaway dir.
+
+    Isolated interpreter (-I), no inherited env, hard timeout: the code is written by
+    a language model, so it gets no network helpers, no cwd of ours, and no chance to
+    hang the run. Any non-zero exit — assertion, syntax error, timeout — is a fail.
+    """
+    if not code.strip() or not tests.strip():
+        return False
+    with tempfile.TemporaryDirectory() as td:
+        path = os.path.join(td, "check.py")
+        with open(path, "w") as fh:
+            fh.write(code + "\n\n" + tests + "\n")
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-I", path],
+                capture_output=True, timeout=timeout, cwd=td,
+                env={"PATH": "/usr/bin:/bin", "HOME": td, "TMPDIR": td},
+            )
+            return proc.returncode == 0
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            return False
+
+
 def _extract_answer(text: str) -> str:
     """Try to extract the core answer from a response that may contain reasoning."""
     parts = _ANSWER_DELIMITERS.split(text)
@@ -377,6 +420,8 @@ def _score_one(match_type: str, expected: str, question: dict, text: str) -> boo
         cleaned = re.sub(r"[^\w]", "", text.lower())
         exp_cleaned = re.sub(r"[^\w]", "", expected.lower())
         return cleaned == exp_cleaned
+    if match_type == "python_exec":
+        return _run_python_tests(_extract_code(text), question.get("tests", ""))
     if match_type == "regex":
         pattern = question.get("regex", "")
         return bool(re.search(pattern, text, re.DOTALL))
