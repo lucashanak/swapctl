@@ -682,6 +682,8 @@ def test_run(
         job_id = tester.enqueue(model_id, "intelligence", only_failed=only_failed)
     elif test_type == "speed_spec":
         job_id = tester.enqueue(model_id, "speed_spec")
+    elif test_type == "agentic":
+        job_id = tester.enqueue(model_id, "agentic")
     else:
         job_id = tester.enqueue(model_id, "intelligence")
 

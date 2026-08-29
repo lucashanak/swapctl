@@ -939,6 +939,8 @@ def _update_registry(model_id: str, test_type: str, result: dict, backend: str |
         tr["best_backend"] = best_backend
     elif test_type == "speed_spec":
         tr["speed_spec"] = result
+    elif test_type == "agentic":
+        tr["agentic"] = result
     elif test_type == "intelligence":
         tr["intelligence"] = result
 
@@ -965,6 +967,8 @@ def _process_job(job: dict) -> None:
         elif test_type == "speed_spec":
             result = _run_spec_test(model_id)
             _update_registry(model_id, "speed_spec", result)
+        elif test_type == "agentic":
+            result = _run_agentic_test(model_id)
         elif test_type == "intelligence":
             result = _run_intelligence_test(model_id, job_id=job.get("job_id", ""), only_failed=job.get("only_failed", False))
             _update_registry(model_id, "intelligence", result)
@@ -1018,6 +1022,28 @@ def _ensure_worker() -> None:
             return
         _worker_thread = threading.Thread(target=_worker_loop, daemon=True)
         _worker_thread.start()
+
+
+def _run_agentic_test(model_id: str) -> dict:
+    """Three episodes of the tool-driven repair task — one run is too noisy to rank on.
+
+    Scored on whether the tests actually pass afterwards, verified from the
+    filesystem rather than from the model saying so, plus the turns it took.
+    """
+    from .agentic import run_agentic
+
+    endpoint = settings.swap_endpoint
+    episodes = [run_agentic(endpoint, model_id) for _ in range(3)]
+    solved = [e for e in episodes if e["solved"]]
+    return {
+        "score": round(100.0 * len(solved) / len(episodes), 1),
+        "solved": len(solved),
+        "episodes": len(episodes),
+        "avg_turns": round(sum(e["turns"] for e in solved) / len(solved), 1) if solved else None,
+        "avg_tool_calls": round(sum(e["tool_calls"] for e in solved) / len(solved), 1) if solved else None,
+        "duration": round(sum(e["duration"] for e in episodes)),
+        "detail": episodes,
+    }
 
 
 def enqueue(
