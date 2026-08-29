@@ -411,3 +411,37 @@ def test_no_category_disables_thinking_outright() -> None:
 
     zero = [c for c, b in _THINKING_BUDGET_BY_CATEGORY.items() if b < _TIER_LOW]
     assert not zero, f"categories below the gpt-oss floor: {zero}"
+
+
+def test_benchmark_declares_weights_for_every_category() -> None:
+    """`weight` was declared per category but never read, so the headline score
+    counted saturated categories (knowledge, structured — zero spread across the
+    whole fleet) exactly as heavily as discriminating ones."""
+    from app.tester import _load_benchmark
+
+    bench = _load_benchmark()
+    cats = {q["category"] for q in bench["questions"]}
+    declared = set(bench.get("categories") or {})
+    assert cats <= declared, f"categories with no metadata: {cats - declared}"
+    for c, meta in (bench.get("categories") or {}).items():
+        assert isinstance(meta.get("weight"), (int, float)), f"{c} has no numeric weight"
+
+
+def test_longctx_questions_are_multi_hop_and_deep() -> None:
+    """longctx must actually be long and must not leak its answer into the filler,
+    or it degenerates into a short-answer question with padding."""
+    from app.tester import _load_benchmark
+
+    qs = [q for q in _load_benchmark()["questions"] if q["category"] == "longctx"]
+    assert len(qs) == 20
+    words = sorted(len(q["prompt"].split()) for q in qs)
+    assert words[0] > 1000, f"shallowest longctx prompt is only {words[0]} words"
+    assert words[-1] > 10000, f"deepest longctx prompt is only {words[-1]} words"
+    for q in qs:
+        body = q["prompt"].rsplit("\n\n", 1)[0]
+        # The answer is DERIVED (base x multiplier), so it must never appear verbatim —
+        # otherwise the question degrades from multi-hop reasoning to needle-finding,
+        # and a model could pass by echoing a number it happened to spot.
+        assert body.count(q["expected"]) == 0, \
+            f"{q['id']} leaks its answer {q['expected']} into the document"
+        assert "times whatever" in body, f"{q['id']} lost its second hop"

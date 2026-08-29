@@ -77,6 +77,9 @@ _THINKING_BUDGET_BY_CATEGORY = {
     "structured": _TIER_LOW,
     "czech": _TIER_LOW,
     "summarization": _TIER_LOW,
+    # multi-hop retrieval over a long document: the reasoning is trivial once both
+    # facts are found, so a MEDIUM budget only pays for the search, not for thinking
+    "longctx": _TIER_LOW,
 }
 
 
@@ -754,6 +757,18 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             "avg_tokens": round(toks / vals["total"], 1) if vals["total"] > 0 else 0,
         }
 
+    # The benchmark declares a per-category `weight` that nothing has ever read, so
+    # every category counted equally in `score` — including knowledge and structured,
+    # which every model in the fleet answers perfectly and which therefore contribute
+    # no ranking information at all. Report a weighted score alongside the raw one so
+    # saturated or use-case-irrelevant categories can be discounted without changing
+    # what `score` has always meant.
+    weights = {c: float((v or {}).get("weight", 1.0))
+               for c, v in (bench.get("categories") or {}).items()}
+    num = sum(cat_scores[c]["score"] * weights.get(c, 1.0) for c in cat_scores)
+    den = sum(weights.get(c, 1.0) for c in cat_scores)
+    weighted_score = round(num / den, 1) if den else score
+
     diff_scores = {}
     for diff, vals in difficulties.items():
         diff_scores[diff] = {
@@ -772,6 +787,8 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
 
     return {
         "score": score,
+        "weighted_score": weighted_score,
+        "category_weights": weights,
         "passed": total_passed,
         "total": total,
         "duration": duration,
