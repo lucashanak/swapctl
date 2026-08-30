@@ -80,6 +80,11 @@ class Settings:
     # Questions per intelligence request. 1 disables batching. Only questions with a
     # short canonical answer are grouped; the rest still go one at a time.
     iq_batch_size: int = field(default_factory=lambda: _env_int("SWAPCTL_IQ_BATCH_SIZE", 1))
+    # Include the "sanity" tier — questions every model in the fleet answers
+    # correctly, so they cost time without affecting any ranking. Off by default;
+    # worth running occasionally to catch a regression in basic ability.
+    iq_include_sanity: bool = field(
+        default_factory=lambda: _env("SWAPCTL_IQ_INCLUDE_SANITY", "0") not in ("0", "", "false", "False"))
     # LIVE co-residency budget in GiB: sum of (weights + KV reserve) across
     # co-resident models must stay under this. Sized to leave host headroom
     # under the 112 GiB amdgpu GTT cap / 124 GiB RAM (guard #5 is the backstop).
@@ -193,6 +198,12 @@ def get_iq_parallel() -> bool:
 def get_iq_batch_size() -> int:
     """Questions per intelligence request (1 = one at a time)."""
     return max(1, int(settings.iq_batch_size))
+
+
+def get_iq_include_sanity() -> bool:
+    """Whether to ask the always-passed tier as well as the discriminating one."""
+    return bool(settings.iq_include_sanity)
+
 
 def set_iq_parallel(enabled: bool) -> None:
     _IQ_PARALLEL_FILE.parent.mkdir(parents=True, exist_ok=True)

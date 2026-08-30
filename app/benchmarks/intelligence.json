@@ -1,5 +1,5 @@
 {
- "version": 12,
+ "version": 13,
  "description": "swapctl intelligence benchmark v12 \u2014 260 questions, 13 categories. v12 replaces the saturated 2-hop longctx (every model scored 100) with two calibrated variants: longctx (chained hops + decoy) and longctx_agg (filter then sum). They rank the same two models in OPPOSITE order, so they are kept separate: averaged together their spreads cancel to zero. Also present: exec (one-shot executed code). NOTE: the older categories score 87-95% against a 50-70% design target; knowledge and structured are fully saturated.",
  "categories": {
   "math": {
@@ -64,7 +64,8 @@
    "expected": "30",
    "match": "regex",
    "regex": "\\b30\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "math_02",
@@ -74,7 +75,8 @@
    "expected": "4",
    "match": "regex",
    "regex": "\\b4\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "math_03",
@@ -84,7 +86,8 @@
    "expected": "34650",
    "match": "regex",
    "regex": "\\b34650\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "math_04",
@@ -94,7 +97,8 @@
    "expected": "2/15",
    "match": "regex",
    "regex": "\\b2/15\\b|\\b2\u204415\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "math_05",
@@ -104,7 +108,8 @@
    "expected": "9",
    "match": "regex",
    "regex": "\\b9\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "math_06",
@@ -114,7 +119,8 @@
    "expected": "450",
    "match": "regex",
    "regex": "\\b450\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "math_07",
@@ -124,7 +130,8 @@
    "expected": "8.7",
    "match": "regex",
    "regex": "\\b8\\.[5-9]\\b|\\b9\\.[0-2]\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "math_08",
@@ -134,7 +141,8 @@
    "expected": "2318",
    "match": "regex",
    "regex": "\\b2318\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "math_09",
@@ -144,7 +152,8 @@
    "expected": "266",
    "match": "regex",
    "regex": "\\b266\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "math_10",
@@ -154,7 +163,8 @@
    "expected": "6",
    "match": "regex",
    "regex": "\\b6\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "math_11",
@@ -164,7 +174,8 @@
    "expected": "23",
    "match": "regex",
    "regex": "\\b23\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "math_12",
@@ -174,7 +185,8 @@
    "expected": "44",
    "match": "regex",
    "regex": "\\b44\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "math_13",
@@ -184,7 +196,8 @@
    "expected": "96",
    "match": "regex",
    "regex": "\\b96\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "math_14",
@@ -194,7 +207,8 @@
    "expected": "2",
    "match": "regex",
    "regex": "\\b2\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "math_15",
@@ -204,7 +218,8 @@
    "expected": "49",
    "match": "regex",
    "regex": "\\b49\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "math_16",
@@ -214,7 +229,8 @@
    "expected": "375",
    "match": "regex",
    "regex": "\\b375\\b",
-   "max_tokens": 600
+   "max_tokens": 600,
+   "tier": "core"
   },
   {
    "id": "math_17",
@@ -224,7 +240,8 @@
    "expected": "90",
    "match": "regex",
    "regex": "\\b90\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "math_18",
@@ -234,7 +251,8 @@
    "expected": "376",
    "match": "regex",
    "regex": "\\b376\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "math_19",
@@ -244,7 +262,8 @@
    "expected": "450",
    "match": "regex",
    "regex": "\\b450\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "math_20",
@@ -254,7 +273,8 @@
    "expected": "30",
    "match": "regex",
    "regex": "\\b30\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "reason_01",
@@ -264,7 +284,8 @@
    "expected": "5",
    "match": "regex",
    "regex": "\\b5\\b",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "reason_02",
@@ -274,7 +295,8 @@
    "expected": "no",
    "match": "regex",
    "regex": "(?i)\\bno\\b",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "reason_03",
@@ -284,7 +306,8 @@
    "expected": "red",
    "match": "regex",
    "regex": "(?i)\\bred\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "reason_04",
@@ -294,7 +317,8 @@
    "expected": "B",
    "match": "regex",
    "regex": "\\bB\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "reason_05",
@@ -304,7 +328,8 @@
    "expected": "36",
    "match": "regex",
    "regex": "\\b36\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "reason_06",
@@ -313,7 +338,8 @@
    "prompt": "There are 3 boxes. One contains only apples, one only oranges, one both. All labels are wrong. You may pull one fruit from one box (without looking inside). You pull from the box labeled 'Both' and get an apple. What does the box labeled 'Oranges' contain? Answer with one word.",
    "expected": "both",
    "match": "contains_ci",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "reason_07",
@@ -323,7 +349,8 @@
    "expected": "other guard",
    "match": "regex",
    "regex": "(?i)(other guard|other one|the other|would the other)",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "reason_08",
@@ -333,7 +360,8 @@
    "expected": "2",
    "match": "regex",
    "regex": "\\b2\\b",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "reason_09",
@@ -343,7 +371,8 @@
    "expected": "cycle",
    "match": "regex",
    "regex": "(?i)(cycle|loop|follow|chain|permut)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "reason_10",
@@ -352,7 +381,8 @@
    "prompt": "A perfectly rational agent knows that a bomb will explode in 10 minutes unless it receives a 4-digit PIN. The agent correctly deduces that a known adversary would set the PIN to the adversary's own birth year. The adversary was born in 1987. However, the lock has a 3-attempt limit before it permanently disables. The agent has no other information. What is the rational first action?\nA) Enter 1987\nB) Try to find more information first\nC) Enter 0000\nD) Enter 9999\nReply with just the letter.",
    "expected": "A",
    "match": "mcq",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "reason_11",
@@ -362,7 +392,8 @@
    "expected": "5",
    "match": "regex",
    "regex": "\\b5\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "reason_12",
@@ -372,7 +403,8 @@
    "expected": "C, D",
    "match": "regex",
    "regex": "(?i)\\bC\\b.*\\bD\\b|\\bD\\b.*\\bC\\b",
-   "max_tokens": 600
+   "max_tokens": 600,
+   "tier": "core"
   },
   {
    "id": "reason_13",
@@ -382,7 +414,8 @@
    "expected": "white",
    "match": "regex",
    "regex": "(?i)\\bwhite\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "reason_14",
@@ -392,7 +425,8 @@
    "expected": "3/4",
    "match": "regex",
    "regex": "\\b3/4\\b|\\b3\u2044\\b|0\\.75",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "core"
   },
   {
    "id": "reason_15",
@@ -402,7 +436,8 @@
    "expected": "B",
    "match": "regex",
    "regex": "\\bB\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "reason_16",
@@ -412,7 +447,8 @@
    "expected": "4",
    "match": "regex",
    "regex": "\\b4\\b",
-   "max_tokens": 600
+   "max_tokens": 600,
+   "tier": "core"
   },
   {
    "id": "reason_17",
@@ -422,7 +458,8 @@
    "expected": "no",
    "match": "regex",
    "regex": "(?i)\\bno\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "reason_18",
@@ -432,7 +469,8 @@
    "expected": "9",
    "match": "regex",
    "regex": "\\b9\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "reason_19",
@@ -442,7 +480,8 @@
    "expected": "6",
    "match": "regex",
    "regex": "\\b6\\b",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "core"
   },
   {
    "id": "reason_20",
@@ -452,7 +491,8 @@
    "expected": "Bob",
    "match": "regex",
    "regex": "(?i)\\bBob\\b",
-   "max_tokens": 600
+   "max_tokens": 600,
+   "tier": "core"
   },
   {
    "id": "code_01",
@@ -462,7 +502,8 @@
    "expected": "5",
    "match": "regex",
    "regex": "\\b5\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "code_02",
@@ -472,7 +513,8 @@
    "expected": "8",
    "match": "regex",
    "regex": "\\b8\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "code_03",
@@ -482,7 +524,8 @@
    "expected": "3 3 3",
    "match": "regex",
    "regex": "3[,\\s]+3[,\\s]+3",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "code_04",
@@ -492,7 +535,8 @@
    "expected": "O(1)",
    "match": "regex",
    "regex": "O\\(1\\)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "code_05",
@@ -502,7 +546,8 @@
    "expected": "[2, 2, 2]",
    "match": "regex",
    "regex": "\\[2,\\s*2,\\s*2\\]",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "code_06",
@@ -512,7 +557,8 @@
    "expected": "sequence point",
    "match": "regex",
    "regex": "(?i)(sequence point|unspecified|undefined|order of evaluation|multiple modification|side effect|between sequence points)",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "code_07",
@@ -522,7 +568,8 @@
    "expected": "counter",
    "match": "regex",
    "regex": "(?i)(race condition|concurrent|atomic|mutex|lock|shared.*without|unsynchronized|data race|counter.*not.*safe|not.*thread.safe|multiple goroutines.*counter)",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "code_08",
@@ -532,7 +579,8 @@
    "expected": "O(n log n)",
    "match": "regex",
    "regex": "O\\(n\\s*log\\s*n\\)|O\\(n\\s*lg\\s*n\\)|O\\(n\\s*\\*\\s*log\\s*n\\)",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "code_09",
@@ -542,7 +590,8 @@
    "expected": "15 10",
    "match": "regex",
    "regex": "\\b15\\s+10\\b",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "code_10",
@@ -552,7 +601,8 @@
    "expected": "[2, 4, 6]",
    "match": "regex",
    "regex": "\\[2,\\s*4,\\s*6\\]",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "code_11",
@@ -562,7 +612,8 @@
    "expected": "['x']\nTrue",
    "match": "regex",
    "regex": "\\['x'\\].*True",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "code_12",
@@ -572,7 +623,8 @@
    "expected": "Hello from Child\nHello from Base",
    "match": "regex",
    "regex": "Hello from Child.*Hello from Base",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "code_13",
@@ -582,7 +634,8 @@
    "expected": "42\nmissing:fake\nmissing:trap",
    "match": "regex",
    "regex": "42.*missing:fake.*missing:trap",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "code_14",
@@ -592,7 +645,8 @@
    "expected": "[5, 1, 3, 2, 4]",
    "match": "regex",
    "regex": "\\[5,\\s*1,\\s*3,\\s*2,\\s*4\\]",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "code_15",
@@ -602,7 +656,8 @@
    "expected": "30",
    "match": "regex",
    "regex": "\\b30\\b",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "code_16",
@@ -612,7 +667,8 @@
    "expected": "[3, 4, 5]",
    "match": "regex",
    "regex": "\\[3,\\s*4,\\s*5\\]",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "code_17",
@@ -622,7 +678,8 @@
    "expected": "6 10 hello",
    "match": "regex",
    "regex": "6\\s+10\\s+hello",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "code_18",
@@ -632,7 +689,8 @@
    "expected": "['Auth', 'Cache', 'Auth2']",
    "match": "regex",
    "regex": "\\['Auth',\\s*'Cache',\\s*'Auth2'\\]",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "code_19",
@@ -642,7 +700,8 @@
    "expected": "[1, 2, 3] [] 0",
    "match": "regex",
    "regex": "\\[1,\\s*2,\\s*3\\]\\s*\\[\\]\\s*0",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "code_20",
@@ -652,7 +711,8 @@
    "expected": "['D', 'B', 'C', 'A']",
    "match": "regex",
    "regex": "\\['D',\\s*'B',\\s*'C',\\s*'A'\\]",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "coding_01",
@@ -662,7 +722,8 @@
    "expected": "def is_palindrome",
    "match": "regex",
    "regex": "def is_palindrome.*return.*==|def is_palindrome.*\\[::\\s*-1\\]|def is_palindrome.*reversed",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "coding_02",
@@ -672,7 +733,8 @@
    "expected": "def group_by",
    "match": "regex",
    "regex": "def group_by.*key_fn.*dict|def group_by.*defaultdict|def group_by.*setdefault",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "coding_03",
@@ -682,7 +744,8 @@
    "expected": "def flatten",
    "match": "regex",
    "regex": "def flatten.*(extend|\\+=|yield from|yield).*flatten|def flatten.*isinstance.*list",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "coding_04",
@@ -692,7 +755,8 @@
    "expected": "debounce",
    "match": "regex",
    "regex": "(?i)(function debounce|const debounce|let debounce).*clearTimeout.*setTimeout|clearTimeout.*setTimeout|setTimeout.*clearTimeout",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "coding_05",
@@ -702,7 +766,8 @@
    "expected": "def dijkstra",
    "match": "regex",
    "regex": "def dijkstra.*heapq|import heapq.*def dijkstra|heappush|heappop",
-   "max_tokens": 600
+   "max_tokens": 600,
+   "tier": "sanity"
   },
   {
    "id": "coding_06",
@@ -712,7 +777,8 @@
    "expected": "class Trie",
    "match": "regex",
    "regex": "class Trie.*def insert.*def search|def insert.*def search.*def starts_with|class Trie.*children",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "coding_07",
@@ -722,7 +788,8 @@
    "expected": "async def fetch_all",
    "match": "regex",
    "regex": "async def fetch_all.*asyncio\\.gather|asyncio\\.gather.*async def fetch_all|async def fetch_all.*aiohttp",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "coding_08",
@@ -732,7 +799,8 @@
    "expected": "function groupBy",
    "match": "regex",
    "regex": "function groupBy\\s*<|const groupBy\\s*=\\s*<",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "coding_09",
@@ -742,7 +810,8 @@
    "expected": "def lru_cache",
    "match": "regex",
    "regex": "def lru_cache.*(OrderedDict|move_to_end|popitem).*def wrapper|def lru_cache.*def decorator.*OrderedDict|OrderedDict.*move_to_end",
-   "max_tokens": 700
+   "max_tokens": 700,
+   "tier": "core"
   },
   {
    "id": "coding_10",
@@ -752,7 +821,8 @@
    "expected": "def parse_csv_line",
    "match": "regex",
    "regex": "def parse_csv_line.*quote|def parse_csv_line.*state|def parse_csv_line.*\\\"\\\"",
-   "max_tokens": 600
+   "max_tokens": 600,
+   "tier": "sanity"
   },
   {
    "id": "coding_11",
@@ -762,7 +832,8 @@
    "expected": "def merge_sorted",
    "match": "regex",
    "regex": "def merge_sorted.*while.*len|def merge_sorted.*while.*<|def merge_sorted.*i.*j.*while|def merge_sorted.*extend|def merge_sorted.*\\+",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "coding_12",
@@ -772,7 +843,8 @@
    "expected": "def topological_sort",
    "match": "regex",
    "regex": "def topological_sort.*(in_degree|indegree|in_deg|degree).*(deque|queue|pop).*ValueError|def topological_sort.*ValueError.*(cycle|circular)",
-   "max_tokens": 800
+   "max_tokens": 800,
+   "tier": "sanity"
   },
   {
    "id": "coding_13",
@@ -782,7 +854,8 @@
    "expected": "def consistent_hash",
    "match": "regex",
    "regex": "def consistent_hash.*(md5|hashlib|bisect|sorted).*virtual|def consistent_hash.*bisect.*(ring|circle|hash)|def consistent_hash.*hashlib.*bisect",
-   "max_tokens": 800
+   "max_tokens": 800,
+   "tier": "core"
   },
   {
    "id": "coding_14",
@@ -792,7 +865,8 @@
    "expected": "def rate_limiter",
    "match": "regex",
    "regex": "def rate_limiter.*(deque|\\[\\]|list).*monotonic.*RuntimeError|def rate_limiter.*monotonic.*(deque|append).*rate.limited|def rate_limiter.*time\\.monotonic",
-   "max_tokens": 700
+   "max_tokens": 700,
+   "tier": "sanity"
   },
   {
    "id": "coding_15",
@@ -802,7 +876,8 @@
    "expected": "def serialize_graph",
    "match": "regex",
    "regex": "def serialize_graph.*def deserialize_graph.*(visited|seen|id|memo)|def serialize_graph.*(id\\(|node_id|visited).*def deserialize_graph",
-   "max_tokens": 1200
+   "max_tokens": 1200,
+   "tier": "core"
   },
   {
    "id": "coding_16",
@@ -812,7 +887,8 @@
    "expected": "def eval_rpn",
    "match": "regex",
    "regex": "def eval_rpn.*(stack|pop).*ValueError.*(division|zero|malform|invalid)|def eval_rpn.*stack.*\\+.*-.*\\*.*\\/",
-   "max_tokens": 700
+   "max_tokens": 700,
+   "tier": "sanity"
   },
   {
    "id": "coding_17",
@@ -822,7 +898,8 @@
    "expected": "class BloomFilter",
    "match": "regex",
    "regex": "class BloomFilter.*(md5|hashlib).*(sha256|sha).*(bytearray|bitarray)|class BloomFilter.*def add.*def might_contain.*(hashlib|md5)",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "coding_18",
@@ -832,7 +909,8 @@
    "expected": "def find_median_streams",
    "match": "regex",
    "regex": "def find_median_streams.*(next|__next__|heapq|merge|StopIteration)|def find_median_streams.*(count|total|mid|median)",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "sanity"
   },
   {
    "id": "coding_19",
@@ -842,7 +920,8 @@
    "expected": "def interval_merge",
    "match": "regex",
    "regex": "def interval_merge.*sort.*def interval_subtract|def interval_merge.*merged.*def interval_subtract.*(split|result|append)",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "sanity"
   },
   {
    "id": "coding_20",
@@ -852,7 +931,8 @@
    "expected": "def aho_corasick",
    "match": "regex",
    "regex": "def aho_corasick.*(fail|failure|suffix).*trie|def aho_corasick.*(trie|goto|queue|deque).*(fail|failure|suffix)|def aho_corasick.*class.*Node.*(fail|children)",
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "tier": "sanity"
   },
   {
    "id": "know_01",
@@ -861,7 +941,8 @@
    "prompt": "In a CPU, what is the role of the TLB (Translation Lookaside Buffer)?\nA) It caches recently used virtual-to-physical address translations\nB) It stores the L1 instruction cache\nC) It manages branch prediction\nD) It buffers write operations to main memory\nReply with just the letter.",
    "expected": "A",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_02",
@@ -870,7 +951,8 @@
    "prompt": "Which page replacement algorithm is provably optimal (lowest page fault rate) but cannot be implemented in practice because it requires future knowledge?\nA) LRU (Least Recently Used)\nB) FIFO (First In First Out)\nC) OPT / B\u00e9l\u00e1dy's algorithm\nD) Clock algorithm\nReply with just the letter.",
    "expected": "C",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_03",
@@ -879,7 +961,8 @@
    "prompt": "In the CAP theorem, a distributed system can guarantee at most two of: Consistency, Availability, Partition tolerance. During a network partition, a CP system does what?\nA) Returns stale data to remain available\nB) Refuses requests or returns errors to preserve consistency\nC) Repairs the partition automatically\nD) Elects a new leader and serves all requests\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_04",
@@ -888,7 +971,8 @@
    "prompt": "What does the TCP Nagle algorithm do, and when is it problematic?\nA) Buffers small packets to reduce overhead; problematic for latency-sensitive apps like games or SSH\nB) Retransmits lost packets; problematic when bandwidth is plentiful\nC) Limits connection rate; problematic for high-concurrency servers\nD) Fragments large packets; problematic for jumbo frames\nReply with just the letter.",
    "expected": "A",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_05",
@@ -897,7 +981,8 @@
    "prompt": "In a compiler, what is the difference between a 'LL parser' and a 'LR parser'?\nA) LL parsers handle left recursion natively; LR parsers cannot\nB) LL parsers read input left-to-right and expand leftmost nonterminal; LR parsers read left-to-right and reduce rightmost nonterminal\nC) LR parsers require more memory but parse fewer grammars\nD) LL parsers use a stack; LR parsers use a queue\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "know_06",
@@ -906,7 +991,8 @@
    "prompt": "What is a 'thundering herd' problem in server systems?\nA) A memory leak that compounds exponentially\nB) When many idle processes/threads simultaneously wake and compete for the same resource, causing CPU spikes\nC) Network congestion caused by bursty traffic\nD) A deadlock involving more than two processes\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "know_07",
@@ -915,7 +1001,8 @@
    "prompt": "In TCP, what is the difference between 'congestion control' and 'flow control'?\nA) They are the same mechanism with different names\nB) Flow control prevents the sender from overwhelming the RECEIVER's buffer; congestion control prevents overwhelming the NETWORK\nC) Congestion control operates at layer 2; flow control at layer 4\nD) Flow control uses ACKs; congestion control uses NACKs\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_08",
@@ -924,7 +1011,8 @@
    "prompt": "What is 'copy-on-write' (COW) in the context of Linux fork()?\nA) The child process copies all parent memory immediately at fork\nB) Parent and child share the same physical pages until either writes; only the written page is then copied\nC) The kernel writes a log of all memory changes for rollback\nD) The parent pauses while the child copies its address space\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_09",
@@ -933,7 +1021,8 @@
    "prompt": "In a distributed database using optimistic concurrency control (OCC), what are the three phases of a transaction, in order?\nA) Lock, Execute, Commit\nB) Read, Validate, Write\nC) Begin, Serialize, Commit\nD) Acquire, Modify, Release\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_10",
@@ -942,7 +1031,8 @@
    "prompt": "What is the key insight behind the 'false sharing' performance problem in multi-core CPUs?\nA) Two threads share incorrect data due to a synchronization bug\nB) Two threads modify different variables that happen to reside on the same cache line, causing constant cache invalidations\nC) A CPU branch predictor incorrectly shares state between hyperthreads\nD) Two NUMA nodes share a memory bus, causing latency\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_11",
@@ -951,7 +1041,8 @@
    "prompt": "In the MESI cache coherence protocol, what are the four states a cache line can be in, and what does the 'E' (Exclusive) state specifically mean?\nA) The line is dirty and shared across multiple caches\nB) The line has been evicted and is in a transition state\nC) The line is clean and present in exactly this one cache; main memory is up-to-date\nD) The line is locked for atomic operations\nReply with just the letter.",
    "expected": "C",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_12",
@@ -960,7 +1051,8 @@
    "prompt": "In the Raft consensus algorithm, what specifically happens when a follower's log conflicts with a new leader's AppendEntries RPC (i.e., the follower has an entry at the same index but different term)?\nA) The follower keeps its own entry and rejects the leader\nB) The follower deletes its conflicting entry and all entries after it, then appends the leader's entries\nC) The leader adopts the follower's entry if the follower's term is higher\nD) Both nodes enter a special reconciliation phase\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_13",
@@ -969,7 +1061,8 @@
    "prompt": "What is the precise difference between linearizability and serializability?\nA) They are the same concept applied to different layers (hardware vs. software)\nB) Serializability is strictly stronger than linearizability\nC) Linearizability applies only to distributed systems; serializability only to databases\nD) Linearizability is about single operations appearing atomic and respecting real-time order; serializability is about transactions being equivalent to some serial execution (not necessarily respecting real-time order)\nReply with just the letter.",
    "expected": "D",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_14",
@@ -978,7 +1071,8 @@
    "prompt": "Linux io_uring uses submission and completion queues shared between user space and the kernel. What is the key advantage of this design over epoll for high-throughput I/O?\nA) io_uring supports more file descriptor types\nB) io_uring avoids system call overhead per I/O operation by batching submissions and completions through shared ring buffers\nC) io_uring uses less memory than epoll\nD) io_uring automatically parallelizes I/O across CPU cores\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_15",
@@ -987,7 +1081,8 @@
    "prompt": "In a CmRDT (operation-based CRDT) OR-Set (Observed-Remove Set), how is the 'add wins over concurrent remove' semantic implemented?\nA) Add operations have higher Lamport timestamps by convention\nB) A central coordinator resolves add/remove conflicts\nC) Each add generates a globally unique tag; remove only deletes specific observed tags, not future ones\nD) Remove operations are delayed until all concurrent adds are delivered\nReply with just the letter.",
    "expected": "C",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_16",
@@ -996,7 +1091,8 @@
    "prompt": "In the Linux kernel, what is the difference between a softirq and a tasklet?\nA) Softirqs are statically allocated at compile time and can run concurrently on multiple CPUs; tasklets are built on softirqs but are serialized (a given tasklet cannot run on two CPUs simultaneously)\nB) Tasklets have higher priority than softirqs\nC) Softirqs run in process context; tasklets run in interrupt context\nD) Tasklets are deprecated in favor of softirqs since Linux 5.0\nReply with just the letter.",
    "expected": "A",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_17",
@@ -1005,7 +1101,8 @@
    "prompt": "What is the ABA problem in lock-free programming, and which mechanism solves it?\nA) Two threads deadlock when both attempt atomic operations on values A and B. Solved by lock ordering\nB) A thread reads value A, another thread changes it to B then back to A; the first thread's CAS succeeds incorrectly. Solved by tagged/versioned pointers (adding a counter to each CAS)\nC) A compare-and-swap fails spuriously on ARM. Solved by using LL/SC instead\nD) Memory is freed and reallocated at the same address. Solved by garbage collection only\nReply with just the letter.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_18",
@@ -1014,7 +1111,8 @@
    "prompt": "In a distributed database using Multi-Version Concurrency Control (MVCC), a long-running read transaction T1 started at timestamp 10. A write transaction T2 commits at timestamp 15, modifying row X. When T1 later reads row X, what does it see and why?\nA) T1 sees T2's new value because T2 committed before T1 read the row\nB) T1 is aborted due to a write-read conflict\nC) T1 sees T2's value but is flagged for potential anomalies\nD) T1 sees the version of X from before T2's commit, because T1's snapshot is at timestamp 10 and MVCC provides snapshot isolation\nReply with just the letter.",
    "expected": "D",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_19",
@@ -1023,7 +1121,8 @@
    "prompt": "What is the write amplification problem in LSM-tree based storage engines (like RocksDB/LevelDB), and what causes it?\nA) Each write requires updating an on-disk B-tree index, causing random I/O\nB) Writes are duplicated across replicas, amplifying network bandwidth\nC) Data is written once to the WAL and then multiple times during compaction as SSTables are merged across levels, so the total bytes written to disk can be 10-30x the original write\nD) The filesystem journal doubles every write operation\nReply with just the letter.",
    "expected": "C",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "know_20",
@@ -1032,7 +1131,8 @@
    "prompt": "In TCP, what is the purpose of the TIME_WAIT state, and how long does it last on most systems?\nA) It buffers data for retransmission; it lasts until all ACKs are received\nB) It prevents SYN flood attacks; it lasts 30 seconds\nC) It allows the kernel to reclaim socket memory; it lasts 10 seconds\nD) It ensures delayed segments from the old connection are not interpreted as belonging to a new connection on the same port; it lasts 2*MSL (typically 60 seconds)\nReply with just the letter.",
    "expected": "D",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "czech_01",
@@ -1042,7 +1142,8 @@
    "expected": "lij\u00e1k",
    "match": "regex",
    "regex": "(?i)(leje jako z konve|padaj\u00ed traka\u0159e|hust\u00fd d\u00e9\u0161\u0165|pr\u016ftr\u017e|lij\u00e1k|z\u00e1plava|prudce pr\u0161\u00ed|lije jako z konve)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_02",
@@ -1052,7 +1153,8 @@
    "expected": "v\u011bd\u011bl",
    "match": "regex",
    "regex": "(?i)v\u011bd\u011bl[ai]?",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "czech_03",
@@ -1062,7 +1164,8 @@
    "expected": "opakovan\u011b",
    "match": "regex",
    "regex": "(?i)(opakov|opakuj|habit|frequent|used to|zvyk|pravid|iterativ|recurring|repeat|obvykle|zpravidla)",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "czech_04",
@@ -1071,7 +1174,8 @@
    "prompt": "Kter\u00e9 sklo\u0148ov\u00e1n\u00ed (vzor) pat\u0159\u00ed podstatn\u00e9 jm\u00e9no 'p\u0159edseda'?\nA) p\u00e1n\nB) hrad\nC) \u017eena\nD) soudce\nOdpov\u011bz jen p\u00edsmenem.",
    "expected": "D",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_05",
@@ -1080,7 +1184,8 @@
    "prompt": "Napi\u0161 spr\u00e1vn\u00fd tvar slova 'p\u0159\u00edtel' v instrument\u00e1lu plur\u00e1lu. (Vzor v\u011bty: '\u0160el jsem s ...'). Odpov\u011bz jen t\u00edm jedn\u00edm tvarem.",
    "expected": "p\u0159\u00e1teli",
    "match": "contains_ci",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_06",
@@ -1090,7 +1195,8 @@
    "expected": "had",
    "match": "regex",
    "regex": "(?i)(had.*come|if she had|would have made it|could have made it|would have caught it)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_07",
@@ -1099,7 +1205,8 @@
    "prompt": "Jak\u00fd je spr\u00e1vn\u00fd p\u0159echodn\u00edk p\u0159\u00edtomn\u00fd od slovesa '\u010d\u00edst' (mu\u017esk\u00fd rod)?\nA) \u010dtouc\u00ed\nB) \u010dta\nC) \u010dteje\nD) \u010dt\u00edc\nOdpov\u011bz jen p\u00edsmenem.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_08",
@@ -1109,7 +1216,8 @@
    "expected": "softwaru",
    "match": "regex",
    "regex": "(?i)software?u",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_09",
@@ -1118,7 +1226,8 @@
    "prompt": "V\u011bta 'Star\u00fd mlyn\u00e1\u0159 \u0159\u00edkal, \u017ee ml\u00fdn mele.' obsahuje vedlej\u0161\u00ed v\u011btu. Jak\u00e1 je funkce slova '\u017ee' v t\u00e9to v\u011bt\u011b?\nA) Vzta\u017en\u00e9 z\u00e1jmeno\nB) Pod\u0159adic\u00ed spojka uvozuj\u00edc\u00ed v\u011btu p\u0159edm\u011btnou\nC) Sou\u0159adic\u00ed spojka\nD) P\u0159\u00edslovce\nOdpov\u011bz jen p\u00edsmenem.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_10",
@@ -1128,7 +1237,8 @@
    "expected": "z\u00e1m\u011br",
    "match": "regex",
    "regex": "(?i)(z\u00e1m\u011br|\u00famysl|c\u00edl|intentional|purpose|d\u016fsledek|v\u00fdsledek|kauz\u00e1l|aby.*\u00fa\u010del|tak\u017ee.*p\u0159\u00ed\u010dina|result|cause|effect|consequence|intentional|purposeful|final|aby.*aim)",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "czech_11",
@@ -1137,7 +1247,8 @@
    "prompt": "Jak\u00fd je spr\u00e1vn\u00fd genitiv plur\u00e1lu slova 'p\u0159\u00edtel'? Dopl\u0148te: 'Nem\u00e1m mnoho _______.' Odpov\u011bzte jen chyb\u011bj\u00edc\u00edm tvarem.",
    "expected": "p\u0159\u00e1tel",
    "match": "contains_ci",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_12",
@@ -1147,7 +1258,8 @@
    "expected": "p\u0159i\u0161ed",
    "match": "regex",
    "regex": "(?i)p\u0159i\u0161ed",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_13",
@@ -1156,7 +1268,8 @@
    "prompt": "Jak\u00fd vid (aspekt) m\u00e1 sloveso 'v\u00edd\u00e1vat'? A jak\u00fd je jeho dokonav\u00fd prot\u011bj\u0161ek nejbli\u017e\u0161\u00ed v z\u00e1kladn\u00edm tvaru?\nA) Nedokonav\u00e9; dokonav\u00fd prot\u011bj\u0161ek: uvid\u011bt\nB) Nedokonav\u00e9 (iterativum); dokonav\u00fd prot\u011bj\u0161ek: vid\u011bt\nC) Nedokonav\u00e9 (iterativum); nem\u00e1 p\u0159\u00edm\u00fd dokonav\u00fd prot\u011bj\u0161ek \u2014 je to frekventativum od 'v\u00eddat'\nD) Dokonav\u00e9; nedokonav\u00fd prot\u011bj\u0161ek: v\u00eddat\nOdpov\u011bzte jen p\u00edsmenem.",
    "expected": "C",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_14",
@@ -1166,7 +1279,8 @@
    "expected": "muzeu",
    "match": "regex",
    "regex": "(?i)^\\s*muzeu\\s*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_15",
@@ -1175,7 +1289,8 @@
    "prompt": "Ur\u010dete druh vedlej\u0161\u00ed v\u011bty: 'Kdo se boj\u00ed, nesm\u00ed do lesa.'\nA) V\u011bta vzta\u017en\u00e1\nB) V\u011bta podm\u011btn\u00e1\nC) V\u011bta podm\u00ednkov\u00e1\nD) V\u011bta p\u0159edm\u011btn\u00e1\nOdpov\u011bzte jen p\u00edsmenem.",
    "expected": "B",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_16",
@@ -1184,7 +1299,8 @@
    "prompt": "Jak\u00fd je etymologick\u00fd p\u016fvod \u010desk\u00e9ho slova 'br\u00fdle'?\nA) Z francouzsk\u00e9ho 'briller' (z\u00e1\u0159it)\nB) Ze slovansk\u00e9ho ko\u0159ene 'bry-' (brvit, chr\u00e1nit)\nC) Z italsk\u00e9ho 'brillante' (briliantn\u00ed)\nD) Z n\u011bmeck\u00e9ho 'Brille' (kter\u00e9 poch\u00e1z\u00ed z latiny 'beryllus' \u2014 druh kamene pou\u017e\u00edvan\u00fd pro \u010do\u010dky)\nOdpov\u011bzte jen p\u00edsmenem.",
    "expected": "D",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_17",
@@ -1193,7 +1309,8 @@
    "prompt": "Jak\u00fd je spr\u00e1vn\u00fd tvar v dativu plur\u00e1lu: 'D\u011bkuji v\u0161em sv\u00fdm _______' (kolega, mu\u017esk\u00fd rod \u017eivotn\u00fd). Odpov\u011bzte jen chyb\u011bj\u00edc\u00edm tvarem v dativu plur\u00e1lu.",
    "expected": "koleg\u016fm",
    "match": "contains_ci",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_18",
@@ -1203,7 +1320,8 @@
    "expected": "p\u0159ij\u00edt na",
    "match": "regex",
    "regex": "(?i)(p\u0159ij\u00edt s.*p\u0159in\u00e9st|p\u0159ij\u00edt na.*objevit|p\u0159ij\u00edt na.*vymyslet|napad|p\u0159edlo\u017e|p\u0159ij\u00edt s.*n\u00e1vrh|p\u0159ij\u00edt na.*\u0159e\u0161en\u00ed|p\u0159in\u00e9st.*objevit|n\u00e1pad.*n\u00e1vrh|discover.*propose|bring.*figure out)",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "czech_19",
@@ -1213,7 +1331,8 @@
    "expected": "stav\u00ed",
    "match": "regex",
    "regex": "(?i)d\u016fm se stav\u00ed",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "czech_20",
@@ -1223,7 +1342,8 @@
    "expected": "o\u010di, u\u0161i",
    "match": "regex",
    "regex": "(?i)o\u010di.*u\u0161i|u\u0161i.*o\u010di",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_01",
@@ -1233,7 +1353,8 @@
    "expected": "blue",
    "match": "regex",
    "regex": "(?i)blue[.!?]?\\s*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_02",
@@ -1243,7 +1364,8 @@
    "expected": "11, 13, 17, 19",
    "match": "regex",
    "regex": "^\\s*(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)[,\\s]+(11|13|17|19|23|29|31|37|41|43|47)\\s*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_03",
@@ -1253,7 +1375,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)1[.\\):].*water.*\\n.*2[.\\):].*water.*\\n.*3[.\\):].*water",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_04",
@@ -1263,7 +1386,8 @@
    "expected": "",
    "match": "regex",
    "regex": "^[^a-z]*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_05",
@@ -1273,7 +1397,8 @@
    "expected": "",
    "match": "regex",
    "regex": "^[^eE]*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_06",
@@ -1283,7 +1408,8 @@
    "expected": "5",
    "match": "regex",
    "regex": "\\b5\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_07",
@@ -1293,7 +1419,8 @@
    "expected": "impossible",
    "match": "regex",
    "regex": "(?i)^\\s*(impossible|contradiction|paradox|conflicting|contradictory)\\s*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_08",
@@ -1303,7 +1430,8 @@
    "expected": "dlrow olleh",
    "match": "regex",
    "regex": "\"reversed\"\\s*:\\s*\"dlrow olleh\".*\"length\"\\s*:\\s*11|\"length\"\\s*:\\s*11.*\"reversed\"\\s*:\\s*\"dlrow olleh\"",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_09",
@@ -1313,7 +1441,8 @@
    "expected": "Hotel",
    "match": "regex",
    "regex": "(?i)hotel\\s*\\n\\s*echo\\s*\\n\\s*lima\\s*\\n\\s*lima\\s*\\n\\s*oscar",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_10",
@@ -1323,7 +1452,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)^\\s*A\\w*.*\\n\\s*P\\w*.*\\n\\s*P\\w*.*\\n\\s*L\\w*.*\\n\\s*E\\w*",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "instr_11",
@@ -1333,7 +1463,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)^\\s*[Ff]\\w*\\s+[Gg]\\w*\\s+[Hh]\\w*\\s+[Ii]\\w*\\s+[Jj]\\w*\\s*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_12",
@@ -1343,7 +1474,8 @@
    "expected": "",
    "match": "regex",
    "regex": "^[^aA]*\\.$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_13",
@@ -1353,7 +1485,8 @@
    "expected": "1,2,Fizz,4,Buzz,Fizz,7,8,Fizz,Buzz,11,Fizz,13,14,FizzBuzz",
    "match": "regex",
    "regex": "1,2,Fizz,4,Buzz,Fizz,7,8,Fizz,Buzz,11,Fizz,13,14,FizzBuzz",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "instr_14",
@@ -1363,7 +1496,8 @@
    "expected": "17",
    "match": "regex",
    "regex": "\\b17\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_15",
@@ -1373,7 +1507,8 @@
    "expected": "",
    "match": "regex",
    "regex": "X O X O\\s*\\n\\s*X O X O\\s*\\n\\s*X O X O\\s*\\n\\s*X O X O",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_16",
@@ -1383,7 +1518,8 @@
    "expected": "",
    "match": "regex",
    "regex": "^[^pPyYtThHoOnN]+$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_17",
@@ -1393,7 +1529,8 @@
    "expected": "ECNEGILLET",
    "match": "regex",
    "regex": "ECNEGILLET",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_18",
@@ -1402,7 +1539,8 @@
    "prompt": "Output a JSON object where every key is a single digit from '0' to '9' (as strings), and each value is that digit's English name spelled backwards. For example, '0' should map to 'orez'. Output only the JSON, no markdown.",
    "expected": "0,1,2,3,4,5,6,7,8,9",
    "match": "json_valid",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "instr_19",
@@ -1412,7 +1550,8 @@
    "expected": "38",
    "match": "regex",
    "regex": "\\b38\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "instr_20",
@@ -1422,7 +1561,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)^\\s*[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s*\\n\\s*[Ss]\\w*\\s*\\n\\s*[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s+[Ss]\\w*\\s*$",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_01",
@@ -1432,7 +1572,8 @@
    "expected": "decreases",
    "match": "regex",
    "regex": "(?i)(decreas|lower|reduc|drops|falls|goes down)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_02",
@@ -1442,7 +1583,8 @@
    "expected": "Model B",
    "match": "regex",
    "regex": "(?i)model b.*(5\\.5|5\\.4|5\\.6)|5\\.5.*model b|model b.*better.*human|model b.*higher",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_03",
@@ -1451,7 +1593,8 @@
    "prompt": "Read this passage and identify what is NOT mentioned:\n\n\"Rust's ownership system eliminates entire classes of memory bugs at compile time. The borrow checker ensures references never outlive the data they point to, preventing dangling pointers. Rust also guarantees no data races in concurrent code because the type system enforces that mutable data cannot be accessed from multiple threads simultaneously. These guarantees come at the cost of a steep learning curve \u2014 the compiler enforces rules that programmers must explicitly satisfy.\"\n\nWhich of these does the passage NOT mention?\nA) Memory safety\nB) Concurrency safety\nC) The borrow checker\nD) Garbage collection\nReply with just the letter.",
    "expected": "D",
    "match": "mcq",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_04",
@@ -1461,7 +1604,8 @@
    "expected": "14,000",
    "match": "regex",
    "regex": "(?i)(14.?000|14k).*(parallel|mechanical|flash|seek|moving|simultaneous)|(parallel|mechanical|flash|seek|moving|simultaneous).*(14.?000|14k)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_05",
@@ -1471,7 +1615,8 @@
    "expected": "remote",
    "match": "regex",
    "regex": "(?i)(pro.remote|favor.*(remote|work from home)|biased.*remote|remote.*bias|against.*office|office.*negative|dismissive.*office|remote.*advocate|anti.office|positive.*remote)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_06",
@@ -1481,7 +1626,8 @@
    "expected": "292",
    "match": "regex",
    "regex": "(?i)(292|2\\.3|0\\.8|47|12|10.?000|0\\.01)",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "summ_07",
@@ -1491,7 +1637,8 @@
    "expected": "fitness center",
    "match": "regex",
    "regex": "(?i)(fitness center|gym|urban|not represent|selection bias|self.select|recruit|representative|generaliz|population|biased sample|urban bias)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_08",
@@ -1501,7 +1648,8 @@
    "expected": "Kubernetes",
    "match": "regex",
    "regex": "(?i)(kubernetes.*straightforward|kubernetes.*simple|manageable|easy|overblown|concerns.*overblown|competitive.*claim|fall behind|no evidence|unsupported.*kubernetes|k8s.*easy|modern tool)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_09",
@@ -1511,7 +1659,8 @@
    "expected": "lower bound",
    "match": "regex",
    "regex": "(?i)(lower bound|comparison.based|radix|integer key|bounded range|n log n.*lower|O\\(n log log n\\)|applies|whether the)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_10",
@@ -1521,7 +1670,8 @@
    "expected": "recession",
    "match": "regex",
    "regex": "(?i)interest rate.*(borrow|spend|employ|demand|output).*recession|recession.*(interest rate|borrowing|spending|employment)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_11",
@@ -1531,7 +1681,8 @@
    "expected": "5000",
    "match": "regex",
    "regex": "\\b5[,.]?000\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_12",
@@ -1541,7 +1692,8 @@
    "expected": "thermal runaway",
    "match": "regex",
    "regex": "(?i)(thermal runaway.*eliminat|eliminat.*thermal runaway|zero risk.*3 out of|3 out of.*zero|claim.*safe.*but.*thermal|contradict|occurred.*despite|experienced.*despite|despite claim|says.*no risk.*but|claims.*eliminat.*but.*3)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_13",
@@ -1551,7 +1703,8 @@
    "expected": "12.67",
    "match": "regex",
    "regex": "\\b12\\.6[5-9]\\b|\\b12\\.7\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_14",
@@ -1561,7 +1714,8 @@
    "expected": "funded",
    "match": "regex",
    "regex": "(?i)(fund|manufacturer|NeuroPlex Pharmaceuticals|conflict of interest|pharma.*company|company.*fund|bias.*fund|financial|sponsor|paid for|drug maker)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_15",
@@ -1571,7 +1725,8 @@
    "expected": "3",
    "match": "regex",
    "regex": "\\b3\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_16",
@@ -1581,7 +1736,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)(false cause|oversimplif|single cause|causal oversimplif|post hoc|false equivalen|hasty generali|cherry pick|ignoring.*confound|confounding|false analog|cum hoc|correlation.*causation|ecological fallacy|omitted variable)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "summ_17",
@@ -1591,7 +1747,8 @@
    "expected": "3.31",
    "match": "regex",
    "regex": "\\b3\\.3[01]\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_18",
@@ -1601,7 +1758,8 @@
    "expected": "all companies",
    "match": "regex",
    "regex": "(?i)(all companies|regardless of size|eliminate.*office|only.*large|over 1.?000|small|generali|sample.*only|extrapolat|survey.*only|cannot.*extend|doesn.*apply)",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_19",
@@ -1611,7 +1769,8 @@
    "expected": "6",
    "match": "regex",
    "regex": "\\b6\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "summ_20",
@@ -1621,7 +1780,8 @@
    "expected": "A,B,C,D,E",
    "match": "regex",
    "regex": "A,B,C,D,E",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "core"
   },
   {
    "id": "struct_01",
@@ -1630,7 +1790,8 @@
    "prompt": "Output a valid JSON object with exactly these keys and values:\n- \"hostname\": \"web-01\"\n- \"port\": 8080\n- \"tls\": false\n\nOutput only the JSON, no explanation, no markdown fences.",
    "expected": "hostname,port,tls",
    "match": "json_valid",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "struct_02",
@@ -1639,7 +1800,8 @@
    "prompt": "Output a valid JSON object for a blog post with this structure:\n- \"title\": string\n- \"tags\": array of at least 2 strings\n- \"published\": boolean (true)\n- \"views\": integer greater than 0\n- \"metadata\": object with keys \"author\" (string) and \"created_at\" (string in ISO 8601 format)\n\nUse realistic values. Output only the JSON, no markdown fences.",
    "expected": "title,tags,metadata",
    "match": "json_valid",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "struct_03",
@@ -1649,7 +1811,8 @@
    "expected": "service",
    "match": "regex",
    "regex": "(?i)service:\\s*(api|'api'|\"api\").*\\n.*port:\\s*3000|port:\\s*3000.*\\n.*env:",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "struct_04",
@@ -1659,7 +1822,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)(id|name|score|active).*\\n.*[0-9]+.*,.*[0-9].*,.*[0-9].*,.*\\n.*[0-9]",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "struct_05",
@@ -1668,7 +1832,8 @@
    "prompt": "Output a valid JSON object representing a nested file system tree. The structure must be:\n- root/ (directory)\n  - src/ (directory)\n    - main.py (file, size: 2048)\n    - utils/ (directory)\n      - helpers.py (file, size: 512)\n  - README.md (file, size: 1024)\n\nEach node: {\"name\": string, \"type\": \"file\"|\"directory\", and either \"size\": number (files) or \"children\": array (directories)}.\n\nOutput only the JSON, no markdown fences.",
    "expected": "children",
    "match": "json_valid",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "struct_06",
@@ -1677,7 +1842,8 @@
    "prompt": "Parse this log line into a JSON object with keys: timestamp, level, service, message, request_id.\n\n[2024-11-03T09:17:42Z] WARN payment-service: Retry attempt 3 for request tx-789-xyz\n\nOutput only the JSON object, no markdown fences. Null is acceptable for any field not present.",
    "expected": "timestamp,level,service,message,request_id",
    "match": "json_valid",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "struct_07",
@@ -1687,7 +1853,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?i)(&defaults|&default|&base).*\\n.*timeout.*\\n.*retries.*\\n.*(<<|\\*defaults|\\*default|\\*base)|\\*defaults|\\*default|\\*base",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "struct_08",
@@ -1696,7 +1863,8 @@
    "prompt": "Output a valid JSON object where:\n- The key \"data\" contains an array of mixed types: the integer 1, the string \"two\", null, true, and the object {\"x\": 3}\n- The key \"empty\" contains an empty array []\n- The key \"nested\" contains an object with key \"a\" whose value is an object with key \"b\" whose value is an object with key \"c\" whose value is 42\n\nOutput only the JSON, no markdown fences.",
    "expected": "data,empty,nested",
    "match": "json_valid",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "struct_09",
@@ -1706,7 +1874,8 @@
    "expected": "",
    "match": "regex",
    "regex": "\\[\\s*\"10\"\\s*,\\s*\"Smith,\\s*John\"\\s*,\\s*\"He said \\\\?\"hello\\\\?\"\"\\s*,\\s*\"active\"\\s*\\]|\\[\\s*\"10\"\\s*,\\s*\"Smith, John\"\\s*,\\s*\"He said .hello.\"\\s*,\\s*\"active\"\\s*\\]",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "struct_10",
@@ -1716,7 +1885,8 @@
    "expected": "",
    "match": "regex",
    "regex": "\"server\"\\s*:\\s*\\{.*\"host\"\\s*:\\s*\"localhost\".*\"ports\"\\s*:\\s*\\[.*8080.*8443.*\\].*\"options\"\\s*:\\s*\\{.*\"debug\"\\s*:\\s*true.*\"max_connections\"\\s*:\\s*null",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "struct_11",
@@ -1726,7 +1896,8 @@
    "expected": "",
    "match": "regex",
    "regex": "\"id\"\\s*:\\s*1.*\"active\"\\s*:\\s*true.*\"id\"\\s*:\\s*2.*\"active\"\\s*:\\s*false.*\"id\"\\s*:\\s*3.*\"active\"\\s*:\\s*true",
-   "max_tokens": 350
+   "max_tokens": 350,
+   "tier": "sanity"
   },
   {
    "id": "struct_12",
@@ -1735,7 +1906,8 @@
    "prompt": "Output a valid JSON object conforming to this JSON Schema:\n\n{\"type\":\"object\",\"required\":[\"users\"],\"properties\":{\"users\":{\"type\":\"array\",\"minItems\":2,\"items\":{\"type\":\"object\",\"required\":[\"name\",\"age\",\"roles\"],\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\",\"minimum\":18},\"roles\":{\"type\":\"array\",\"minItems\":1,\"items\":{\"type\":\"string\",\"enum\":[\"admin\",\"editor\",\"viewer\"]}}}}}}}\n\nOutput only the JSON, no markdown fences.",
    "expected": "users",
    "match": "json_valid",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "struct_13",
@@ -1745,7 +1917,8 @@
    "expected": "",
    "match": "regex",
    "regex": "\"id\"\\s*:\\s*1.*\"name\"\\s*:\\s*\"Alice\".*\"score\"\\s*:\\s*95.*\"verified\"\\s*:\\s*true.*\"id\"\\s*:\\s*2.*\"score\"\\s*:\\s*null.*\"verified\"\\s*:\\s*false.*\"id\"\\s*:\\s*3.*\"score\"\\s*:\\s*87",
-   "max_tokens": 350
+   "max_tokens": 350,
+   "tier": "sanity"
   },
   {
    "id": "struct_14",
@@ -1755,7 +1928,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?s)\\[server\\].*host\\s*=.*0\\.0\\.0\\.0.*port\\s*=\\s*8443.*\\[server\\.tls\\].*cert\\s*=.*\\[database\\].*pool_size\\s*=\\s*25.*\\[\\[database\\.replicas\\]\\].*host.*priority.*\\[\\[database\\.replicas\\]\\]",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "struct_15",
@@ -1765,7 +1939,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?s)\"value\"\\s*:\\s*\"A\".*\"value\"\\s*:\\s*\"B\".*\"value\"\\s*:\\s*\"D\".*\"children\"\\s*:\\s*\\[\\].*\"value\"\\s*:\\s*\"E\".*\"value\"\\s*:\\s*\"G\".*\"children\"\\s*:\\s*\\[\\].*\"value\"\\s*:\\s*\"C\".*\"value\"\\s*:\\s*\"F\".*\"children\"\\s*:\\s*\\[\\]",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "struct_16",
@@ -1774,7 +1949,8 @@
    "prompt": "Output a valid JSON object where all string values must contain at least one special character that needs JSON escaping. Required structure:\n- \"path\": a Windows file path with backslashes (e.g., C:\\\\Users\\\\...)\n- \"quote\": a string containing a literal double quote\n- \"tabs\": a string containing a literal tab character\n- \"unicode\": a string containing the text 'price: 5\u20ac'\n- \"newline\": a string containing a literal newline\n\nOutput only the JSON, no markdown fences.",
    "expected": "path,quote,tabs,unicode,newline",
    "match": "json_valid",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "struct_17",
@@ -1784,7 +1960,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?s)\"data\"\\s*:\\s*\\{.*\"user\"\\s*:\\s*\\{.*\"name\".*\"email\".*\"posts\"\\s*:\\s*\\{.*\"edges\"\\s*:\\s*\\[.*\"node\".*\"title\".*\"commentCount\".*\"cursor\".*\"pageInfo\".*\"hasNextPage\"",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "struct_18",
@@ -1793,7 +1970,8 @@
    "prompt": "Output a valid JSON object representing a state machine for a traffic light. Requirements:\n- Key \"states\" is an object with keys \"red\", \"yellow\", \"green\"\n- Each state has \"duration_seconds\" (integer) and \"transitions\" (object mapping event names to next state names)\n- \"red\" transitions to \"green\" on event \"timer\", duration 30\n- \"green\" transitions to \"yellow\" on event \"timer\", duration 25\n- \"yellow\" transitions to \"red\" on event \"timer\", duration 5\n- All states transition to \"red\" on event \"emergency\"\n- Key \"initial\" is \"red\"\n\nOutput only the JSON, no markdown fences.",
    "expected": "states,initial",
    "match": "json_valid",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "struct_19",
@@ -1803,7 +1981,8 @@
    "expected": "",
    "match": "regex",
    "regex": "(?s)\"a\\.b\"\\s*:\\s*1.*\"a\\.c\\.0\"\\s*:\\s*10.*\"a\\.c\\.1\"\\s*:\\s*20.*\"a\\.c\\.2\\.d\"\\s*:\\s*30.*\"e\"\\s*:\\s*\"hello\"",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "struct_20",
@@ -1812,7 +1991,8 @@
    "prompt": "Output a valid JSON object that is its own JSON Schema. That is, the object must be a valid JSON Schema (with \"type\", \"properties\", \"required\" keys), AND the object itself must validate against its own schema.\n\nThe schema should describe an object with:\n- \"type\" (required, string)\n- \"properties\" (required, object)\n- \"required\" (required, array of strings)\n\nOutput only the JSON, no markdown fences.",
    "expected": "type,properties,required",
    "match": "json_valid",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_01",
@@ -1822,7 +2002,8 @@
    "expected": "ss",
    "match": "regex",
    "regex": "\\bss\\b.*-[a-z]*[tlup][a-z]*|-[a-z]*[tlup][a-z]*.*\\bss\\b",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_02",
@@ -1832,7 +2013,8 @@
    "expected": "[Unit]",
    "match": "regex",
    "regex": "(?i)\\[Unit\\].*\\[Service\\]|User=myapp|RestartSec=5|Restart=on-failure|WantedBy=multi-user",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_03",
@@ -1842,7 +2024,8 @@
    "expected": "du",
    "match": "regex",
    "regex": "(?i)(du -[sha]|find.*-size|journalctl.*vacuum|ncdu|df -[hHi]|lsof.*deleted)",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_04",
@@ -1852,7 +2035,8 @@
    "expected": "page fault",
    "match": "regex",
    "regex": "(?i)(page fault|page table|physical page|allocat|map|kernel.*handle|trap|interrupt|demand pag|COW|copy.on.write|zero.fill)",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_05",
@@ -1862,7 +2046,8 @@
    "expected": "MTU",
    "match": "regex",
    "regex": "(?i)(MTU|MSS|ping.*M|ping.*df|tracepath|traceroute|ip link|mtu|path MTU|pmtud|tcpdump|ip route|clamp)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_06",
@@ -1872,7 +2057,8 @@
    "expected": "nftables",
    "match": "regex",
    "regex": "(?i)(table|chain|nftables|hook input|policy drop|ct state|established|related|tcp dport|22|80|443|10\\.0\\.0\\.0/8)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_07",
@@ -1882,7 +2068,8 @@
    "expected": "OOM",
    "match": "regex",
    "regex": "(?i)(dmesg|oom.killer|/proc/[0-9]*/status|smaps|pmap|top|htop|cat /proc|memory.stat|cgroup|/sys/fs/cgroup|memory\\.usage|memleak|valgrind|heaptrack)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_08",
@@ -1892,7 +2079,8 @@
    "expected": "lvextend",
    "match": "regex",
    "regex": "(?i)lvextend.*-L.*\\+20G|lvextend.*-l.*\\+.*FREE|resize2fs.*/dev/vg0/data",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_09",
@@ -1902,7 +2090,8 @@
    "expected": "certificate chain",
    "match": "regex",
    "regex": "(?i)(intermediate cert|chain|issuer|CA bundle|trust store|openssl verify|openssl s_client|cat.*pem|cert.*chain|missing.*cert|incomplete.*chain|fullchain|bundle)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_10",
@@ -1912,7 +2101,8 @@
    "expected": "memory.pressure",
    "match": "regex",
    "regex": "(?i)(/sys/fs/cgroup.*memory\\.(pressure|events|stat|current|high|max)|memory\\.pressure|memory\\.events|memory\\.stat|memory\\.high|psi|pressure stall)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_11",
@@ -1922,7 +2112,8 @@
    "expected": "zpool create",
    "match": "regex",
    "regex": "(?i)zpool\\s+create\\s+tank\\s+raidz1?\\s+/dev/sd[abc]\\s+/dev/sd[abc]\\s+/dev/sd[abc]",
-   "max_tokens": 150
+   "max_tokens": 150,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_12",
@@ -1932,7 +2123,8 @@
    "expected": "uninterruptible",
    "match": "regex",
    "regex": "(?i)(uninterruptible.*sleep|D state|waiting.*I/O|kernel.*space|cannot.*signal|SIGKILL.*D state|wchan|/proc/.*/stack|cat /proc/.*/wchan|echo w > /proc/sysrq|sysrq|perf|blktrace|dmesg|hung_task)",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_13",
@@ -1942,7 +2134,8 @@
    "expected": "ip link add",
    "match": "regex",
    "regex": "(?i)ip link add.*br0.*type bridge.*ip link set.*eth[01].*master br0.*ip addr add.*10\\.0\\.0\\.1/24.*dev br0|ip link add.*br0.*bridge.*ip link set.*master.*ip link set.*master.*ip addr.*10\\.0\\.0\\.1",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "sysadm_14",
@@ -1952,7 +2145,8 @@
    "expected": "[Match]",
    "match": "regex",
    "regex": "(?si)\\[Match\\].*Name\\s*=\\s*eth0.*\\[Network\\].*Address\\s*=\\s*192\\.168\\.1\\.100/24.*Gateway\\s*=\\s*192\\.168\\.1\\.1.*DNS\\s*=\\s*1\\.1\\.1\\.1",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "sysadm_15",
@@ -1962,7 +2156,8 @@
    "expected": "zfs send",
    "match": "regex",
    "regex": "(?i)zfs send.*-[iI]\\s+(@?snap1|source/data@snap1)\\s+(source/data@snap2).*\\|.*ssh.*backup.host.*zfs rec[ev]|zfs send.*-[iI].*snap1.*snap2.*ssh.*zfs rec",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "sysadm_16",
@@ -1972,7 +2167,8 @@
    "expected": "tolerations",
    "match": "regex",
    "regex": "(?si)tolerations.*key.*gpu.*operator.*(Equal|Exists).*effect.*NoSchedule.*resources.*requests.*memory.*8Gi|tolerations.*gpu.*NoSchedule.*nodeSelector.*accelerator.*nvidia",
-   "max_tokens": 400
+   "max_tokens": 400,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_17",
@@ -1982,7 +2178,8 @@
    "expected": "bpftrace",
    "match": "regex",
    "regex": "(?i)bpftrace.*(-e\\s+['\"]|--unsafe).*tcp.*retransmit|bpftrace.*tracepoint:tcp:tcp_retransmit_skb|bpftrace.*kprobe:tcp_retransmit_skb",
-   "max_tokens": 200
+   "max_tokens": 200,
+   "tier": "core"
   },
   {
    "id": "sysadm_18",
@@ -1992,7 +2189,8 @@
    "expected": "stop",
    "match": "regex",
    "regex": "(?i)(BindsTo.*stop|app.*stop.*postgres|postgres.*stop.*app|will also stop|stopped as well|brought down|1.*stop|app.*also.*stop)",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "sanity"
   },
   {
    "id": "sysadm_19",
@@ -2002,7 +2200,8 @@
    "expected": "yes",
    "match": "regex",
    "regex": "(?i)1[.):]*\\s*yes.*2[.):]*\\s*no.*3[.):]*\\s*(2|two).*4[.):].*(etcdctl.*endpoint.*health|etcdctl.*cluster-health|etcdctl.*member list|ETCDCTL_API)",
-   "max_tokens": 300
+   "max_tokens": 300,
+   "tier": "core"
   },
   {
    "id": "sysadm_20",
@@ -2012,7 +2211,8 @@
    "expected": "module myapp",
    "match": "regex",
    "regex": "(?si)module\\s+myapp.*require\\s*\\{.*\\}.*allow\\s+myapp_t.*myapp_data_t.*read|module\\s+myapp.*allow.*myapp_t.*tcp_socket|policy_module\\(myapp",
-   "max_tokens": 500
+   "max_tokens": 500,
+   "tier": "sanity"
   },
   {
    "id": "exec_01",
@@ -2022,7 +2222,8 @@
    "expected": "parse_duration",
    "match": "python_exec",
    "tests": "assert parse_duration('1h30m') == 5400\nassert parse_duration('45s') == 45\nassert parse_duration('2h') == 7200\nassert parse_duration('1h2m3s') == 3723\nassert parse_duration('') == 0\nfor bad in ['5x','h','1m2h','1.5h','abc','-1s']:\n    try:\n        parse_duration(bad); raise SystemExit('accepted bad input: '+bad)\n    except ValueError: pass\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_02",
@@ -2032,7 +2233,8 @@
    "expected": "merge_intervals",
    "match": "python_exec",
    "tests": "assert merge_intervals([]) == []\nassert merge_intervals([[1,3],[2,6],[8,10]]) == [[1,6],[8,10]]\nassert merge_intervals([[1,2],[2,3]]) == [[1,2],[2,3]]\nassert merge_intervals([[5,7],[1,3]]) == [[1,3],[5,7]]\nassert merge_intervals([[1,10],[2,3]]) == [[1,10]]\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_03",
@@ -2042,7 +2244,8 @@
    "expected": "flatten_dict",
    "match": "python_exec",
    "tests": "assert flatten_dict({'a':{'b':1}}) == {'a.b':1}\nassert flatten_dict({'a':1}) == {'a':1}\nassert flatten_dict({}) == {}\nassert flatten_dict({'a':{}}) == {'a':{}}\nassert flatten_dict({'a':{'b':{'c':2}},'d':[1,2]}) == {'a.b.c':2,'d':[1,2]}\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_04",
@@ -2052,7 +2255,8 @@
    "expected": "compare_semver",
    "match": "python_exec",
    "tests": "assert compare_semver('1.0.0','1.0.1') == -1\nassert compare_semver('1.2.0','1.2.0') == 0\nassert compare_semver('2.0.0','1.9.9') == 1\nassert compare_semver('1.0.0-alpha','1.0.0') == -1\nassert compare_semver('1.0.0-alpha.1','1.0.0-alpha.2') == -1\nassert compare_semver('1.0.0-1','1.0.0-alpha') == -1\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_05",
@@ -2062,7 +2266,8 @@
    "expected": "parse_csv_line",
    "match": "python_exec",
    "tests": "assert parse_csv_line('a,b,c') == ['a','b','c']\nassert parse_csv_line('a,\\\"b,c\\\",d') == ['a','b,c','d']\nassert parse_csv_line('\\\"he said \\\"\\\"hi\\\"\\\"\\\"') == ['he said \\\"hi\\\"']\nassert parse_csv_line('') == ['']\nassert parse_csv_line('a,,b') == ['a','','b']\nassert parse_csv_line(' a , b ') == [' a ',' b ']\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_06",
@@ -2072,7 +2277,8 @@
    "expected": "topo_sort",
    "match": "python_exec",
    "tests": "assert topo_sort({'a':['b'],'b':['c'],'c':[]}) == ['a','b','c']\nassert topo_sort({'a':['b'],'b':['a']}) is None\nassert topo_sort({}) == []\nassert topo_sort({'a':[],'b':[]}) == ['a','b']\nassert topo_sort({'a':['c'],'b':['c'],'c':[]}) == ['a','b','c']\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_07",
@@ -2082,7 +2288,8 @@
    "expected": "simplify_path",
    "match": "python_exec",
    "tests": "assert simplify_path('/home//foo/') == '/home/foo'\nassert simplify_path('/../') == '/'\nassert simplify_path('/a/./b/../../c/') == '/c'\nassert simplify_path('/') == '/'\nassert simplify_path('/a/../..') == '/'\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_08",
@@ -2092,7 +2299,8 @@
    "expected": "word_wrap",
    "match": "python_exec",
    "tests": "assert word_wrap('', 10) == []\nassert word_wrap('a b c', 5) == ['a b c']\nassert word_wrap('aaa bbb ccc', 7) == ['aaa bbb','ccc']\nassert word_wrap('supercalifragilistic hi', 5) == ['supercalifragilistic','hi']\nassert word_wrap('one two', 3) == ['one','two']\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_09",
@@ -2102,7 +2310,8 @@
    "expected": "rotated_search",
    "match": "python_exec",
    "tests": "assert rotated_search([4,5,6,7,0,1,2], 0) == 4\nassert rotated_search([4,5,6,7,0,1,2], 3) == -1\nassert rotated_search([1], 1) == 0\nassert rotated_search([], 5) == -1\nassert rotated_search([3,1], 1) == 1\nimport inspect\nsrc = inspect.getsource(rotated_search)\nassert '.index(' not in src, 'used list.index'\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_10",
@@ -2112,7 +2321,8 @@
    "expected": "dict_diff",
    "match": "python_exec",
    "tests": "assert dict_diff({}, {}) == {'added':{},'removed':{},'changed':{}}\nassert dict_diff({'a':1}, {'a':1}) == {'added':{},'removed':{},'changed':{}}\nassert dict_diff({'a':1}, {'a':2}) == {'added':{},'removed':{},'changed':{'a':(1,2)}}\nassert dict_diff({}, {'b':3}) == {'added':{'b':3},'removed':{},'changed':{}}\nassert dict_diff({'c':4}, {}) == {'added':{},'removed':{'c':4},'changed':{}}\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_11",
@@ -2122,7 +2332,8 @@
    "expected": "valid_ipv4",
    "match": "python_exec",
    "tests": "assert valid_ipv4('192.168.1.1') is True\nassert valid_ipv4('0.0.0.0') is True\nassert valid_ipv4('255.255.255.255') is True\nfor bad in ['01.1.1.1','1.1.1','1.1.1.256','1.1.1.-1',' 1.1.1.1','1.1.1.1.','a.b.c.d','','1.1.1.1 ']:\n    assert valid_ipv4(bad) is False, bad\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_12",
@@ -2132,7 +2343,8 @@
    "expected": "rle",
    "match": "python_exec",
    "tests": "assert rle('') == ''\nassert rle('abc') == 'abc'\nassert rle('aaab') == 'a3b'\nassert rle('aabbbb') == 'a2b4'\nassert rle('111') == '13'\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_13",
@@ -2142,7 +2354,8 @@
    "expected": "group_anagrams",
    "match": "python_exec",
    "tests": "assert group_anagrams([]) == []\nassert group_anagrams(['eat','tea','tan','ate','nat','bat']) == [['ate','eat','tea'],['bat'],['nat','tan']]\nassert group_anagrams(['a']) == [['a']]\nassert group_anagrams(['ab','AB']) == [['AB'],['ab']]\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_14",
@@ -2152,7 +2365,8 @@
    "expected": "next_permutation",
    "match": "python_exec",
    "tests": "assert next_permutation([1,2,3]) == [1,3,2]\nassert next_permutation([3,2,1]) == [1,2,3]\nassert next_permutation([1,1,5]) == [1,5,1]\nassert next_permutation([]) == []\nsrc=[2,3,1]\nnext_permutation(src)\nassert src == [2,3,1], 'mutated the input'\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_15",
@@ -2162,7 +2376,8 @@
    "expected": "sliding_max",
    "match": "python_exec",
    "tests": "assert sliding_max([1,3,-1,-3,5,3,6,7],3) == [3,3,5,5,6,7]\nassert sliding_max([],3) == []\nassert sliding_max([1,2],5) == []\nassert sliding_max([4],1) == [4]\nassert sliding_max([9,8,7],2) == [9,8]\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_16",
@@ -2172,7 +2387,8 @@
    "expected": "roman_to_int",
    "match": "python_exec",
    "tests": "assert roman_to_int('IV') == 4\nassert roman_to_int('MCMXCIV') == 1994\nassert roman_to_int('III') == 3\nfor bad in ['IIII','VV','IC','', 'ABC']:\n    try:\n        roman_to_int(bad); raise SystemExit('accepted '+repr(bad))\n    except ValueError: pass\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_17",
@@ -2182,7 +2398,8 @@
    "expected": "balanced",
    "match": "python_exec",
    "tests": "assert balanced('') is True\nassert balanced('a(b)c[d]{e}') is True\nassert balanced('([)]') is False\nassert balanced('(') is False\nassert balanced(')(') is False\nassert balanced('{[()]}') is True\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_18",
@@ -2192,7 +2409,8 @@
    "expected": "longest_common_prefix",
    "match": "python_exec",
    "tests": "assert longest_common_prefix([]) == ''\nassert longest_common_prefix(['flower','flow','flight']) == 'fl'\nassert longest_common_prefix(['dog','racecar']) == ''\nassert longest_common_prefix(['same']) == 'same'\nassert longest_common_prefix(['ab','']) == ''\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_19",
@@ -2202,7 +2420,8 @@
    "expected": "chunk_by_size",
    "match": "python_exec",
    "tests": "assert chunk_by_size([], 10, len) == []\nassert chunk_by_size(['ab','cd'], 4, len) == [['ab','cd']]\nassert chunk_by_size(['ab','cd'], 3, len) == [['ab'],['cd']]\nassert chunk_by_size(['abcdef'], 2, len) == [['abcdef']]\nassert chunk_by_size(['a','b','cccc','d'], 2, len) == [['a','b'],['cccc'],['d']]\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "exec_20",
@@ -2212,7 +2431,8 @@
    "expected": "median_of_two",
    "match": "python_exec",
    "tests": "assert median_of_two([1,3],[2]) == 2.0\nassert median_of_two([1,2],[3,4]) == 2.5\nassert median_of_two([],[1]) == 1.0\nassert median_of_two([5],[]) == 5.0\nassert median_of_two([1,2,3],[4,5,6]) == 3.5\n",
-   "max_tokens": 900
+   "max_tokens": 900,
+   "tier": "core"
   },
   {
    "id": "longctx_01",
@@ -2222,7 +2442,8 @@
    "expected": "336",
    "match": "regex",
    "regex": "\\b336\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_02",
@@ -2232,7 +2453,8 @@
    "expected": "372",
    "match": "regex",
    "regex": "\\b372\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_03",
@@ -2242,7 +2464,8 @@
    "expected": "264",
    "match": "regex",
    "regex": "\\b264\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_04",
@@ -2252,7 +2475,8 @@
    "expected": "120",
    "match": "regex",
    "regex": "\\b120\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_05",
@@ -2262,7 +2486,8 @@
    "expected": "144",
    "match": "regex",
    "regex": "\\b144\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_06",
@@ -2272,7 +2497,8 @@
    "expected": "138",
    "match": "regex",
    "regex": "\\b138\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_07",
@@ -2282,7 +2508,8 @@
    "expected": "156",
    "match": "regex",
    "regex": "\\b156\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_08",
@@ -2292,7 +2519,8 @@
    "expected": "456",
    "match": "regex",
    "regex": "\\b456\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_09",
@@ -2302,7 +2530,8 @@
    "expected": "168",
    "match": "regex",
    "regex": "\\b168\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_10",
@@ -2312,7 +2541,8 @@
    "expected": "216",
    "match": "regex",
    "regex": "\\b216\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_11",
@@ -2322,7 +2552,8 @@
    "expected": "144",
    "match": "regex",
    "regex": "\\b144\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_12",
@@ -2332,7 +2563,8 @@
    "expected": "174",
    "match": "regex",
    "regex": "\\b174\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_13",
@@ -2342,7 +2574,8 @@
    "expected": "296",
    "match": "regex",
    "regex": "\\b296\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_14",
@@ -2352,7 +2585,8 @@
    "expected": "333",
    "match": "regex",
    "regex": "\\b333\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_15",
@@ -2362,7 +2596,8 @@
    "expected": "248",
    "match": "regex",
    "regex": "\\b248\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_16",
@@ -2372,7 +2607,8 @@
    "expected": "276",
    "match": "regex",
    "regex": "\\b276\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_17",
@@ -2382,7 +2618,8 @@
    "expected": "288",
    "match": "regex",
    "regex": "\\b288\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_18",
@@ -2392,7 +2629,8 @@
    "expected": "126",
    "match": "regex",
    "regex": "\\b126\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_19",
@@ -2402,7 +2640,8 @@
    "expected": "216",
    "match": "regex",
    "regex": "\\b216\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "longctx_20",
@@ -2412,7 +2651,8 @@
    "expected": "208",
    "match": "regex",
    "regex": "\\b208\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_01",
@@ -2422,7 +2662,8 @@
    "expected": "181",
    "match": "regex",
    "regex": "\\b181\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_02",
@@ -2432,7 +2673,8 @@
    "expected": "153",
    "match": "regex",
    "regex": "\\b153\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_03",
@@ -2442,7 +2684,8 @@
    "expected": "190",
    "match": "regex",
    "regex": "\\b190\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_04",
@@ -2452,7 +2695,8 @@
    "expected": "145",
    "match": "regex",
    "regex": "\\b145\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_05",
@@ -2462,7 +2706,8 @@
    "expected": "140",
    "match": "regex",
    "regex": "\\b140\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_06",
@@ -2472,7 +2717,8 @@
    "expected": "238",
    "match": "regex",
    "regex": "\\b238\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_07",
@@ -2482,7 +2728,8 @@
    "expected": "230",
    "match": "regex",
    "regex": "\\b230\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_08",
@@ -2492,7 +2739,8 @@
    "expected": "196",
    "match": "regex",
    "regex": "\\b196\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_09",
@@ -2502,7 +2750,8 @@
    "expected": "194",
    "match": "regex",
    "regex": "\\b194\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_10",
@@ -2512,7 +2761,8 @@
    "expected": "200",
    "match": "regex",
    "regex": "\\b200\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_11",
@@ -2522,7 +2772,8 @@
    "expected": "178",
    "match": "regex",
    "regex": "\\b178\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_12",
@@ -2532,7 +2783,8 @@
    "expected": "182",
    "match": "regex",
    "regex": "\\b182\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_13",
@@ -2542,7 +2794,8 @@
    "expected": "164",
    "match": "regex",
    "regex": "\\b164\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_14",
@@ -2552,7 +2805,8 @@
    "expected": "192",
    "match": "regex",
    "regex": "\\b192\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_15",
@@ -2562,7 +2816,8 @@
    "expected": "191",
    "match": "regex",
    "regex": "\\b191\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_16",
@@ -2572,7 +2827,8 @@
    "expected": "218",
    "match": "regex",
    "regex": "\\b218\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_17",
@@ -2582,7 +2838,8 @@
    "expected": "212",
    "match": "regex",
    "regex": "\\b212\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_18",
@@ -2592,7 +2849,8 @@
    "expected": "191",
    "match": "regex",
    "regex": "\\b191\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_19",
@@ -2602,7 +2860,8 @@
    "expected": "192",
    "match": "regex",
    "regex": "\\b192\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   },
   {
    "id": "lcagg_20",
@@ -2612,7 +2871,8 @@
    "expected": "189",
    "match": "regex",
    "regex": "\\b189\\b",
-   "max_tokens": 250
+   "max_tokens": 250,
+   "tier": "core"
   }
  ]
 }

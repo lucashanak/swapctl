@@ -19,7 +19,7 @@ from pathlib import Path
 import httpx
 
 from . import SwapctlError
-from .config import settings, get_iq_batch_size
+from .config import settings, get_iq_batch_size, get_iq_include_sanity
 
 log = logging.getLogger("swapctl.tester")
 
@@ -654,6 +654,13 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     endpoint = settings.swap_endpoint.rstrip("/")
     bench = _load_benchmark()
     all_questions = bench["questions"]
+    # Drop the "sanity" tier unless asked for: 111 of the 240 questions are answered
+    # correctly by every one of the 20 models measured so far, so they consume time
+    # without moving any ranking. They stay in the file, and a run with
+    # SWAPCTL_IQ_INCLUDE_SANITY=1 still asks them — useful for catching a regression
+    # in basic ability, which the trimmed run by construction cannot see.
+    if not get_iq_include_sanity():
+        all_questions = [q for q in all_questions if q.get("tier") != "sanity"]
 
     rec = _reg.get(model_id)
     effort = rec.reasoning_effort if rec else ""

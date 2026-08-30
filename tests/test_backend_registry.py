@@ -517,3 +517,24 @@ def test_agentic_scoring_rewards_efficiency_not_just_success() -> None:
     # observed, or the category silently becomes pass/fail again.
     assert score(1.0, 4) == score(1.0, 5) == 100.0
     assert score(1.0, 9) > score(1.0, 14), "above the reference the scale is live"
+
+
+def test_sanity_tier_carries_no_ranking_information() -> None:
+    """Questions are tiered by measured pass rate: `sanity` means every model in the
+    fleet got it right, so asking it cannot change any ranking. Dropping them is what
+    makes the run 43% shorter — but it also means a trimmed run cannot detect a
+    regression in basic ability, which is why they stay in the file and remain
+    runnable via SWAPCTL_IQ_INCLUDE_SANITY."""
+    from app.tester import _load_benchmark
+
+    qs = _load_benchmark()["questions"]
+    assert all("tier" in q for q in qs), "every question must be tiered"
+    tiers = {q["tier"] for q in qs}
+    assert tiers <= {"core", "sanity"}, f"unexpected tiers: {tiers}"
+    core = [q for q in qs if q["tier"] == "core"]
+    assert len(core) < len(qs), "nothing was trimmed"
+    # the newest categories have too little evidence to be called saturated yet,
+    # so they must all be core regardless of how the first model scored
+    for cat in ("exec", "longctx", "longctx_agg"):
+        got = [q for q in qs if q["category"] == cat]
+        assert got and all(q["tier"] == "core" for q in got), f"{cat} was trimmed too early"
