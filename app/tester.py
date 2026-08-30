@@ -1119,22 +1119,36 @@ def _ensure_worker() -> None:
         _worker_thread.start()
 
 
-def _run_agentic_test(model_id: str) -> dict:
-    """Three episodes of the tool-driven repair task — one run is too noisy to rank on.
+def _run_agentic_test(model_id: str, scenario: str = "s2") -> dict:
+    """Three episodes of the tool-driven repair task, scored on EFFICIENCY.
 
-    Scored on whether the tests actually pass afterwards, verified from the
-    filesystem rather than from the model saying so, plus the turns it took.
+    Solving is a gate, not the measure: both models tested solve every episode of
+    both scenarios, so a pass/fail score is a ceiling. What separates them is how
+    many turns it takes — 9 vs 14 on the harder scenario — which is exactly what
+    the fleet's earlier agentic comparison found (8 turns against 14 on a buggy
+    pytest suite, where static coding scores had been identical).
+
+    score = solve rate x (reference turns / turns actually used), capped at 100,
+    where the reference is the fewest turns a correct solve needs: read the tests,
+    read the sources, write the fixes, run them.
     """
     from .agentic import run_agentic
 
-    endpoint = settings.swap_endpoint
-    episodes = [run_agentic(endpoint, model_id) for _ in range(3)]
+    reference = {"s1": 3, "s2": 5}.get(scenario, 5)
+    episodes = [run_agentic(settings.swap_endpoint, model_id, scenario=scenario)
+                for _ in range(3)]
     solved = [e for e in episodes if e["solved"]]
+    rate = len(solved) / len(episodes)
+    avg_turns = (sum(e["turns"] for e in solved) / len(solved)) if solved else None
+    efficiency = min(1.0, reference / avg_turns) if avg_turns else 0.0
     return {
-        "score": round(100.0 * len(solved) / len(episodes), 1),
+        "score": round(100.0 * rate * efficiency, 1),
+        "solve_rate": round(100.0 * rate, 1),
+        "avg_turns": round(avg_turns, 1) if avg_turns else None,
+        "reference_turns": reference,
+        "scenario": scenario,
         "solved": len(solved),
         "episodes": len(episodes),
-        "avg_turns": round(sum(e["turns"] for e in solved) / len(solved), 1) if solved else None,
         "avg_tool_calls": round(sum(e["tool_calls"] for e in solved) / len(solved), 1) if solved else None,
         "duration": round(sum(e["duration"] for e in episodes)),
         "detail": episodes,

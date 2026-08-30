@@ -495,3 +495,25 @@ def test_every_test_type_persists_its_result() -> None:
     assert branches, "could not parse the dispatch"
     for name, block in branches:
         assert "_update_registry(" in block, f"test type {name!r} never persists its result"
+
+
+def test_agentic_scoring_rewards_efficiency_not_just_success() -> None:
+    """Both calibrated models solve every episode of both scenarios, so a pass/fail
+    score is a ceiling. Turns are what separate them (9 vs 14 on s2), which is also
+    what the fleet's earlier agentic comparison found."""
+    ref = 5
+
+    def score(solve_rate, turns):
+        return round(100.0 * solve_rate * min(1.0, ref / turns), 1)
+
+    assert score(1.0, 9) > score(1.0, 14), "more turns must score lower"
+    assert score(1.0, 5) == 100.0, "a solve at the reference turn count is full marks"
+    assert score(1.0, 3) == 100.0, "beating the reference is capped, not rewarded twice"
+    assert score(0.0, 5) == 0.0, "an unsolved episode scores nothing however few turns"
+    # Below the reference every solve scores 100, so the scale cannot tell a 3-turn
+    # solve from a 5-turn one. That dead zone is deliberate — the reference is the
+    # fewest turns a real solve needs, and anything quicker is suspect rather than
+    # better — but it means the reference must sit BELOW the turn counts actually
+    # observed, or the category silently becomes pass/fail again.
+    assert score(1.0, 4) == score(1.0, 5) == 100.0
+    assert score(1.0, 9) > score(1.0, 14), "above the reference the scale is live"

@@ -34,7 +34,7 @@ TOOL_TIMEOUT = 20.0
 #   normalise_spaces  - collapses runs but drops the leading/trailing strip
 #   parse_range       - off-by-one, excludes the end of an inclusive range
 #   safe_div          - returns None instead of the documented default on /0
-FILES = {
+FILES_S1 = {
     "utils.py": '''\
 def normalise_spaces(s):
     """Collapse runs of whitespace to one space and strip the ends."""
@@ -155,7 +155,7 @@ def _dispatch(name: str, args: dict, workdir: str) -> str:
         content = args.get("content")
         if not path or content is None:
             return "write_file needs both path and content"
-        if path == "test_utils.py":
+        if path.startswith("test_"):
             return "refused: the tests are correct and must not be modified"
         with open(os.path.join(workdir, path), "w") as fh:
             fh.write(content)
@@ -166,11 +166,12 @@ def _dispatch(name: str, args: dict, workdir: str) -> str:
     return f"unknown tool: {name}"
 
 
-def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0) -> dict:
+def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
+                scenario: str = "s2") -> dict:
     """One episode. Returns solved/turns/tool_calls and why it stopped."""
     workdir = tempfile.mkdtemp(prefix="agentic-")
     try:
-        for name, body in FILES.items():
+        for name, body in SCENARIOS[scenario].items():
             with open(os.path.join(workdir, name), "w") as fh:
                 fh.write(body)
 
@@ -243,3 +244,119 @@ def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0) -> dict:
         }
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
+
+
+FILES_S2 = {
+    "defaults.py": '''\
+# Applied to any field the config file omits.
+DEFAULTS = {
+    "workers": 4,
+    "timeout": 30,
+    "retries": 0,
+    "mode": "batch",
+}
+
+
+def apply_defaults(cfg):
+    out = dict(DEFAULTS)
+    out.update(cfg)
+    return out
+''',
+    "parser.py": '''\
+def parse_config(text):
+    """Parse 'key = value' lines. '#' starts a comment. Blank lines are skipped.
+
+    Values that look like integers are converted to int.
+    """
+    cfg = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            raise ValueError(f"bad line: {raw!r}")
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if value.lstrip("-").isdigit():
+            value = int(value)
+        cfg[key] = value
+    return cfg
+''',
+    "validator.py": '''\
+MIN_WORKERS = 1
+VALID_MODES = ("batch", "stream")
+
+
+def validate(cfg):
+    """Raise ValueError if the config is unusable. Assumes defaults are applied."""
+    if "workers" not in cfg:
+        raise ValueError("workers missing")
+    if not isinstance(cfg["workers"], int) or cfg["workers"] < MIN_WORKERS:
+        raise ValueError("workers must be >= 1")
+    if cfg.get("mode") not in VALID_MODES:
+        raise ValueError(f"mode must be one of {VALID_MODES}")
+    return True
+''',
+    "pipeline.py": '''\
+from parser import parse_config
+from validator import validate
+from defaults import apply_defaults
+
+
+def load(text):
+    """Parse a config, check it, and return it ready to use."""
+    cfg = parse_config(text)
+    validate(cfg)
+    cfg = apply_defaults(cfg)
+    return cfg
+''',
+    "test_pipeline.py": '''\
+import pytest
+from pipeline import load
+from parser import parse_config
+
+
+def test_parses_plain_values():
+    assert parse_config("mode = stream") == {"mode": "stream"}
+
+
+def test_strips_trailing_comment():
+    assert parse_config("workers = 8  # tuned for the big box") == {"workers": 8}
+
+
+def test_omitted_fields_get_defaults():
+    cfg = load("mode = stream")
+    assert cfg["workers"] == 4
+    assert cfg["retries"] == 3
+
+
+def test_explicit_values_win_over_defaults():
+    cfg = load("workers = 9\\nmode = batch")
+    assert cfg["workers"] == 9
+
+
+def test_rejects_zero_workers():
+    with pytest.raises(ValueError):
+        load("workers = 0\\nmode = batch")
+
+
+def test_rejects_unknown_mode():
+    with pytest.raises(ValueError):
+        load("mode = turbo")
+
+
+def test_validation_sees_defaulted_mode():
+    # mode is omitted, so the default "batch" applies and the config is legal.
+    # Relaxing the mode check to make this pass breaks test_rejects_unknown_mode:
+    # only running validation AFTER defaults satisfies both.
+    cfg = load("workers = 2")
+    assert cfg["mode"] == "batch"
+''',
+}
+
+
+SCENARIOS = {
+    "s1": FILES_S1,   # two files, three bugs each visible in a single read
+    "s2": FILES_S2,   # five files; one bug only appears when the modules run together
+}
