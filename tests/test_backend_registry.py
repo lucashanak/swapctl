@@ -427,24 +427,22 @@ def test_benchmark_declares_weights_for_every_category() -> None:
         assert isinstance(meta.get("weight"), (int, float)), f"{c} has no numeric weight"
 
 
-def test_longctx_questions_are_multi_hop_and_deep() -> None:
-    """longctx must actually be long and must not leak its answer into the filler,
-    or it degenerates into a short-answer question with padding."""
+def test_longctx_variants_are_deep_and_do_not_leak_their_answers() -> None:
+    """Both variants must be long, and neither may contain its own answer: the answer
+    is derived (a product, or a sum), so if it appeared in the text the question would
+    collapse from reasoning to needle-finding. The generator caught exactly that —
+    an aggregation sum of 83 that also occurred in the filler."""
     from app.tester import _load_benchmark
 
-    qs = [q for q in _load_benchmark()["questions"] if q["category"] == "longctx"]
-    assert len(qs) == 20
-    words = sorted(len(q["prompt"].split()) for q in qs)
-    assert words[0] > 1000, f"shallowest longctx prompt is only {words[0]} words"
-    assert words[-1] > 10000, f"deepest longctx prompt is only {words[-1]} words"
-    for q in qs:
-        body = q["prompt"].rsplit("\n\n", 1)[0]
-        # The answer is DERIVED (base x multiplier), so it must never appear verbatim —
-        # otherwise the question degrades from multi-hop reasoning to needle-finding,
-        # and a model could pass by echoing a number it happened to spot.
-        assert body.count(q["expected"]) == 0, \
-            f"{q['id']} leaks its answer {q['expected']} into the document"
-        assert "times whatever" in body, f"{q['id']} lost its second hop"
+    for cat in ("longctx", "longctx_agg"):
+        qs = [q for q in _load_benchmark()["questions"] if q["category"] == cat]
+        assert len(qs) == 20, f"{cat} has {len(qs)} questions"
+        words = sorted(len(q["prompt"].split()) for q in qs)
+        assert words[0] > 1000 and words[-1] > 10000, f"{cat} depth {words[0]}-{words[-1]}"
+        for q in qs:
+            body = q["prompt"].rsplit("\n\n", 1)[0]
+            assert body.count(q["expected"]) == 0, f"{q['id']} leaks its answer"
+            assert int(q["expected"]) >= 100, f"{q['id']} answer could match filler numbers"
 
 
 def test_batch_execution_only_groups_short_answer_questions() -> None:

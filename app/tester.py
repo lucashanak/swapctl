@@ -84,6 +84,8 @@ _THINKING_BUDGET_BY_CATEGORY = {
     # multi-hop retrieval over a long document: the reasoning is trivial once both
     # facts are found, so a MEDIUM budget only pays for the search, not for thinking
     "longctx": _TIER_LOW,
+    # aggregation needs a running total held across many retrieved facts
+    "longctx_agg": _TIER_MEDIUM,
     # one-shot code with no retry: planning before writing is part of the skill
     # being measured, so give it the same room as reasoning and math
     "exec": _TIER_MEDIUM,
