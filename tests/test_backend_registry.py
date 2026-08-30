@@ -447,26 +447,41 @@ def test_longctx_questions_are_multi_hop_and_deep() -> None:
         assert "times whatever" in body, f"{q['id']} lost its second hop"
 
 
-def test_batch_subs_have_short_canonical_answers() -> None:
-    """A batch reply is one line per answer, so every sub-question must have a short
-    single-line expected value. An empty `expected` means the source question was
-    free-form ("write three sentences"), whose own enumeration collides with the
-    batch numbering and makes the item unpassable for reasons unrelated to batching."""
-    from app.tester import _load_benchmark
-    import re
+def test_batch_execution_only_groups_short_answer_questions() -> None:
+    """Batching is a speed-up, so it must never change what a question is worth.
+    Only questions with a short canonical answer qualify: anything whose answer
+    spans lines, or whose prompt carries its own numbered list, would collide with
+    the batch numbering and lose marks for a formatting reason."""
+    from app.tester import _batch_eligible, _load_benchmark
 
     for q in _load_benchmark()["questions"]:
-        if q.get("category") != "batch":
+        if not _batch_eligible(q):
             continue
-        subs = q.get("subs") or []
-        assert len(subs) == 5, f"{q['id']} has {len(subs)} subs"
-        for i, s in enumerate(subs, 1):
-            exp = str(s.get("expected", "")).strip()
-            assert exp, f"{q['id']} sub {i} has no expected answer"
-            assert "\n" not in exp and len(exp) <= 40, f"{q['id']} sub {i}: {exp!r}"
-        # the batch's own numbering must be unambiguous
-        body = q["prompt"].split("\n\n", 1)[1]
-        assert len(re.findall(r"^\d+\. ", body, re.M)) == 5, f"{q['id']} numbering is ambiguous"
+        exp = str(q.get("expected", "")).strip()
+        assert exp and "\n" not in exp and len(exp) <= 40, q["id"]
+        assert q["category"] not in ("exec", "longctx"), q["id"]
+
+
+def test_split_batch_reply_maps_answers_to_indices() -> None:
+    from app.tester import _split_batch_reply
+
+    assert _split_batch_reply("1. 42\n2) Paris\n3: B", 3) == ["42", "Paris", "B"]
+    # a missing index yields an empty slot, which makes the caller fall back to
+    # asking that batch one question at a time rather than scoring blanks
+    assert _split_batch_reply("1. 42", 3)[2] == ""
+    # a restated list plus the real answers: keep both, let the grader decide
+    assert "42" in _split_batch_reply("1. the maths one\n\n1. 42\n2. x\n3. y", 3)[0]
+
+
+def test_no_question_is_asked_twice() -> None:
+    """The removed `batch` category reused questions the suite already asked, so
+    those items counted twice toward the score."""
+    from app.tester import _load_benchmark
+
+    ids = [q["id"] for q in _load_benchmark()["questions"]]
+    assert len(ids) == len(set(ids)), "duplicate question ids"
+    prompts = [q["prompt"] for q in _load_benchmark()["questions"]]
+    assert len(prompts) == len(set(prompts)), "the same prompt appears twice"
 
 
 def test_every_test_type_persists_its_result() -> None:

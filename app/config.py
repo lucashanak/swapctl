@@ -77,6 +77,9 @@ class Settings:
     swap_endpoint: str = field(default_factory=lambda: _env("SWAPCTL_ENDPOINT", "http://127.0.0.1:8080"))
     port_base: int = field(default_factory=lambda: _env_int("SWAPCTL_PORT_BASE", 9100))
     ctx_default: int = field(default_factory=lambda: _env_int("SWAPCTL_CTX_DEFAULT", 65536))
+    # Questions per intelligence request. 1 disables batching. Only questions with a
+    # short canonical answer are grouped; the rest still go one at a time.
+    iq_batch_size: int = field(default_factory=lambda: _env_int("SWAPCTL_IQ_BATCH_SIZE", 1))
     # LIVE co-residency budget in GiB: sum of (weights + KV reserve) across
     # co-resident models must stay under this. Sized to leave host headroom
     # under the 112 GiB amdgpu GTT cap / 124 GiB RAM (guard #5 is the backstop).
@@ -185,6 +188,11 @@ def get_iq_parallel() -> bool:
     except OSError:
         return False
 
+
+
+def get_iq_batch_size() -> int:
+    """Questions per intelligence request (1 = one at a time)."""
+    return max(1, int(settings.iq_batch_size))
 
 def set_iq_parallel(enabled: bool) -> None:
     _IQ_PARALLEL_FILE.parent.mkdir(parents=True, exist_ok=True)

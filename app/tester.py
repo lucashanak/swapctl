@@ -19,7 +19,7 @@ from pathlib import Path
 import httpx
 
 from . import SwapctlError
-from .config import settings
+from .config import settings, get_iq_batch_size
 
 log = logging.getLogger("swapctl.tester")
 
@@ -87,9 +87,6 @@ _THINKING_BUDGET_BY_CATEGORY = {
     # one-shot code with no retry: planning before writing is part of the skill
     # being measured, so give it the same room as reasoning and math
     "exec": _TIER_MEDIUM,
-    # five questions at once: the model has to reason about each and hold the
-    # output format, so it needs at least what the individual questions get
-    "batch": _TIER_MEDIUM,
 }
 
 
@@ -413,6 +410,44 @@ def _score_batch(question: dict, text: str) -> bool:
     return True
 
 
+# Batched execution: ask several questions in one request instead of one each.
+# This is a speed optimisation, not a category — each question is still graded
+# and counted individually. Only questions with a short canonical answer qualify;
+# anything whose answer spans lines, or whose prompt carries its own numbered
+# list, would collide with the batch's numbering.
+_BATCH_EXEC_CATS = {"math", "reasoning", "code", "knowledge", "czech",
+                    "sysadmin", "instruction"}
+_BATCH_EXEC_MATCH = {"regex", "mcq", "contains_ci", "exact_ci"}
+
+
+def _batch_eligible(q: dict) -> bool:
+    if q.get("category") not in _BATCH_EXEC_CATS:
+        return False
+    if q.get("match") not in _BATCH_EXEC_MATCH:
+        return False
+    exp = str(q.get("expected", "")).strip()
+    if not exp or "\n" in exp or len(exp) > 40:
+        return False
+    if q.get("max_tokens", 150) > 300 or len(q.get("prompt", "")) > 600:
+        return False
+    if re.search(r"^\s*\d+[.)]\s", q.get("prompt", ""), re.M):
+        return False
+    low = q.get("prompt", "").lower()
+    return not any(t in low for t in ("json", "grid", "three lines", "each line",
+                                      "lines of output", "one per line", "row 1",
+                                      "newline", "sentences", "paragraph", "bullet"))
+
+
+def _split_batch_reply(text: str, n: int) -> list[str]:
+    """Map a numbered reply back to per-question answers. An index may appear more
+    than once (models restate the list, or add a recap); keep every candidate and
+    let the grader decide, joined so any of them can satisfy the match."""
+    found: dict[int, list[str]] = {}
+    for m in _BATCH_LINE.finditer(text or ""):
+        found.setdefault(int(m.group(1)), []).append(m.group(2))
+    return ["\n".join(found.get(i, [])) for i in range(1, n + 1)]
+
+
 def _extract_answer(text: str) -> str:
     """Try to extract the core answer from a response that may contain reasoning."""
     parts = _ANSWER_DELIMITERS.split(text)
@@ -696,23 +731,80 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             pass
         return (q, content, tg, tokens)
 
+    def _answer_batch(qs: list[dict]) -> list[tuple[dict, str, float, int]]:
+        """One request for several questions; each is still graded on its own.
+
+        Falls back to answering them individually if the reply cannot be split —
+        a model that ignores the numbering should lose the speed-up, not the marks.
+        """
+        n = len(qs)
+        budget = max((_THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 128) or 0)
+                     for q in qs) if thinking else None
+        max_tok = sum(q.get("max_tokens", 150) for q in qs) + 120 * n
+        if thinking and budget:
+            max_tok = max(max_tok + budget + 100, 512)
+        header = (f"Answer all {n} questions below. Reply with exactly {n} lines, each "
+                  f"starting with the question number, a full stop, and then only the "
+                  f"answer — no working, no explanation, no repetition of the question.\n\n")
+        prompt = header + "\n\n".join(f"{i}. {q['prompt']}" for i, q in enumerate(qs, 1))
+        try:
+            data = _chat(endpoint, model_id, prompt, max_tok, reasoning_effort=effort,
+                         sampling=sampling, system_prompt=sys_prompt,
+                         enable_thinking=thinking, thinking_budget=budget)
+            msg = data["choices"][0]["message"]
+            content = _strip_think_tags(msg.get("content") or "")
+            if not content.strip() and msg.get("reasoning_content"):
+                content = _strip_think_tags(msg["reasoning_content"])
+            tg = (data.get("timings") or {}).get("predicted_per_second", 0) or 0
+            tokens = (data.get("usage") or {}).get("completion_tokens", 0) or 0
+        except Exception:
+            return [_answer_one(q) for q in qs]
+
+        parts = _split_batch_reply(content, n)
+        if sum(1 for x in parts if x.strip()) < n:
+            return [_answer_one(q) for q in qs]
+        share = tokens // n if n else 0
+        return [(q, parts[i], tg, share) for i, q in enumerate(qs)]
+
     responses_by_idx: dict[int, tuple[dict, str, int]] = {}
     tg_speeds: list[float] = []
     completed = 0
 
+    # Group eligible questions so several ride in one request. Ineligible ones
+    # (long answers, own numbering, structured output) still go singly.
+    bsize = get_iq_batch_size()
+    units: list[tuple[list[int], list[dict]]] = []
+    if bsize > 1:
+        pend_i: list[int] = []
+        pend_q: list[dict] = []
+        for i, q in enumerate(questions):
+            if _batch_eligible(q):
+                pend_i.append(i); pend_q.append(q)
+                if len(pend_q) == bsize:
+                    units.append((pend_i, pend_q)); pend_i, pend_q = [], []
+            else:
+                units.append(([i], [q]))
+        if pend_q:
+            units.append((pend_i, pend_q))
+    else:
+        units = [([i], [q]) for i, q in enumerate(questions)]
+
+    def _run_unit(qs: list[dict]) -> list[tuple[dict, str, float, int]]:
+        return _answer_batch(qs) if len(qs) > 1 else [_answer_one(qs[0])]
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_answer_one, q): i for i, q in enumerate(questions)}
+        futures = {pool.submit(_run_unit, qs): idxs for idxs, qs in units}
         for fut in as_completed(futures):
             if job_id and job_id in _cancelled:
                 for f in futures:
                     f.cancel()
                 raise SwapctlError("cancelled")
-            idx = futures[fut]
-            q, content, tg, tokens = fut.result()
-            responses_by_idx[idx] = (q, content, tokens)
-            if tg > 0:
-                tg_speeds.append(tg)
-            completed += 1
+            idxs = futures[fut]
+            for idx, (q, content, tg, tokens) in zip(idxs, fut.result()):
+                responses_by_idx[idx] = (q, content, tokens)
+                if tg > 0:
+                    tg_speeds.append(tg)
+            completed += len(idxs)
             if job_id:
                 elapsed = time.time() - t_start
                 avg_per_q = elapsed / completed if completed > 0 else 0
