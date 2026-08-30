@@ -407,10 +407,14 @@ def test_no_category_disables_thinking_outright() -> None:
     """gpt-oss cannot turn reasoning off — _chat floors it at effort "low". A budget
     of 0 therefore handicaps every OTHER model, which is worth ~25 points on the
     instruction category. Every category must sit at or above that floor."""
-    from app.tester import _THINKING_BUDGET_BY_CATEGORY, _TIER_LOW
+    from app.tester import _THINKING_BUDGET_BY_CATEGORY, _TIER_LOW, _TIER_UNCAPPED
 
-    zero = [c for c, b in _THINKING_BUDGET_BY_CATEGORY.items() if b < _TIER_LOW]
-    assert not zero, f"categories below the gpt-oss floor: {zero}"
+    # Legal values are the uncapped sentinel, or a budget at/above the floor that
+    # gpt-oss cannot go below. What must never appear is a small positive cap or 0:
+    # those silence or truncate every other model while gpt-oss keeps reasoning.
+    bad = [c for c, b in _THINKING_BUDGET_BY_CATEGORY.items()
+           if b != _TIER_UNCAPPED and b < _TIER_LOW]
+    assert not bad, f"categories that handicap non-gpt-oss models: {bad}"
 
 
 def test_benchmark_declares_weights_for_every_category() -> None:

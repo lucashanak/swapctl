@@ -62,6 +62,11 @@ def _load_benchmark() -> dict:
 _TIER_LOW = 512
 _TIER_MEDIUM = 1024
 _TIER_HIGH = 8192
+# No cap on thinking. Capping hurts Qwen-family reasoners, which are built to
+# think their way to an answer and get truncated mid-derivation. Distinct from
+# None, which _chat reads as "no preference" and which drops gpt-oss to effort
+# "low" — that would just re-create this morning's asymmetry pointing the other way.
+_TIER_UNCAPPED = -1
 
 # A budget of 0 disables thinking outright for most models, but gpt-oss has no
 # off-switch — _chat() floors it at reasoning_effort "low". That made five of the
@@ -71,25 +76,24 @@ _TIER_HIGH = 8192
 # So the floor is _TIER_LOW everywhere: every model now gets the same small
 # allowance that gpt-oss cannot switch off.
 _THINKING_BUDGET_BY_CATEGORY = {
-    "reasoning": _TIER_MEDIUM,
-    "math": _TIER_MEDIUM,
-    "code": _TIER_LOW,
-    "sysadmin": _TIER_LOW,
-    "knowledge": _TIER_LOW,
-    "coding": _TIER_LOW,
-    "instruction": _TIER_LOW,
-    "structured": _TIER_LOW,
-    "czech": _TIER_LOW,
-    "summarization": _TIER_LOW,
-    # multi-hop retrieval over a long document: the reasoning is trivial once both
-    # facts are found, so a MEDIUM budget only pays for the search, not for thinking
-    "longctx": _TIER_LOW,
-    # aggregation needs a running total held across many retrieved facts
-    "longctx_agg": _TIER_MEDIUM,
-    # one-shot code with no retry: planning before writing is part of the skill
-    # being measured, so give it the same room as reasoning and math
-    "exec": _TIER_MEDIUM,
+    # Every category runs uncapped. Nothing here is a question where cutting the
+    # model off mid-thought measures anything useful, and on Qwen-family models a
+    # cap actively costs marks.
+    "reasoning": _TIER_UNCAPPED,
+    "math": _TIER_UNCAPPED,
+    "code": _TIER_UNCAPPED,
+    "sysadmin": _TIER_UNCAPPED,
+    "knowledge": _TIER_UNCAPPED,
+    "coding": _TIER_UNCAPPED,
+    "instruction": _TIER_UNCAPPED,
+    "structured": _TIER_UNCAPPED,
+    "czech": _TIER_UNCAPPED,
+    "summarization": _TIER_UNCAPPED,
+    "longctx": _TIER_UNCAPPED,
+    "longctx_agg": _TIER_UNCAPPED,
+    "exec": _TIER_UNCAPPED,
 }
+
 
 
 def _chat(
@@ -124,7 +128,16 @@ def _chat(
     # gpt-oss uses Harmony format — only supports reasoning_effort tier (low/medium/high),
     # ignores thinking_budget_tokens. Map per-category budget to effort tier.
     is_gpt_oss = "gpt-oss" in (model or "").lower()
-    if is_gpt_oss:
+    if thinking_budget is not None and thinking_budget < 0:
+        # uncapped: give each family its maximum. gpt-oss cannot be told a token
+        # budget, so it gets its top effort tier; everything else simply gets no
+        # thinking_budget_tokens and stops when it is done.
+        if is_gpt_oss:
+            body["chat_template_kwargs"] = {"reasoning_effort": "high"}
+            body["reasoning_effort"] = "high"
+        else:
+            body["chat_template_kwargs"] = {"enable_thinking": True}
+    elif is_gpt_oss:
         # gpt-oss has no off-switch; budget=0 falls back to "low" (~200 token overhead).
         if thinking_budget is None or thinking_budget <= _TIER_LOW:
             effort = "low"
@@ -649,6 +662,57 @@ def _detect_thinking_support(endpoint: str, model_id: str) -> bool | None:
         return None
 
 
+def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
+                    sampling: dict | None = None, sys_prompt: str = "",
+                    thinking: bool = True) -> tuple[str, float, int]:
+    """Ask one benchmark question exactly the way a scored run asks it.
+
+    Calibration probes MUST go through here rather than calling _chat directly.
+    A probe that picked its own thinking budget measured longctx_agg at 75% while
+    the shipped configuration scored 95% on the same questions and model — the
+    difficulty I had calibrated for was not the difficulty that shipped.
+
+    Returns (content, tokens_per_second, completion_tokens).
+    """
+    max_tok = q.get("max_tokens", 100)
+    budget = _THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 128) if thinking else None
+    if budget == _TIER_UNCAPPED:
+        # no thinking cap, but the server still needs a response ceiling; make it
+        # roomy enough that a long derivation is not what ends the answer
+        max_tok = max(max_tok + 4096, 2048)
+    elif thinking and budget and budget > 0:
+        max_tok = max(max_tok + budget + 100, 512)
+    q_sys_prompt = sys_prompt
+    if budget == 0 and "<|think|>" in q_sys_prompt:
+        q_sys_prompt = q_sys_prompt.replace("<|think|>", "").strip()
+    content, tg, tokens = "", 0.0, 0
+    try:
+        data = _chat(endpoint, model_id, q["prompt"], max_tok, reasoning_effort=effort,
+                     sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
+                     thinking_budget=budget)
+        tg = (data.get("timings") or {}).get("predicted_per_second", 0) or 0
+        tokens = (data.get("usage") or {}).get("completion_tokens", 0) or 0
+        msg = data["choices"][0]["message"]
+        content = _strip_think_tags(msg.get("content") or "")
+        if not content.strip() and msg.get("reasoning_content"):
+            content = _strip_think_tags(msg["reasoning_content"])
+        finish = data["choices"][0].get("finish_reason", "")
+        if (not content.strip() or finish == "length") and not _score_answer(q, content):
+            data2 = _chat(endpoint, model_id, q["prompt"], max_tok * 2, reasoning_effort=effort,
+                          sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
+                          thinking_budget=budget)
+            msg2 = data2["choices"][0]["message"]
+            content2 = _strip_think_tags(msg2.get("content") or "")
+            if not content2.strip() and msg2.get("reasoning_content"):
+                content2 = _strip_think_tags(msg2["reasoning_content"])
+            if content2.strip():
+                content = content2
+                tokens = (data2.get("usage") or {}).get("completion_tokens", 0) or tokens
+    except Exception:
+        pass
+    return content, tg, tokens
+
+
 def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = False) -> dict:
     from . import registry as _reg
     endpoint = settings.swap_endpoint.rstrip("/")
@@ -703,41 +767,9 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     workers = max(1, min(get_parallel_slots(), total_q)) if get_iq_parallel() else 1
 
     def _answer_one(q: dict) -> tuple[dict, str, float, int]:
-        max_tok = q.get("max_tokens", 100)
-        budget = _THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 128) if thinking else None
-        if thinking and budget and budget > 0:
-            max_tok = max(max_tok + budget + 100, 512)
-        q_sys_prompt = sys_prompt
-        if budget == 0 and "<|think|>" in q_sys_prompt:
-            q_sys_prompt = q_sys_prompt.replace("<|think|>", "").strip()
-        content = ""
-        tg = 0.0
-        tokens = 0
-        try:
-            data = _chat(endpoint, model_id, q["prompt"], max_tok, reasoning_effort=effort,
-                         sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
-                         thinking_budget=budget)
-            tg = (data.get("timings") or {}).get("predicted_per_second", 0) or 0
-            tokens = (data.get("usage") or {}).get("completion_tokens", 0) or 0
-            msg = data["choices"][0]["message"]
-            content = _strip_think_tags(msg.get("content") or "")
-            if not content.strip() and msg.get("reasoning_content"):
-                content = _strip_think_tags(msg["reasoning_content"])
-            finish = data["choices"][0].get("finish_reason", "")
-            if (not content.strip() or finish == "length") and not _score_answer(q, content):
-                retry_tok = max_tok * 2
-                data2 = _chat(endpoint, model_id, q["prompt"], retry_tok, reasoning_effort=effort,
-                              sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
-                              thinking_budget=budget)
-                msg2 = data2["choices"][0]["message"]
-                content2 = _strip_think_tags(msg2.get("content") or "")
-                if not content2.strip() and msg2.get("reasoning_content"):
-                    content2 = _strip_think_tags(msg2["reasoning_content"])
-                if content2.strip():
-                    content = content2
-                    tokens = (data2.get("usage") or {}).get("completion_tokens", 0) or tokens
-        except Exception:
-            pass
+        content, tg, tokens = answer_question(
+            q, endpoint, model_id, effort=effort, sampling=sampling,
+            sys_prompt=sys_prompt, thinking=thinking)
         return (q, content, tg, tokens)
 
     def _answer_batch(qs: list[dict]) -> list[tuple[dict, str, float, int]]:
