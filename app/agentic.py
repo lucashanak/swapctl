@@ -166,6 +166,26 @@ def _dispatch(name: str, args: dict, workdir: str) -> str:
     return f"unknown tool: {name}"
 
 
+def _is_infra_error(status: int, body: str) -> bool:
+    """Is this failure the infrastructure's fault, or the model's?
+
+    A 500 "Failed to parse tool call arguments as JSON" means the model produced
+    arguments that are not valid JSON — typically failing to escape source code
+    it was writing into a string. In an agentic run that IS the failure being
+    measured, so it must count against the model rather than be excluded as a
+    bad sample. Transport errors and a server that is busy or swapping are the
+    infrastructure's fault and say nothing about the model.
+    """
+    if status in (502, 503, 504):
+        return True
+    low = body.lower()
+    model_faults = ("parse tool call", "failed to parse", "exceeds the available context",
+                    "context window", "tokens exceed")
+    if any(f in low for f in model_faults):
+        return False
+    return status not in (400, 422)
+
+
 def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
                 scenario: str = "s2") -> dict:
     """One episode. Returns solved/turns/tool_calls and why it stopped."""
@@ -194,7 +214,7 @@ def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
                 # A failed request is not a failed model. Retry transient errors;
                 # if the call still will not go through, mark the episode errored so
                 # it can be excluded rather than counted as "could not solve it".
-                msg, err = None, None
+                msg, err, infra = None, None, True
                 for attempt in range(3):
                     try:
                         r = client.post(f"{endpoint}/v1/chat/completions", json={
@@ -206,13 +226,22 @@ def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
                         err = None
                         break
                     except httpx.HTTPStatusError as exc:
-                        err = f"http_{exc.response.status_code}: {exc.response.text[:200]}"
+                        code, text = exc.response.status_code, exc.response.text[:300]
+                        err = f"http_{code}: {text}"
+                        infra = _is_infra_error(code, text)
                     except Exception as exc:
-                        err = f"{type(exc).__name__}: {str(exc)[:200]}"
+                        err = f"{type(exc).__name__}: {str(exc)[:300]}"
+                        infra = True
+                    if not infra:
+                        # The model emitted output the server could not parse. At
+                        # temperature 0 a retry reproduces it exactly, and it is the
+                        # model's failure, not the harness's — stop and count it.
+                        break
                     time.sleep(5 * (attempt + 1))
                 if msg is None:
-                    stop = f"api_error after 3 tries — {err}"
-                    errored = True
+                    stop = (f"api_error — {err}" if infra
+                            else f"malformed_output — {err}")
+                    errored = infra
                     break
 
                 messages.append(msg)

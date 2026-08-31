@@ -1200,6 +1200,9 @@ def _score_agentic(episodes: list[dict], scenario: str = "s2") -> dict:
         "solved": len(solved),
         "episodes": len(episodes),
         "errored_episodes": len(episodes) - len(usable),
+        "malformed_episodes": sum(
+            1 for e in episodes
+            if str(e.get("stop_reason", "")).startswith("malformed_output")),
         "avg_tool_calls": round(sum(e.get("tool_calls", 0) for e in solved) / len(solved), 1) if solved else None,
         "duration": round(sum(e.get("duration", 0) for e in episodes)),
         "detail": episodes,
