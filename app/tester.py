@@ -949,7 +949,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     j = _jobs.get(job_id)
                     if j is not None:
                         j["progress"] = {"step": "judging", "current": ji, "total": n_failed, "percent": round(ji / n_failed * 100, 1)}
-            q, content, _ = responses[i]
+            q, content, _, _ = responses[i]
             verdict = _llm_judge(endpoint, q, content)
             details[i]["judge"] = "pass" if verdict else "fail"
             if verdict:
