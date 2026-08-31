@@ -664,7 +664,7 @@ def _detect_thinking_support(endpoint: str, model_id: str) -> bool | None:
 
 def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
                     sampling: dict | None = None, sys_prompt: str = "",
-                    thinking: bool = True) -> tuple[str, float, int]:
+                    thinking: bool = True) -> tuple[str, float, int, str | None]:
     """Ask one benchmark question exactly the way a scored run asks it.
 
     Calibration probes MUST go through here rather than calling _chat directly.
@@ -672,10 +672,11 @@ def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
     the shipped configuration scored 95% on the same questions and model — the
     difficulty I had calibrated for was not the difficulty that shipped.
 
-    Returns (content, tokens_per_second, completion_tokens).
+    Returns (content, tokens_per_second, completion_tokens, error_or_None).
     """
     max_tok = q.get("max_tokens", 100)
     budget = _THINKING_BUDGET_BY_CATEGORY.get(q.get("category", ""), 128) if thinking else None
+    err: str | None = None
     if budget == _TIER_UNCAPPED:
         # no thinking cap, but the server still needs a response ceiling; make it
         # roomy enough that a long derivation is not what ends the answer
@@ -685,9 +686,15 @@ def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
     q_sys_prompt = sys_prompt
     if budget == 0 and "<|think|>" in q_sys_prompt:
         q_sys_prompt = q_sys_prompt.replace("<|think|>", "").strip()
+    # Uncapping thinking raised max_tok to 4096+, which at bonsai's 9.7 tok/s needs
+    # ~420s — well past the fixed 300s default. 79 of its 149 answers came back
+    # empty and were scored as wrong, producing a "37.6" that measured the timeout
+    # rather than the model. Allow for a slow model plus a long prefill.
+    timeout_s = min(1800.0, max(300.0, max_tok / 4.0 + 180.0))
     content, tg, tokens = "", 0.0, 0
     try:
-        data = _chat(endpoint, model_id, q["prompt"], max_tok, reasoning_effort=effort,
+        data = _chat(endpoint, model_id, q["prompt"], max_tok, timeout=timeout_s,
+                     reasoning_effort=effort,
                      sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
                      thinking_budget=budget)
         tg = (data.get("timings") or {}).get("predicted_per_second", 0) or 0
@@ -698,7 +705,8 @@ def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
             content = _strip_think_tags(msg["reasoning_content"])
         finish = data["choices"][0].get("finish_reason", "")
         if (not content.strip() or finish == "length") and not _score_answer(q, content):
-            data2 = _chat(endpoint, model_id, q["prompt"], max_tok * 2, reasoning_effort=effort,
+            data2 = _chat(endpoint, model_id, q["prompt"], max_tok * 2, timeout=timeout_s * 2,
+                          reasoning_effort=effort,
                           sampling=sampling, system_prompt=q_sys_prompt, enable_thinking=thinking,
                           thinking_budget=budget)
             msg2 = data2["choices"][0]["message"]
@@ -708,9 +716,12 @@ def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
             if content2.strip():
                 content = content2
                 tokens = (data2.get("usage") or {}).get("completion_tokens", 0) or tokens
-    except Exception:
-        pass
-    return content, tg, tokens
+    except Exception as exc:
+        # Never let a failed request masquerade as a wrong answer. The caller
+        # decides whether it is the model's fault (an empty but successful reply)
+        # or the harness's (a timeout, a reset, a 5xx).
+        err = f"{type(exc).__name__}: {str(exc)[:200]}"
+    return content, tg, tokens, err
 
 
 def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = False) -> dict:
@@ -766,13 +777,19 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     total_q = len(questions)
     workers = max(1, min(get_parallel_slots(), total_q)) if get_iq_parallel() else 1
 
-    def _answer_one(q: dict) -> tuple[dict, str, float, int]:
-        content, tg, tokens = answer_question(
+    def _answer_one(q: dict) -> tuple[dict, str, float, int, str | None]:
+        content, tg, tokens, err = answer_question(
             q, endpoint, model_id, effort=effort, sampling=sampling,
             sys_prompt=sys_prompt, thinking=thinking)
-        return (q, content, tg, tokens)
+        if err and not content.strip():
+            # One retry: a timeout or a reset is usually transient, and the
+            # alternative is scoring a question the model never got to answer.
+            content, tg, tokens, err = answer_question(
+                q, endpoint, model_id, effort=effort, sampling=sampling,
+                sys_prompt=sys_prompt, thinking=thinking)
+        return (q, content, tg, tokens, err)
 
-    def _answer_batch(qs: list[dict]) -> list[tuple[dict, str, float, int]]:
+    def _answer_batch(qs: list[dict]) -> list[tuple[dict, str, float, int, str | None]]:
         """One request for several questions; each is still graded on its own.
 
         Falls back to answering them individually if the reply cannot be split —
@@ -805,7 +822,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         if sum(1 for x in parts if x.strip()) < n:
             return [_answer_one(q) for q in qs]
         share = tokens // n if n else 0
-        return [(q, parts[i], tg, share) for i, q in enumerate(qs)]
+        return [(q, parts[i], tg, share, None) for i, q in enumerate(qs)]
 
     responses_by_idx: dict[int, tuple[dict, str, int]] = {}
     tg_speeds: list[float] = []
@@ -830,7 +847,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     else:
         units = [([i], [q]) for i, q in enumerate(questions)]
 
-    def _run_unit(qs: list[dict]) -> list[tuple[dict, str, float, int]]:
+    def _run_unit(qs: list[dict]) -> list[tuple[dict, str, float, int, str | None]]:
         return _answer_batch(qs) if len(qs) > 1 else [_answer_one(qs[0])]
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -841,8 +858,8 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     f.cancel()
                 raise SwapctlError("cancelled")
             idxs = futures[fut]
-            for idx, (q, content, tg, tokens) in zip(idxs, fut.result()):
-                responses_by_idx[idx] = (q, content, tokens)
+            for idx, (q, content, tg, tokens, err) in zip(idxs, fut.result()):
+                responses_by_idx[idx] = (q, content, tokens, err)
                 if tg > 0:
                     tg_speeds.append(tg)
             completed += len(idxs)
@@ -863,9 +880,10 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                             "eta_sec": eta,
                         }
 
-    responses: list[tuple[dict, str, int]] = [responses_by_idx[i] for i in range(total_q)]
+    responses: list[tuple[dict, str, int, str | None]] = [
+        responses_by_idx[i] for i in range(total_q)]
 
-    empty_count = sum(1 for _, c, _ in responses if not c.strip())
+    empty_count = sum(1 for _, c, _, _ in responses if not c.strip())
     if empty_count > len(responses) * 0.2:
         log.warning("%s: %d/%d responses empty — model may not be working", model_id, empty_count, len(responses))
 
@@ -874,7 +892,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     details: list[dict] = []
     failed_indices: list[int] = []
 
-    for i, (q, content, tokens) in enumerate(responses):
+    for i, (q, content, tokens, err) in enumerate(responses):
         cat = q["category"]
         diff = q.get("difficulty", "medium")
         if cat not in categories:
@@ -882,25 +900,36 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         if diff not in difficulties:
             difficulties[diff] = {"total": 0, "passed": 0}
 
-        passed = _score_answer(q, content)
-        categories[cat]["total"] += 1
-        categories[cat]["tokens"] += tokens
-        difficulties[diff]["total"] += 1
-        if passed:
-            categories[cat]["passed"] += 1
-            difficulties[diff]["passed"] += 1
+        # A question the model never got to answer is not a question it got
+        # wrong. bonsai timed out on 79 of 149 and scored 37.6 — a number that
+        # measured the 300s ceiling, not the model. Errored questions leave the
+        # denominator entirely rather than counting against it.
+        errored = bool(err) and not content.strip()
+        passed = False if errored else _score_answer(q, content)
+        if not errored:
+            categories[cat]["total"] += 1
+            categories[cat]["tokens"] += tokens
+            difficulties[diff]["total"] += 1
+            if passed:
+                categories[cat]["passed"] += 1
+                difficulties[diff]["passed"] += 1
+        else:
+            categories[cat].setdefault("errored", 0)
+            categories[cat]["errored"] += 1
 
         details.append({
             "id": q["id"],
             "category": cat,
             "difficulty": diff,
             "passed": passed,
+            "errored": errored,
+            "error": err if errored else None,
             "judge": None,
             "tokens": tokens,
             "response": content[:300],
         })
 
-        if not passed and content.strip():
+        if not passed and not errored and content.strip():
             failed_indices.append(i)
 
     if failed_indices:
@@ -954,6 +983,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
 
     total = sum(c["total"] for c in categories.values())
     total_passed = sum(c["passed"] for c in categories.values())
+    total_errored = sum(c.get("errored", 0) for c in categories.values())
     total_tokens = sum(c.get("tokens", 0) for c in categories.values())
     score = round((total_passed / total) * 100, 1) if total > 0 else 0
 
@@ -998,6 +1028,10 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
 
     return {
         "score": score,
+        # A run that lost a chunk of its questions to timeouts is not a
+        # measurement. Report it loudly rather than letting the score stand alone.
+        "errored_questions": total_errored,
+        "degraded": total_errored > 0.1 * (total + total_errored),
         "weighted_score": weighted_score,
         "category_weights": weights,
         "passed": total_passed,
