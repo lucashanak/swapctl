@@ -184,21 +184,35 @@ def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
         t0 = time.time()
         turns = tool_calls = 0
         solved = False
+        errored = False
         stop = "max_turns"
         no_tool_turns = 0
 
         with httpx.Client(timeout=timeout) as client:
             while turns < MAX_TURNS:
                 turns += 1
-                try:
-                    r = client.post(f"{endpoint}/v1/chat/completions", json={
-                        "model": model_id, "messages": messages, "tools": TOOLS,
-                        "tool_choice": "auto", "max_tokens": 1200, "temperature": 0,
-                    })
-                    r.raise_for_status()
-                    msg = r.json()["choices"][0]["message"]
-                except Exception as exc:
-                    stop = f"api_error: {type(exc).__name__}"
+                # A failed request is not a failed model. Retry transient errors;
+                # if the call still will not go through, mark the episode errored so
+                # it can be excluded rather than counted as "could not solve it".
+                msg, err = None, None
+                for attempt in range(3):
+                    try:
+                        r = client.post(f"{endpoint}/v1/chat/completions", json={
+                            "model": model_id, "messages": messages, "tools": TOOLS,
+                            "tool_choice": "auto", "max_tokens": 1200, "temperature": 0,
+                        })
+                        r.raise_for_status()
+                        msg = r.json()["choices"][0]["message"]
+                        err = None
+                        break
+                    except httpx.HTTPStatusError as exc:
+                        err = f"http_{exc.response.status_code}: {exc.response.text[:200]}"
+                    except Exception as exc:
+                        err = f"{type(exc).__name__}: {str(exc)[:200]}"
+                    time.sleep(5 * (attempt + 1))
+                if msg is None:
+                    stop = f"api_error after 3 tries — {err}"
+                    errored = True
                     break
 
                 messages.append(msg)
@@ -236,6 +250,7 @@ def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
         verified, _ = _run_tests(workdir)
         return {
             "solved": bool(verified),
+            "errored": errored,
             "claimed_solved": solved,
             "turns": turns,
             "tool_calls": tool_calls,

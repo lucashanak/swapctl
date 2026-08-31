@@ -1173,11 +1173,22 @@ def _run_agentic_test(model_id: str, scenario: str = "s2") -> dict:
     """
     from .agentic import run_agentic
 
-    reference = {"s1": 3, "s2": 5}.get(scenario, 5)
     episodes = [run_agentic(settings.swap_endpoint, model_id, scenario=scenario)
                 for _ in range(3)]
-    solved = [e for e in episodes if e["solved"]]
-    rate = len(solved) / len(episodes)
+    return _score_agentic(episodes, scenario=scenario)
+
+
+def _score_agentic(episodes: list[dict], scenario: str = "s2") -> dict:
+    """Turn episode records into a score. Kept separate from running them so the
+    scoring rules can be tested without a model behind them."""
+    reference = {"s1": 3, "s2": 5}.get(scenario, 5)
+    # Episodes that died on a transport error measure the infrastructure, not the
+    # model — ornith once scored 33.3 because two of three runs hit an HTTP error
+    # mid-episode and were counted as failures to solve. Exclude them; if every
+    # episode errored there is nothing to report.
+    usable = [e for e in episodes if not e.get("errored")]
+    solved = [e for e in usable if e["solved"]]
+    rate = (len(solved) / len(usable)) if usable else 0.0
     avg_turns = (sum(e["turns"] for e in solved) / len(solved)) if solved else None
     efficiency = min(1.0, reference / avg_turns) if avg_turns else 0.0
     return {
@@ -1188,8 +1199,9 @@ def _run_agentic_test(model_id: str, scenario: str = "s2") -> dict:
         "scenario": scenario,
         "solved": len(solved),
         "episodes": len(episodes),
-        "avg_tool_calls": round(sum(e["tool_calls"] for e in solved) / len(solved), 1) if solved else None,
-        "duration": round(sum(e["duration"] for e in episodes)),
+        "errored_episodes": len(episodes) - len(usable),
+        "avg_tool_calls": round(sum(e.get("tool_calls", 0) for e in solved) / len(solved), 1) if solved else None,
+        "duration": round(sum(e.get("duration", 0) for e in episodes)),
         "detail": episodes,
     }
 
