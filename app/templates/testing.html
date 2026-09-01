@@ -340,10 +340,10 @@
 {% endif %}
 <div id="testing-live">
 
-<div class="bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide" id="test-table"
+<div class="bg-slate-800 rounded-lg shadow overflow-x-auto" id="test-table"
      x-data="sortTestTable()" :class="showSmall && 'show-small'">
   {% if models %}
-  <table class="w-full text-xs">
+  <table class="w-full min-w-max text-xs">
     <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
       <tr>
         <th class="px-2 sm:px-3 py-2 cursor-pointer select-none hover:text-slate-200" @click="sort('model')">Model <span x-text="indicator('model')"></span></th>
@@ -380,7 +380,7 @@
           {% if is_small %}class="small-model"{% endif %}
           x-data="{ editOpen: false, confirmRemove: false, delOpen: false, detailOpen: false, repoInput: '{{ m.repo_id or '' }}' }">
         <td class="px-2 sm:px-3 py-1.5">
-          <div class="font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} truncate max-w-[120px] sm:max-w-none" title="{{ m.model_id }}">{{ m.model_id }}</div>
+          <div class="font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} whitespace-nowrap" title="{{ m.model_id }}">{{ m.model_id }}</div>
           {% if m.mmproj or m.tags or m.repo_id %}
           <div class="flex flex-wrap gap-0.5 mt-0.5">
             {% if m.mmproj %}<span class="text-[8px] px-1 py-0.5 rounded bg-fuchsia-900/60 text-fuchsia-300">vision</span>{% endif %}
@@ -851,8 +851,8 @@
       </button>
     </div>
   </div>
-  <div class="bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide">
-    <table class="w-full text-xs">
+  <div class="bg-slate-800 rounded-lg shadow overflow-x-auto">
+    <table class="w-full min-w-max text-xs">
       <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
         <tr>
           <th class="px-3 py-2">Model</th>
@@ -968,12 +968,12 @@ function sortTestTable() {
 
 {% set tested_models = models | selectattr('intelligence') | list %}
 {% if tested_models %}
-<div class="mt-4 sm:mt-6 bg-slate-800 rounded-lg shadow overflow-x-auto scrollbar-hide" x-data="{ init() { colorizeColumns(this.$refs.rtbody, [{col:'rspd'},{col:'riq'},{col:'reff'}]); } }">
+<div class="mt-4 sm:mt-6 bg-slate-800 rounded-lg shadow overflow-x-auto" x-data="{ init() { colorizeColumns(this.$refs.rtbody, [{col:'rspd'},{col:'riq'},{col:'reff'}]); } }">
   <div class="px-3 sm:px-4 py-2 sm:py-3 border-b border-slate-700 flex items-center justify-between">
     <h2 class="font-semibold text-sm sm:text-base">Results Overview</h2>
     <span class="text-[10px] sm:text-xs text-slate-400">{{ tested_models | length }} tested</span>
   </div>
-  <table class="w-full text-[11px]">
+  <table class="w-full min-w-max text-[11px]">
     <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
       <tr>
         <th class="px-2 py-2">Model</th>
@@ -1043,7 +1043,7 @@ function sortTestTable() {
     {% endif %}
   </div>
   <div class="bg-slate-800 rounded-lg shadow overflow-x-auto">
-    <table class="w-full text-xs">
+    <table class="w-full min-w-max text-xs">
       <thead class="text-left text-slate-400 text-[10px] uppercase bg-slate-900/50">
         <tr>
           <th class="px-2 sm:px-3 py-2">Model</th>
@@ -1060,7 +1060,7 @@ function sortTestTable() {
       <tbody class="divide-y divide-slate-700/50">
         {% for m in npu_models %}
         <tr>
-          <td class="px-2 sm:px-3 py-1.5 font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} truncate max-w-[120px] sm:max-w-none" title="{{ m.name }}">{{ m.name }}</td>
+          <td class="px-2 sm:px-3 py-1.5 font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} whitespace-nowrap" title="{{ m.name }}">{{ m.name }}</td>
           <td class="px-2 py-1.5 text-slate-300 hidden sm:table-cell">{{ m.params }}</td>
           <td class="px-2 py-1.5 hidden md:table-cell"><span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono">{{ m.quant }}</span></td>
           <td class="px-2 py-1.5 text-right text-slate-300 hidden md:table-cell">{{ "%.1f"|format(m.size_gb) }}G</td>
