@@ -662,6 +662,20 @@ def _detect_thinking_support(endpoint: str, model_id: str) -> bool | None:
         return None
 
 
+def _is_context_error(err: str) -> bool:
+    """Did the request fail because the prompt does not fit the deployed context?
+
+    That is the model as configured being unable to take the question, which the
+    suite exists to measure. Anything else — a timeout, a reset, a busy server —
+    is the harness's problem and the question is excluded instead.
+    """
+    low = (err or "").lower()
+    if not low.startswith("http_4"):
+        return False
+    return any(m in low for m in (
+        "context", "exceed", "too long", "n_ctx", "kv cache", "prompt is too"))
+
+
 def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
                     sampling: dict | None = None, sys_prompt: str = "",
                     thinking: bool = True) -> tuple[str, float, int, str | None]:
@@ -716,6 +730,10 @@ def answer_question(q: dict, endpoint: str, model_id: str, *, effort: str = "",
             if content2.strip():
                 content = content2
                 tokens = (data2.get("usage") or {}).get("completion_tokens", 0) or tokens
+    except httpx.HTTPStatusError as exc:
+        # Keep the status and body: a 400 "exceeds context" is the model's limit,
+        # a 503 is the server swapping. They must not be scored the same way.
+        err = f"http_{exc.response.status_code}: {exc.response.text[:200]}"
     except Exception as exc:
         # Never let a failed request masquerade as a wrong answer. The caller
         # decides whether it is the model's fault (an empty but successful reply)
@@ -904,7 +922,14 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         # wrong. bonsai timed out on 79 of 149 and scored 37.6 — a number that
         # measured the 300s ceiling, not the model. Errored questions leave the
         # denominator entirely rather than counting against it.
-        errored = bool(err) and not content.strip()
+        #
+        # But a 400 "exceeds context" is NOT the harness failing: qwen3-next-80b
+        # is deployed at 16K and the 10 long-context prompts above that were all
+        # dropped, quietly excusing the exact questions it cannot do. Those count
+        # as failures and are reported separately so the cause stays visible.
+        failed_req = bool(err) and not content.strip()
+        ctx_limited = failed_req and _is_context_error(err)
+        errored = failed_req and not ctx_limited
         passed = False if errored else _score_answer(q, content)
         if not errored:
             categories[cat]["total"] += 1
@@ -923,7 +948,8 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             "difficulty": diff,
             "passed": passed,
             "errored": errored,
-            "error": err if errored else None,
+            "context_limited": ctx_limited,
+            "error": err if failed_req else None,
             "judge": None,
             "tokens": tokens,
             "response": content[:300],
@@ -984,6 +1010,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     total = sum(c["total"] for c in categories.values())
     total_passed = sum(c["passed"] for c in categories.values())
     total_errored = sum(c.get("errored", 0) for c in categories.values())
+    total_ctx_limited = sum(1 for d in details if d.get("context_limited"))
     total_tokens = sum(c.get("tokens", 0) for c in categories.values())
     score = round((total_passed / total) * 100, 1) if total > 0 else 0
 
@@ -1031,6 +1058,9 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         # A run that lost a chunk of its questions to timeouts is not a
         # measurement. Report it loudly rather than letting the score stand alone.
         "errored_questions": total_errored,
+        # counted as failures, but reported so a too-small --ctx-size is visible
+        # rather than being read as the model being bad at long context
+        "context_limited_questions": total_ctx_limited,
         "degraded": total_errored > 0.1 * (total + total_errored),
         "weighted_score": weighted_score,
         "category_weights": weights,

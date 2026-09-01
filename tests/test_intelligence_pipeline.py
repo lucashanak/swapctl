@@ -83,3 +83,34 @@ def test_timed_out_question_leaves_the_denominator(bench, monkeypatch):
     assert result["total"] == 1, "the timed-out question left the denominator"
     assert result["score"] == 100.0, "scored on what it actually answered"
     assert result["degraded"] is True, "half the suite lost must be flagged"
+
+
+def test_context_overflow_scores_as_a_failure_through_the_pipeline(bench, monkeypatch):
+    """Verified through _run_intelligence_test, not just the classifier.
+
+    The judge-path bug got shipped because the tests exercised the helper in
+    isolation and never the function that consumes it.
+    """
+    import httpx
+    from app import registry
+    monkeypatch.setattr(registry, "get", lambda mid: bench)
+
+    class Resp:
+        status_code = 400
+        text = "the request exceeds the available context size"
+
+    def ctx_overflow(endpoint, model_id, prompt, max_tok, **kw):
+        if "Say OK" in prompt or "France" in prompt:
+            return {"choices": [{"message": {"content": "Paris"}, "finish_reason": "stop"}],
+                    "usage": {"completion_tokens": 5},
+                    "timings": {"predicted_per_second": 40}}
+        raise httpx.HTTPStatusError("400", request=None, response=Resp())
+
+    monkeypatch.setattr(tester, "_chat", ctx_overflow)
+
+    result = tester._run_intelligence_test("fake-model")
+
+    assert result["context_limited_questions"] == 1
+    assert result["errored_questions"] == 0, "a context limit is not an excused question"
+    assert result["total"] == 2, "it stays in the denominator"
+    assert result["score"] == 50.0, "answered 1 of 2"

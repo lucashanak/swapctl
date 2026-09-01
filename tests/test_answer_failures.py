@@ -52,3 +52,20 @@ def test_request_failure_is_reported_not_swallowed():
 
     assert content == ""
     assert err is not None and "TimeoutError" in err, "the failure must be reported"
+
+
+def test_context_overflow_counts_against_the_model():
+    """A prompt that does not fit the deployed context is a failure, not an excuse.
+
+    qwen3-next-80b is deployed at --ctx-size 16384. The 10 long-context questions
+    above that returned 400 and were dropped from the denominator, quietly
+    excusing exactly the questions it cannot answer.
+    """
+    from app.tester import _is_context_error
+    assert _is_context_error(
+        "http_400: the request exceeds the available context size") is True
+    assert _is_context_error("http_400: prompt is too long for n_ctx") is True
+    # not a context problem -> still excluded as infrastructure
+    assert _is_context_error("http_503: loading model") is False
+    assert _is_context_error("TimeoutError: read timed out") is False
+    assert _is_context_error("http_500: internal error") is False
