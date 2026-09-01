@@ -25,6 +25,9 @@ from typing import Any
 import httpx
 
 MAX_TURNS = 24
+# Room for a thinking model to reason AND write a file in one turn.
+MAX_RESPONSE_TOKENS = 4096
+
 TOOL_TIMEOUT = 20.0
 
 
@@ -179,9 +182,19 @@ def _is_infra_error(status: int, body: str) -> bool:
     if status in (502, 503, 504):
         return True
     low = body.lower()
-    model_faults = ("parse tool call", "failed to parse", "exceeds the available context",
-                    "context window", "tokens exceed")
-    if any(f in low for f in model_faults):
+    # "Failed to parse tool call arguments" was originally classified as the
+    # model's fault. That was wrong: a faithful replay showed the cause was this
+    # harness's own 1200-token cap cutting the arguments off mid-string
+    # (finish_reason "length", 2851 chars of reasoning, arguments ending at
+    # '{"path":"defaults.py"'). The cap is raised now and truncation is caught
+    # before parsing, but a 500 carries no finish_reason, so the cause cannot be
+    # told apart after the fact. Treat it as ours: retry, and if it persists
+    # exclude the episode rather than charge the model for something that has
+    # been demonstrated to be our doing.
+    if "parse tool call" in low or "failed to parse" in low:
+        return True
+    context_faults = ("exceeds the available context", "context window", "tokens exceed")
+    if any(f in low for f in context_faults):
         return False
     return status not in (400, 422)
 
@@ -214,15 +227,31 @@ def run_agentic(endpoint: str, model_id: str, timeout: float = 900.0,
                 # A failed request is not a failed model. Retry transient errors;
                 # if the call still will not go through, mark the episode errored so
                 # it can be excluded rather than counted as "could not solve it".
+                # 1200 tokens starved the thinking models: qwen3.8-27b spent the
+                # whole budget on 2851 chars of reasoning and emitted
+                # '{"path":"defaults.py"' — truncated mid-object, finish_reason
+                # "length". The server reported that as "Failed to parse tool call
+                # arguments" and the harness scored it as the model being unable to
+                # write JSON. It was the cap, not the model. Give the reasoning room
+                # and grow it further if a turn still runs out.
                 msg, err, infra = None, None, True
+                budget = MAX_RESPONSE_TOKENS
                 for attempt in range(3):
                     try:
                         r = client.post(f"{endpoint}/v1/chat/completions", json={
                             "model": model_id, "messages": messages, "tools": TOOLS,
-                            "tool_choice": "auto", "max_tokens": 1200, "temperature": 0,
+                            "tool_choice": "auto", "max_tokens": budget, "temperature": 0,
                         })
                         r.raise_for_status()
-                        msg = r.json()["choices"][0]["message"]
+                        choice = r.json()["choices"][0]
+                        if choice.get("finish_reason") == "length":
+                            # Ran out mid-generation: anything parsed from this is an
+                            # artefact of the ceiling. Give it more room and retry.
+                            err = f"truncated at {budget} tokens"
+                            infra = True
+                            budget *= 2
+                            continue
+                        msg = choice["message"]
                         err = None
                         break
                     except httpx.HTTPStatusError as exc:

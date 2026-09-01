@@ -27,12 +27,15 @@ def test_all_errored_does_not_fabricate_a_score():
     assert res["score"] == 0.0 and res["errored_episodes"] == 3
 
 
-def test_malformed_tool_call_counts_against_the_model():
-    """A 500 'Failed to parse tool call' is the model's failure, not the harness's.
+def test_malformed_tool_call_is_not_charged_to_the_model():
+    """Reversed on evidence: this was the harness truncating the model.
 
-    Excluding it would launder a real agentic deficiency — a model that cannot
-    escape source code into JSON arguments cannot edit files — into a discarded
-    sample. Only transport-level failures may be excluded.
+    The original version of this test asserted the opposite, on the reasoning
+    that a model unable to escape code into JSON cannot edit files. A faithful
+    replay disproved it — the arguments were cut off mid-string by our own
+    1200-token cap, with finish_reason "length" and 2851 characters of reasoning
+    ahead of them. The cap is raised and truncation is now caught before
+    parsing; a 500 cannot be attributed after the fact, so it is excluded.
     """
     from app.tester import _score_agentic
     eps = [
@@ -42,15 +45,13 @@ def test_malformed_tool_call_counts_against_the_model():
          "stop_reason": "malformed_output — http_500: Failed to parse tool call arguments"},
     ]
     res = _score_agentic(eps, scenario="s2")
-    assert res["solve_rate"] == pytest.approx(66.7, abs=0.1), "malformed output must drag the score"
-    assert res["errored_episodes"] == 0
-    assert res["malformed_episodes"] == 1
+    assert res["malformed_episodes"] == 1, "still reported, so it stays visible"
 
 
 def test_error_classification_splits_model_from_infrastructure():
     from app.agentic import _is_infra_error
     parse = '{"error":{"code":500,"message":"Failed to parse tool call arguments as JSON"}}'
-    assert _is_infra_error(500, parse) is False, "model emitted unparseable arguments"
+    assert _is_infra_error(500, parse) is True, "shown to be our truncation, not the model"
     assert _is_infra_error(503, "loading model") is True
     assert _is_infra_error(502, "bad gateway") is True
     assert _is_infra_error(400, "the request exceeds the available context size") is False
