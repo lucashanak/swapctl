@@ -55,3 +55,23 @@ def test_error_classification_splits_model_from_infrastructure():
     assert _is_infra_error(503, "loading model") is True
     assert _is_infra_error(502, "bad gateway") is True
     assert _is_infra_error(400, "the request exceeds the available context size") is False
+
+
+def test_reference_stays_below_achievable_turn_counts():
+    """The dead zone: at or below the reference everything scores 100.
+
+    qwen3.8-27b solves s2 in 4 turns once the token cap is lifted, so a
+    reference of 5 handed it a perfect score and measured nothing. The
+    reference has to sit under the best observed performance.
+    """
+    from app.tester import _score_agentic
+    best = [{"solved": True, "turns": 4, "errored": False, "duration": 60,
+             "tool_calls": 8} for _ in range(3)]
+    res = _score_agentic(best, scenario="s2")
+    assert res["reference_turns"] < 4, "reference must be below the best observed"
+    assert res["score"] < 100.0, "a 4-turn solve must not saturate the axis"
+
+    faster = [{"solved": True, "turns": 3, "errored": False, "duration": 60,
+               "tool_calls": 6} for _ in range(3)]
+    assert _score_agentic(faster, scenario="s2")["score"] > res["score"], \
+        "fewer turns must still score higher"

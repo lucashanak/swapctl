@@ -1245,7 +1245,11 @@ def _run_agentic_test(model_id: str, scenario: str = "s2") -> dict:
 def _score_agentic(episodes: list[dict], scenario: str = "s2") -> dict:
     """Turn episode records into a score. Kept separate from running them so the
     scoring rules can be tested without a model behind them."""
-    reference = {"s1": 3, "s2": 5}.get(scenario, 5)
+    # The reference must stay BELOW what models actually achieve, or everyone at
+    # or under it scores 100 and the efficiency signal disappears. With the token
+    # cap lifted qwen3.8-27b solves s2 in 4 turns, so 5 was already inside the
+    # dead zone. 3 is the floor a correct solve needs: read, fix, verify.
+    reference = {"s1": 2, "s2": 3}.get(scenario, 3)
     # Episodes that died on a transport error measure the infrastructure, not the
     # model — ornith once scored 33.3 because two of three runs hit an HTTP error
     # mid-episode and were counted as failures to solve. Exclude them; if every
