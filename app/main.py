@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import bootstrap, downloader
 from .config import settings
-from .routers import api, auth, benchmark, stt, tts, views
+from .routers import api, auth, benchmark, stt, tts, views, public
 from .routers.api_keys_router import router as api_keys_router
 
 APP_DIR = Path(__file__).resolve().parent
@@ -20,6 +20,7 @@ log = logging.getLogger("swapctl")
 
 PREFIX = settings.root_path
 _PUBLIC_EXACT = {
+    f"{PREFIX}/public/models",
     f"{PREFIX}/login",
     f"{PREFIX}/logout",
     f"{PREFIX}/healthz",
@@ -148,6 +149,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(auth.router, prefix=PREFIX)
     app.include_router(views.router, prefix=PREFIX)
+    app.include_router(public.router, prefix=PREFIX)
     app.include_router(api.router, prefix=PREFIX)
     app.include_router(benchmark.router, prefix=PREFIX)
     app.include_router(tts.router, prefix=f"{PREFIX}/api")

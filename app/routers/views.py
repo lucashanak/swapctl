@@ -546,6 +546,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             "speed_spec": spec,
             "intelligence": iq,
             "iq_duration": iq_dur,
+            "agentic": tr.get("agentic"),
         })
 
     snap_vram = snap.get("vram") or {}

@@ -920,7 +920,20 @@ def status_json():
         "swap_configured": [],
         "swap_loaded": [],
         "installed_count": 0,
+        # deploy.sh reads this: restarting swapctl destroys an in-flight test
+        # job silently, which has cost three separate runs in one session.
+        "active_tests": [],
     }
+    try:
+        from .. import tester
+        out["active_tests"] = [
+            {"model_id": j.get("model_id"), "test_type": j.get("test_type"),
+             "status": j.get("status")}
+            for j in tester._jobs.values()
+            if j.get("status") in ("running", "queued", "pending")
+        ]
+    except Exception:
+        pass
     try:
         free, total = system.disk_free_gb(settings.models_dir)
         out["disk_free_gb"] = free

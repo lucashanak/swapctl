@@ -968,7 +968,7 @@ function sortTestTable() {
 
 {% set tested_models = models | selectattr('intelligence') | list %}
 {% if tested_models %}
-<div class="mt-4 sm:mt-6 bg-slate-800 rounded-lg shadow overflow-x-auto" x-data="{ init() { colorizeColumns(this.$refs.rtbody, [{col:'rspd'},{col:'riq'},{col:'reff'}]); } }">
+<div class="mt-4 sm:mt-6 bg-slate-800 rounded-lg shadow overflow-x-auto" x-data="{ init() { colorizeColumns(this.$refs.rtbody, [{col:'rspd'},{col:'riq'},{col:'reff'},{col:'ragent'}]); } }">
   <div class="px-3 sm:px-4 py-2 sm:py-3 border-b border-slate-700 flex items-center justify-between">
     <h2 class="font-semibold text-sm sm:text-base">Results Overview</h2>
     <span class="text-[10px] sm:text-xs text-slate-400">{{ tested_models | length }} tested</span>
@@ -981,6 +981,8 @@ function sortTestTable() {
         <th class="px-2 py-2 text-center">IQ time</th>
         <th class="px-2 py-2 text-center">IQ</th>
         <th class="px-2 py-2 text-center">Eff</th>
+        <th class="px-2 py-2 text-center" title="Agentic score: solve rate x (reference turns / turns used)">Agent</th>
+        <th class="px-2 py-2 text-center" title="Average turns to solve the repair task (fewer is better)">Turns</th>
         {% for cat in iq_categories %}
         <th class="px-1 py-2 text-center hidden md:table-cell" title="{{ cat }}">{{ cat[:4] }}</th>
         {% endfor %}
@@ -993,8 +995,9 @@ function sortTestTable() {
       <tr data-model="{{ m.model_id }}"
           data-rspd="{{ m.best_speed }}"
           data-riq="{{ iq.score }}"
-          data-reff="{{ m.effectivity or 0 }}">
-        <td class="px-1.5 sm:px-2 py-1.5 font-mono whitespace-nowrap text-[11px] sm:text-xs truncate max-w-[100px] sm:max-w-none" title="{{ m.model_id }}">
+          data-reff="{{ m.effectivity or 0 }}"
+          {% if m.agentic and m.agentic.score is not none %}data-ragent="{{ m.agentic.score }}"{% endif %}>
+        <td class="px-1.5 sm:px-2 py-1.5 font-mono whitespace-nowrap text-[11px] sm:text-xs whitespace-nowrap" title="{{ m.model_id }}">
           {{ m.model_id }}
           {% if m.best_backend == 'vulkan' %}
             <span class="text-[8px] px-0.5 rounded bg-emerald-900/60 text-emerald-300 hidden sm:inline">VK</span>
@@ -1015,6 +1018,12 @@ function sortTestTable() {
         </td>
         <td class="px-2 py-1.5 text-center font-mono" data-color="reff">
           {% if m.effectivity %}{{ m.effectivity }}{% else %}—{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center font-mono" data-color="ragent">
+          {% if m.agentic and m.agentic.score is not none %}{{ m.agentic.score }}{% else %}—{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center font-mono text-slate-400">
+          {% if m.agentic and m.agentic.avg_turns %}{{ m.agentic.avg_turns }}{% else %}—{% endif %}
         </td>
         {% for cat in iq_categories %}
         {% set cv = cats.get(cat, {}) %}
