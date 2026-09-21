@@ -54,6 +54,23 @@ def has_mtp_heads(model: "ModelRecord") -> bool:
     if "mtp_heads" in tags:
         return True
 
+    # model_tags is written once, at download time, so a model installed before
+    # the detector learned about `blk.*.nextn.*` keeps the old verdict forever.
+    # Read the header when the tags are silent: it is header-only I/O and it is
+    # the difference between this predicate working on the existing fleet and
+    # only on future downloads.
+    filename_attr = getattr(model, "filename", "") or ""
+    model_id_attr = getattr(model, "model_id", "") or ""
+    if filename_attr and model_id_attr:
+        try:
+            from .config import settings
+            from .gguf_meta import has_mtp_tensors, read_tensor_names
+            gguf = settings.models_dir / model_id_attr / filename_attr
+            if has_mtp_tensors(read_tensor_names(gguf)):
+                return True
+        except Exception:
+            pass
+
     # Filename heuristic
     filename = (getattr(model, "filename", "") or "").lower()
     if "-mtp-" in filename or "mtp_" in filename or "_mtp" in filename:
@@ -184,11 +201,10 @@ _DEFAULT_BACKENDS: list[dict] = [
         "binary_path": "/usr/local/bin/llama-server-vulkan-atomic",
         "label": "Vulkan + Qwen NextN",
         "caps": ["vulkan", "nextn"],
-        "default_flags": ["--spec-type nextn", "--draft-max 3"],
+        "default_flags": ["--spec-type nextn", "--spec-draft-n-max 3"],
         "required_flags": ["--parallel 1"],
         "incompatible_flag_patterns": [
             r"--parallel\s+([2-9]|\d{2,})",
-            r"--spec-draft-n-max\s+\d+",
             r"--cache-type-k\s+turbo\d",
             r"--cache-type-v\s+turbo\d",
         ],
@@ -201,11 +217,10 @@ _DEFAULT_BACKENDS: list[dict] = [
         "binary_path": "/usr/local/bin/llama-server-vulkan-atomic",
         "label": "Vulkan + Gemma4 MTP",
         "caps": ["vulkan", "mtp", "gemma4-mtp"],
-        "default_flags": ["--spec-type mtp", "--draft-max 3"],
+        "default_flags": ["--spec-type mtp", "--spec-draft-n-max 3"],
         "required_flags": ["--parallel 1"],
         "incompatible_flag_patterns": [
             r"--parallel\s+([2-9]|\d{2,})",
-            r"--spec-draft-n-max\s+\d+",
             r"--cache-type-k\s+turbo\d",
             r"--cache-type-v\s+turbo\d",
         ],

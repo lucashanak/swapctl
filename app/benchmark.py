@@ -42,6 +42,23 @@ _BENCH_STATE: dict = {
 }
 
 
+def _has_grafted_mtp_naming(model) -> bool:
+    """Grafted-MTP builds, identified by naming only.
+
+    Intentionally narrower than backends_registry.has_mtp_heads: it must not
+    react to tensor contents, so that broadening the MTP tensor predicate does
+    not silently change which backends get benchmarked.
+    """
+    filename = (getattr(model, "filename", "") or "").lower()
+    if "-mtp-" in filename or "mtp_" in filename or "_mtp" in filename:
+        return True
+    mid = (getattr(model, "model_id", "") or "").lower()
+    if "-mtp-" in mid or mid.endswith("-mtp") or mid.startswith("mtp-"):
+        return True
+    draft_mid = (getattr(model, "draft_model", "") or "").lower()
+    return "mtp" in draft_mid
+
+
 def bench_state() -> dict:
     """Return a snapshot of the current benchmark state."""
     return dict(_BENCH_STATE)
@@ -259,10 +276,20 @@ def auto_bench_backends(model_id: str) -> list[str]:
             if has_spec_flags or has_spec_caps:
                 spec_capable_ids.append(b.id)
 
-        # Skip vulkan baseline if model has baked-in MTP heads or assistant arch —
-        # stock vulkan binary can't load those GGUFs at all.
-        from .backends_registry import has_mtp_heads
-        skip_vulkan_baseline = rec is not None and has_mtp_heads(rec)
+        # Skip the vulkan baseline for grafted-MTP builds, identified by naming.
+        #
+        # ⚠️ The original justification here — "stock vulkan binary can't load
+        # those GGUFs at all" — is not true: measured 2026-09-21, the stock
+        # build loads an MTP-head GGUF fine and only fails when it is *also*
+        # handed --spec-type. Whether this skip should exist at all is a real
+        # question, but it is a benchmark-planning decision, not part of the
+        # config-generation fix, so the behaviour is deliberately left alone.
+        #
+        # It deliberately does NOT use has_mtp_heads(): that predicate now also
+        # matches `blk.*.nextn.*`, which would silently drop the baseline for
+        # DeepSeek V4 Flash, qwen3-next and the distills — models where the
+        # mainline Vulkan runner is exactly what we want measured.
+        skip_vulkan_baseline = rec is not None and _has_grafted_mtp_naming(rec)
 
         result = [] if skip_vulkan_baseline else ["vulkan"]
         for sid in spec_capable_ids:

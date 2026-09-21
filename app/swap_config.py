@@ -208,7 +208,13 @@ def _build_cmd(
         f"--cache-type-v {cache_type_v}",
         "--jinja",
         f"--ctx-size {ctx_size}",
-        f"--parallel {parallel if parallel else get_parallel_slots()}",
+        # --parallel N does NOT add capacity: it splits --ctx-size into N slots
+        # of ctx/N each (measured on llama-server: -c 32768 --parallel 4 logs
+        # four slots of n_ctx=8192). Defaulting to the global slot count once
+        # silently quartered every new model's usable context, which is how
+        # claude-local ended up dying on ContextWindowExceededError at 16384.
+        # Concurrency is now opt-in: pass parallel=N for a model that wants it.
+        f"--parallel {parallel if parallel else 1}",
     ]
     if flash_attn:
         parts.append("--flash-attn on")
@@ -230,10 +236,13 @@ def _build_cmd(
     if draft_model:
         parts.append(f"-md {draft_model}")
         parts.append("-ngld 999")
+        # --draft-max / --draft-min were removed upstream; llama-server exits
+        # with 'the argument has been removed' before it binds a port, so a
+        # model installed with a draft used to be dead on arrival.
         if draft_max > 0:
-            parts.append(f"--draft-max {draft_max}")
+            parts.append(f"--spec-draft-n-max {draft_max}")
         if draft_min > 0:
-            parts.append(f"--draft-min {draft_min}")
+            parts.append(f"--spec-draft-n-min {draft_min}")
     if sampling_temp != 0.8:
         parts.append(f"--temp {sampling_temp}")
     if sampling_top_k != 40:
@@ -328,8 +337,13 @@ def add_model(
     sampling_min_p: float = 0.05,
     sampling_repeat_penalty: float = 1.1,
     path: Path | None = None,
+    parallel: int | None = None,
 ) -> None:
-    """Insert or replace a model block under `models:` and save."""
+    """Insert or replace a model block under `models:` and save.
+
+    `parallel` is opt-in concurrency: llama-server splits --ctx-size across
+    slots, so leaving it None keeps the model's full declared context.
+    """
     if not model_id:
         raise ConfigError("model_id must be non-empty")
     data = load(path)
@@ -348,6 +362,7 @@ def add_model(
         sampling_temp=sampling_temp, sampling_top_k=sampling_top_k,
         sampling_top_p=sampling_top_p, sampling_min_p=sampling_min_p,
         sampling_repeat_penalty=sampling_repeat_penalty,
+        parallel=parallel,
     )
     # Apply backend-specific flag injection (FIX 5: registry awareness in _build_cmd path)
     try:
@@ -364,6 +379,48 @@ def add_model(
     models[model_id] = block
     save(data, path)
     rebuild_matrix(path=path)
+    _log_lint(model_id, path)
+
+
+def _log_lint(model_id: str, path: Path | None) -> None:
+    """Report what this model just introduced, at the moment it was introduced.
+
+    Every class of breakage the linter knows about used to be found on the node
+    hours later. Logging here does not block the add — a questionable model is
+    still better than a failed install — but it puts the finding in the journal
+    next to the action that caused it.
+    """
+    import logging
+    log = logging.getLogger("swapctl.swap_config")
+    try:
+        from .config_lint import lint_config
+        # The strict rules are the point here: a missing binary, a missing GGUF
+        # and an unused MTP head are exactly what nobody notices at install
+        # time. It is one model's worth of I/O on an operation that just wrote
+        # a config.
+        data = load(path)
+        block = (data.get("models") or {}).get(model_id)
+        # Port collisions are only visible against the whole config; the strict
+        # rules stat files and read a GGUF header, so run those on this model
+        # alone rather than the whole fleet on every install.
+        findings = [f for f in lint_config(data) if f.model_id == model_id]
+        if block is not None:
+            findings += lint_config({"models": {model_id: block}},
+                                    check_paths=True, check_gguf=True)
+        seen = set()
+        findings = [f for f in findings
+                    if not (f.rule in seen or seen.add(f.rule))]
+    except Exception:
+        # Say so rather than leaving silence that reads like a clean result.
+        log.warning("config lint failed for %s", model_id, exc_info=True)
+        return
+    if not findings:
+        log.info("config lint: %s clean", model_id)
+        return
+    for f in findings:
+        level = logging.ERROR if f.level == "error" else (
+            logging.WARNING if f.level == "warn" else logging.INFO)
+        log.log(level, "config lint: %s", f)
 
 
 def remove_model(model_id: str, path: Path | None = None) -> None:
@@ -1249,6 +1306,7 @@ def update_parallel_slots(slots: int, path: Path | None = None) -> int:
     data = load(path)
     models = data.get("models") or {}
     count = 0
+    changed_ids: list[str] = []
     from . import registry as _reg
     for mid, block in models.items():
         if not isinstance(block, dict):
@@ -1270,10 +1328,41 @@ def update_parallel_slots(slots: int, path: Path | None = None) -> int:
             new_cmd = cmd + f" --parallel {n}"
         if new_cmd != cmd:
             block["cmd"] = new_cmd
+            changed_ids.append(mid)
             count += 1
     if count > 0:
         save(data, path)
+        _log_parallel_split(n, data, changed_ids)
     return count
+
+
+def _log_parallel_split(slots: int, data: dict, changed_ids: list[str]) -> None:
+    """Record what a global slot change just did to every model's context.
+
+    This is the second writer of --parallel, and the dangerous one: it rewrites
+    models that are already deployed and tuned. `--parallel N` divides
+    --ctx-size, so raising the global silently cuts every unpinned model's
+    usable context — which is how a client ended up failing at n_ctx 16384 on a
+    model configured for 65536. The change still goes through; it just stops
+    being invisible.
+    """
+    import logging
+    if slots <= 1:
+        return
+    log = logging.getLogger("swapctl.swap_config")
+    try:
+        from .config_lint import lint_config
+        # Only the models this call actually rewrote. Models skipped because
+        # their registry record pins `parallel` were deliberately left alone,
+        # and blaming this action for them turns the warning into noise.
+        touched = set(changed_ids)
+        splits = [f for f in lint_config(data)
+                  if f.rule == "context_split" and f.model_id in touched]
+    except Exception:
+        log.warning("parallel-slot lint failed", exc_info=True)
+        return
+    for f in splits:
+        log.warning("parallel slots -> %d: %s: %s", slots, f.model_id, f.message)
 
 
 def switch_backend(backend: str, path: Path | None = None) -> int:

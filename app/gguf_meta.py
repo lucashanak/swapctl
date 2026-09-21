@@ -298,6 +298,24 @@ def read_architecture(path: Path) -> str | None:
     return None
 
 
+def has_mtp_tensors(tensor_names: list[str]) -> bool:
+    """True when these tensor names include a multi-token-prediction head.
+
+    Two naming conventions are in the wild and both must count. Grafted heads
+    use `mtp.*` / `*.mtp.*`; models that ship the head inside the base file
+    (DeepSeek, the qwen35moe distills, ornith) name it `blk.<last>.nextn.*`.
+
+    This is the single source of truth: `backends_registry.has_mtp_heads` steers
+    a model to an MTP-capable backend from it, and `config_lint` reports a head
+    left unused. When the two disagreed, a `.nextn.` model was never routed to
+    the MTP backend at all.
+    """
+    return any(
+        n.startswith("mtp") or ".mtp." in n or ".nextn." in n
+        for n in tensor_names
+    )
+
+
 def read_model_tags(path: Path) -> list[str]:
     """Return list of tag strings (e.g. 'moe', 'hybrid', 'mtp_heads') derived from GGUF metadata."""
     meta = read_gguf_metadata(path, ("expert_count", "general.architecture"))
@@ -312,14 +330,10 @@ def read_model_tags(path: Path) -> list[str]:
                 tags.append("hybrid")
             break
 
-    # MTP heads detection — check tensor names for mtp.* pattern
-    # Fall back to filename heuristic if tensor read fails or returns nothing
+    # MTP heads detection. Fall back to the filename heuristic if the tensor
+    # read fails or returns nothing.
     try:
-        tensor_names = read_tensor_names(path)
-        has_mtp = any(
-            n.startswith("mtp") or ".mtp" in n
-            for n in tensor_names
-        )
+        has_mtp = has_mtp_tensors(read_tensor_names(path))
     except Exception:
         has_mtp = False
 

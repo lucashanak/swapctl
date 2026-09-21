@@ -529,6 +529,36 @@ def scan_backends(request: Request):
     return {"added": added, "count": len(added)}
 
 
+@router.get("/config/lint")
+def lint_llama_swap_config(request: Request, strict: bool = False):
+    """Static checks over the live llama-swap config.
+
+    Answers "is anything in here quietly wrong" without loading a model: port
+    and proxy disagreeing, two models on one port, a context silently split by
+    --parallel, flags llama-server no longer accepts, an unused MTP head.
+
+    `strict` additionally stats the referenced binaries and GGUFs and reads
+    GGUF headers, which touches the disk once per model.
+
+    Response: {ok, worst, counts: {error, warn, info}, findings: [...]}
+    """
+    from .. import swap_config
+    from ..config_lint import lint_config, worst_level
+
+    findings = lint_config(swap_config.load(), check_paths=strict, check_gguf=strict)
+    counts = {lvl: sum(1 for f in findings if f.level == lvl)
+              for lvl in ("error", "warn", "info")}
+    return {
+        "ok": counts["error"] == 0,
+        "worst": worst_level(findings),
+        "counts": counts,
+        "findings": [
+            {"level": f.level, "model_id": f.model_id, "rule": f.rule, "message": f.message}
+            for f in findings
+        ],
+    }
+
+
 @router.get("/backends")
 def list_backends(request: Request, model_id: str | None = None):
     """Return all registered backends, optionally filtered by compatibility with a model.
