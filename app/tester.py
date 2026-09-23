@@ -842,7 +842,8 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         share = tokens // n if n else 0
         return [(q, parts[i], tg, share, None) for i, q in enumerate(qs)]
 
-    responses_by_idx: dict[int, tuple[dict, str, int]] = {}
+    responses_by_idx: dict[int, tuple[dict, str, int, str | None]] = {}
+    tg_by_idx: dict[int, float] = {}
     tg_speeds: list[float] = []
     completed = 0
 
@@ -880,6 +881,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                 responses_by_idx[idx] = (q, content, tokens, err)
                 if tg > 0:
                     tg_speeds.append(tg)
+                    tg_by_idx[idx] = tg
             completed += len(idxs)
             if job_id:
                 elapsed = time.time() - t_start
@@ -952,6 +954,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
             "error": err if failed_req else None,
             "judge": None,
             "tokens": tokens,
+            "tps": round(tg_by_idx.get(i, 0.0), 2),
             "response": content[:300],
         })
 
@@ -1069,10 +1072,34 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         "duration": duration,
         "total_tokens": total_tokens,
         "avg_tokens": round(total_tokens / total, 1) if total > 0 else 0,
+        # Decode speed was already being measured on every question and thrown
+        # away at the response tuple; only the progress bar ever saw it. A
+        # ranking with intelligence but no speed cannot be acted on, since the
+        # whole fleet trades one against the other.
+        #
+        # Median, not mean: single-run decode on this hardware scatters wildly
+        # (flash-next spanned 25.8-39.2 t/s across three identical runs), and one
+        # slow question with a long prefill drags a mean where it does not drag a
+        # median.
+        **_speed_summary(tg_speeds),
         "tested_at": _now(),
         "categories": cat_scores,
         "difficulties": diff_scores,
         "details": details,
+    }
+
+
+def _speed_summary(tg_speeds: list[float]) -> dict:
+    """Decode-speed summary over every question in a run."""
+    if not tg_speeds:
+        return {"decode_tps": 0.0, "decode_tps_mean": 0.0, "decode_samples": 0}
+    s = sorted(tg_speeds)
+    n = len(s)
+    median = s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+    return {
+        "decode_tps": round(median, 1),
+        "decode_tps_mean": round(sum(s) / n, 1),
+        "decode_samples": n,
     }
 
 

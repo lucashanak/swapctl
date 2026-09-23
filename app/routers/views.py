@@ -508,6 +508,18 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
                 if tps > best_speed:
                     best_speed = tps
 
+        # The per-backend speed test was removed (410), so speed_history only
+        # fills for models someone remembered to benchmark and the column read
+        # empty for the rest. An intelligence run measures decode on all ~149
+        # questions anyway, so use its median when nothing better exists: a
+        # ranking that shows intelligence without speed cannot be acted on,
+        # because every choice here trades one for the other.
+        iq_res = (r.test_results or {}).get("intelligence") or {}
+        iq_tps = iq_res.get("decode_tps") or 0
+        speed_from_iq = not best_speed and bool(iq_tps)
+        if speed_from_iq:
+            best_speed = iq_tps
+
         models.append({
             "model_id": r.model_id,
             "repo_id": r.repo_id,
@@ -543,6 +555,7 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             "speed_history": speed_history,
             "current_backend_id": current_backend_id,
             "best_speed": best_speed,
+            "speed_from_iq": speed_from_iq,
             "speed_spec": spec,
             "intelligence": iq,
             "iq_duration": iq_dur,

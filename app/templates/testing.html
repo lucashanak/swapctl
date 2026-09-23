@@ -439,6 +439,15 @@
               {{ ns.gen_tps }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span>
               <span class="text-[8px] ml-0.5 px-0.5 rounded bg-emerald-900/60 text-emerald-300 hidden sm:inline">{{ ns.backend_label }}</span>
             </span>
+          {% elif m.speed_from_iq %}
+            {# No benchmark record, but the IQ run measured decode on every
+               question. Shown in a muted colour and marked "iq" so it is never
+               mistaken for a dedicated benchmark. #}
+            <span class="font-mono text-slate-400"
+                  title="median decode over the intelligence run ({{ m.intelligence.decode_samples }} questions); no dedicated benchmark on record">
+              {{ m.best_speed }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span>
+              <span class="text-[8px] ml-0.5 px-0.5 rounded bg-slate-700 text-slate-300 hidden sm:inline">iq</span>
+            </span>
           {% else %}<span class="text-slate-500">—</span>{% endif %}
         </td>
         <td class="px-1.5 sm:px-2 py-1.5 text-center whitespace-nowrap hidden sm:table-cell">
