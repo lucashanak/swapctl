@@ -578,9 +578,9 @@ def _score_answer(question: dict, response: str) -> bool:
     return False
 
 
-def JUDGE_MODEL() -> str:
-    from .config import get_judge_model
-    return get_judge_model()
+def JUDGE_MODEL(under_test: str | None = None) -> str:
+    from .config import judge_model_for
+    return judge_model_for(under_test)
 
 _JUDGE_PROMPT = """You are a strict exam grader. Evaluate if the student's response correctly answers the question.
 
@@ -598,7 +598,7 @@ Rules:
 Reply with exactly one word: PASS or FAIL"""
 
 
-def _llm_judge(endpoint: str, question: dict, response: str) -> bool:
+def _llm_judge(endpoint: str, question: dict, response: str, under_test: str | None = None) -> bool:
     extracted = _extract_answer(response)
     judge_response = extracted[:500] if extracted != response else response[-800:]
     prompt = _JUDGE_PROMPT.format(
@@ -607,7 +607,7 @@ def _llm_judge(endpoint: str, question: dict, response: str) -> bool:
         response=judge_response,
     )
     try:
-        data = _chat(endpoint, JUDGE_MODEL(), prompt, 10, timeout=60.0)
+        data = _chat(endpoint, JUDGE_MODEL(under_test), prompt, 10, timeout=60.0)
         msg = data["choices"][0]["message"]
         verdict = (msg.get("content") or "").strip().upper()
         return "PASS" in verdict
@@ -979,7 +979,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     if j is not None:
                         j["progress"] = {"step": "judging", "current": ji, "total": n_failed, "percent": round(ji / n_failed * 100, 1)}
             q, content, _, _ = responses[i]
-            verdict = _llm_judge(endpoint, q, content)
+            verdict = _llm_judge(endpoint, q, content, under_test=model_id)
             details[i]["judge"] = "pass" if verdict else "fail"
             if verdict:
                 details[i]["passed"] = True

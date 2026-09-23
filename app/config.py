@@ -216,6 +216,12 @@ def set_iq_parallel(enabled: bool) -> None:
 _JUDGE_MODEL_FILE = Path("/var/lib/swapctl/judge_model")
 
 
+# The judge grades a failed answer against the expected one, so what it needs
+# is strict instruction-following, not the highest overall score: it has to
+# answer in the demanded shape every time. qwen3.8-27b is at 100 on that axis.
+DEFAULT_JUDGE_MODEL = "qwen3.8-27b"
+
+
 def get_judge_model() -> str:
     """Return model_id used by IQ test LLM judge for failed-answer review."""
     try:
@@ -224,7 +230,28 @@ def get_judge_model() -> str:
             return val
     except OSError:
         pass
-    return "gpt-oss-120b"
+    return DEFAULT_JUDGE_MODEL
+
+
+# Used when the model being tested is itself the judge. Grading is a
+# single-shot PASS/FAIL classification, so flash-next's weak spot (multi-turn
+# tool loops) does not apply, and it is the highest-scoring model in the fleet.
+FALLBACK_JUDGE_MODEL = "qwen3.8-flash-next"
+
+
+def judge_model_for(under_test: str | None) -> str:
+    """Judge for a run, never the model being graded.
+
+    A model that judges its own failed answers reviews its own work: it is
+    asked whether a response it just produced deserves to pass. That is the
+    one comparison in the suite where the grader has a stake in the verdict,
+    and it lands on whichever model is good enough to have been made judge —
+    exactly the top of the ranking, where the margins are smallest.
+    """
+    judge = get_judge_model()
+    if under_test and under_test == judge:
+        return FALLBACK_JUDGE_MODEL if FALLBACK_JUDGE_MODEL != judge else DEFAULT_JUDGE_MODEL
+    return judge
 
 
 def set_judge_model(model_id: str) -> None:
