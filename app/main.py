@@ -99,6 +99,34 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _origin_host(origin: str) -> str:
+    """Host[:port] z hlavičky Origin. Prázdné, když je hodnota nepoužitelná."""
+    if not origin or origin == "null":
+        return ""
+    return origin.split("://", 1)[-1].split("/", 1)[0].strip().lower()
+
+
+def _origin_allowed(origin: str, host: str, forwarded_host: str, extra: str) -> bool:
+    """Je zapisující request ze stejného webu?
+
+    Cookie je SameSite=None, aby šla stránka vložit do rámu, takže SameSite
+    už zapisující requesty nechrání. Tuhle roli přebírá tahle kontrola:
+    prohlížeč u POST/PUT/PATCH/DELETE posílá Origin vždy, takže cizí web se
+    tady zastaví. Chybějící Origin znamená klient, který není prohlížeč
+    (curl, skript) — ten cizí cookie nenese, takže projde.
+    """
+    src = _origin_host(origin)
+    if not src:
+        return True
+    allowed = {h.strip().lower() for h in (host, forwarded_host) if h and h.strip()}
+    for item in (extra or "").replace(",", " ").split():
+        allowed.add(_origin_host(item) or item.strip().lower())
+    return src in allowed
+
+
 def _is_public(path: str) -> bool:
     if path in _PUBLIC_EXACT:
         return True
@@ -133,13 +161,28 @@ def create_app() -> FastAPI:
             return JSONResponse({"detail": "unauthorized"}, status_code=401)
         return await call_next(request)
 
+    @app.middleware("http")
+    async def csrf_guard(request: Request, call_next):
+        if request.method in _UNSAFE and not _origin_allowed(
+            request.headers.get("origin", ""),
+            request.headers.get("host", ""),
+            request.headers.get("x-forwarded-host", ""),
+            settings.allowed_origins,
+        ):
+            return JSONResponse(
+                {"detail": "cross-site request rejected"}, status_code=403
+            )
+        return await call_next(request)
+
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.secret_key,
         session_cookie="swapctl_session",
         max_age=settings.session_hours * 3600,
         https_only=settings.cookie_secure,
-        same_site="lax",
+        # None kvůli vkládání do rámu (prezentace). Zapisující requesty
+        # chrání csrf_guard výše, ne SameSite.
+        same_site="none",
     )
 
     app.mount(

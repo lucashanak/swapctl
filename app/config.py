@@ -96,6 +96,9 @@ class Settings:
     session_hours: int = field(default_factory=lambda: _env_int("SWAPCTL_SESSION_HOURS", 720))
     cookie_secure: bool = field(default_factory=lambda: _env("SWAPCTL_COOKIE_SECURE", "1") not in ("0", "false", "False", ""))
     root_path: str = field(default_factory=lambda: _env("SWAPCTL_ROOT_PATH", "").rstrip("/"))
+    # Origins allowed to send state-changing requests. The request's own host
+    # always counts; this covers setups where a proxy rewrites Host.
+    allowed_origins: str = field(default_factory=lambda: _env("SWAPCTL_ALLOWED_ORIGINS", ""))
     public_base: str = field(default_factory=lambda: _env("SWAPCTL_PUBLIC_BASE", "https://ai.hanaktech.org").rstrip("/"))
     llm_public_prefix: str = field(default_factory=lambda: "/" + _env("SWAPCTL_LLM_PUBLIC_PREFIX", "llm").strip("/"))
     image_endpoint: str = field(default_factory=lambda: _env("SWAPCTL_IMAGE_ENDPOINT", "http://127.0.0.1:8190").rstrip("/"))
