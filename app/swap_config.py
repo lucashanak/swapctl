@@ -1043,7 +1043,37 @@ def set_simple_config(payload: dict) -> None:
     save(data)
 
 
-_BINARY_RE = re.compile(r"(/usr/local/bin/llama-server[-\w]*|/opt/llama\.cpp/build[^/]*/bin/llama-server)")
+# Any absolute path whose basename starts with llama-server. The fleet runs
+# mainline out of /usr/local/bin and several forks out of /opt/<name>/…/bin —
+# /opt/llama.cpp-k2, /opt/llama.cpp-lz, /opt/strix-llamacpp-v070. The old
+# pattern listed only /usr/local/bin and the literal /opt/llama.cpp/build*, so
+# for every fork build `has_binary` came out False and switch_model_backend
+# took the rebuild-from-registry path instead of patching in place. That
+# silently dropped -md/-ngld/--spec-type and every hand-tuned flag, and pointed
+# --model at the registry's own path layout, which need not be where the file
+# actually is. Measured on deepseek-v4-flash-iq2m: the rebuilt cmd lost its
+# entire DSpark draft setup and exited in 251 ms on a missing file.
+_BINARY_RE = re.compile(r"(/\S*/llama-server[\w.\-]*)")
+
+_ENV_ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def _cmd_binary(cmd: str) -> str:
+    """The executable token, skipping any leading VAR=value assignments."""
+    for tok in cmd.split():
+        if not _ENV_ASSIGN_RE.match(tok):
+            return tok
+    return ""
+
+
+def _has_llama_binary(cmd: str) -> bool:
+    """Whether cmd starts with a llama-server executable we can splice.
+
+    Decided on the first real token rather than by searching the whole string,
+    so a path that merely contains the name somewhere cannot stand in for the
+    binary.
+    """
+    return _cmd_binary(cmd).rsplit("/", 1)[-1].startswith("llama-server")
 
 
 def _binary_to_backend_id(binary_path: str) -> str:
@@ -1255,7 +1285,7 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
 
     # Prefer in-place patching to preserve manual flags (-md, -ngld, custom args).
     # Only rebuild from the registry record when the cmd has no binary to splice.
-    has_binary = bool(_BINARY_RE.search(cmd))
+    has_binary = _has_llama_binary(cmd)
 
     if has_binary:
         current_id = _detect_backend(cmd)
