@@ -382,6 +382,21 @@ def add_model(
     _log_lint(model_id, path)
 
 
+def _registry_binary_overrides() -> dict[str, str]:
+    """model_id -> the binary that model is pinned to, for the linter.
+
+    Read here rather than in config_lint so the rules stay pure functions over
+    a parsed config. A registry that cannot be read yields no pins, which means
+    the rule says nothing — never that everything is fine.
+    """
+    try:
+        from . import registry as _reg
+        return {r.model_id: r.binary_override
+                for r in _reg.list_all() if r.binary_override}
+    except Exception:
+        return {}
+
+
 def _log_lint(model_id: str, path: Path | None) -> None:
     """Report what this model just introduced, at the moment it was introduced.
 
@@ -403,10 +418,13 @@ def _log_lint(model_id: str, path: Path | None) -> None:
         # Port collisions are only visible against the whole config; the strict
         # rules stat files and read a GGUF header, so run those on this model
         # alone rather than the whole fleet on every install.
-        findings = [f for f in lint_config(data) if f.model_id == model_id]
+        overrides = _registry_binary_overrides()
+        findings = [f for f in lint_config(data, binary_overrides=overrides)
+                    if f.model_id == model_id]
         if block is not None:
             findings += lint_config({"models": {model_id: block}},
-                                    check_paths=True, check_gguf=True)
+                                    check_paths=True, check_gguf=True,
+                                    binary_overrides=overrides)
         seen = set()
         findings = [f for f in findings
                     if not (f.rule in seen or seen.add(f.rule))]

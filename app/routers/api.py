@@ -545,7 +545,12 @@ def lint_llama_swap_config(request: Request, strict: bool = False):
     from .. import swap_config
     from ..config_lint import lint_config, worst_level
 
-    findings = lint_config(swap_config.load(), check_paths=strict, check_gguf=strict)
+    findings = lint_config(
+        swap_config.load(),
+        check_paths=strict,
+        check_gguf=strict,
+        binary_overrides=swap_config._registry_binary_overrides(),
+    )
     counts = {lvl: sum(1 for f in findings if f.level == lvl)
               for lvl in ("error", "warn", "info")}
     return {

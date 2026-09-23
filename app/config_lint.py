@@ -13,7 +13,11 @@ cost hours to find by hand:
 - a generated block pointed at a binary that cannot read the model's format, so
   the server exited during load with only ``exit status 1`` in the journal;
 - a model shipping its own MTP head ran without speculation because nobody
-  looked inside the GGUF.
+  looked inside the GGUF;
+- a model needing a fork build had its cmd rewritten to a mainline binary that
+  does not know its architecture, so it exited with ``unknown model
+  architecture`` and simply never started again — the registry recorded the
+  right binary the whole time, nothing compared the two.
 
 The checks are pure functions over the parsed config so they can be unit-tested
 without a node; filesystem- and GGUF-dependent rules are opt-in via flags.
@@ -132,12 +136,17 @@ def lint_config(
     *,
     check_paths: bool = False,
     check_gguf: bool = False,
+    binary_overrides: dict[str, str] | None = None,
 ) -> list[Finding]:
     """Return findings for a parsed llama-swap config.
 
     ``check_paths`` enables filesystem existence checks (binary, --model, -md).
     ``check_gguf`` additionally reads GGUF headers to spot an unused MTP head;
     both are off by default so the rules stay unit-testable.
+
+    ``binary_overrides`` maps model_id to the binary that model must run, as
+    recorded in the registry. It is passed in rather than read here so the
+    rules stay pure functions over the config.
     """
     models = data.get("models") or {}
     findings: list[Finding] = []
@@ -180,6 +189,21 @@ def lint_config(
                     "llama-server binary",
                 ))
             continue
+
+        # A model that only one build can load records that build in the
+        # registry. Anything that rewrites cmd — a backend switch, a benchmark
+        # arm that fails to restore, the config generator — can quietly put a
+        # different binary back, and the model then never starts: llama-swap
+        # logs `exit status 1` and nothing else. Comparing the two is the whole
+        # check.
+        want = (binary_overrides or {}).get(model_id, "")
+        if want and _binary_of(cmd) != want:
+            findings.append(Finding(
+                ERROR, model_id, "binary_override_ignored",
+                f"registry pins this model to {want!r} but cmd runs "
+                f"{_binary_of(cmd)!r}; if that build does not know the model's "
+                "architecture it exits during load with only 'exit status 1'",
+            ))
 
         # A proxy pointing somewhere else still occupies that port at runtime.
         for p in {v for v in (cmd_port, proxy_port) if v is not None}:
