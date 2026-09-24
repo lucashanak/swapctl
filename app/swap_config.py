@@ -1066,6 +1066,22 @@ def _cmd_binary(cmd: str) -> str:
     return ""
 
 
+# Runners that are not llama-server and never become one. A backend switch on
+# these has nothing to splice and nothing to rebuild from: the registry record
+# describes a GGUF, and turning `podman run ...` into a llama-server invocation
+# would destroy the entry. halogen-flash-next is served by a container, the NPU
+# models by `flm serve`, speech by whisper-server, xtts by a wrapper script.
+_FOREIGN_RUNNERS = ("podman", "docker", "flm", "whisper-server")
+
+
+def _is_foreign_runner(cmd: str) -> bool:
+    binary = _cmd_binary(cmd)
+    if not binary:
+        return False
+    name = binary.rsplit("/", 1)[-1]
+    return name in _FOREIGN_RUNNERS or name.endswith(".sh")
+
+
 def _has_llama_binary(cmd: str) -> bool:
     """Whether cmd starts with a llama-server executable we can splice.
 
@@ -1282,6 +1298,15 @@ def switch_model_backend(model_id: str, backend_id: str, path: Path | None = Non
             target_binary = rec.binary_override
     except Exception:
         rec = None
+
+    # Refuse before touching anything: a container or a wrapper has no backend
+    # to switch to, and the rebuild path below would replace it with a
+    # llama-server command built from a GGUF record it does not have.
+    if _is_foreign_runner(cmd):
+        raise ConfigError(
+            f"{model_id!r} is not run by llama-server ({_cmd_binary(cmd)!r}); "
+            "it has no backends to switch between"
+        )
 
     # Prefer in-place patching to preserve manual flags (-md, -ngld, custom args).
     # Only rebuild from the registry record when the cmd has no binary to splice.
