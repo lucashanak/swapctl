@@ -1089,6 +1089,46 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
     }
 
 
+def suite_throughput(iq_res: dict) -> float | None:
+    """Tokens generated per second of suite wall clock.
+
+    The per-request decode median answers "how fast is one answer", and it is
+    the wrong number for a server that batches: the suite sends
+    `parallel_slots` questions at once, so a batching engine answers four
+    together and each request sees its share of the batch. halogen measured
+    14.4 t/s that way while doing 2.4x the work of a flash-next measured at
+    38.5 — the median had it backwards. A llama-server at `--parallel 1`
+    queues the same four and answers them one by one at full speed, so its
+    median is unaffected, which is why the gap went unnoticed.
+
+    Total tokens over elapsed time cannot be distorted by concurrency. It does
+    include prefill, so it understates pure decode, but equally for every
+    model, which is what a comparison needs. None when there is nothing to
+    divide.
+    """
+    det = iq_res.get("details") or []
+    dur = iq_res.get("duration") or 0
+    if not det or not dur or dur <= 0:
+        return None
+    tokens = sum(d.get("tokens") or 0 for d in det)
+    if tokens <= 0:
+        return None
+    return round(tokens / dur, 1)
+
+
+def batched_speed(iq_res: dict) -> bool:
+    """Whether the per-request median understates what the server delivered.
+
+    Throughput above the per-request speed is only possible when several
+    requests were served at once. Every llama-server in the fleet shows the
+    opposite — throughput below per-request, because it answers one at a time
+    and throughput includes prefill — so this singles out a batching engine.
+    """
+    per_req = iq_res.get("decode_tps") or 0
+    thr = suite_throughput(iq_res)
+    return bool(per_req and thr and thr > per_req)
+
+
 def _speed_summary(tg_speeds: list[float]) -> dict:
     """Decode-speed summary over every question in a run."""
     if not tg_speeds:

@@ -355,6 +355,7 @@
         <th class="px-1.5 sm:px-2 py-2 text-center hidden sm:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('spec')">Spec <span x-text="indicator('spec')"></span></th>
         <th class="px-1.5 sm:px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('iq')">IQ <span x-text="indicator('iq')"></span></th>
         <th class="px-2 py-2 text-center hidden lg:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('iqdur')">IQ Time <span x-text="indicator('iqdur')"></span></th>
+        <th class="px-2 py-2 text-center hidden lg:table-cell cursor-pointer select-none hover:text-slate-200" @click="sort('suite')" title="tokens generated per second of IQ-suite wall clock — comparable across every model, whether or not the server batches concurrent requests">Suite t/s <span x-text="indicator('suite')"></span></th>
         <th class="px-1.5 sm:px-2 py-2 text-center cursor-pointer select-none hover:text-slate-200" @click="sort('eff')">Eff <span x-text="indicator('eff')"></span></th>
         <th class="px-1.5 sm:px-2 py-2 text-right">Actions</th>
       </tr>
@@ -372,6 +373,7 @@
           data-quant="{{ m.quant or '' }}"
           data-ctx="{{ m.ctx_size or 0 }}"
           data-speed="{{ m.best_speed }}"
+          data-suite="{{ m.suite_tps or 0 }}"
           data-spec="{{ m.speed_spec.tg_speed if m.speed_spec else 0 }}"
           data-iq="{{ iq_score }}"
           data-iqdur="{{ m.iq_duration or 0 }}"
@@ -447,6 +449,13 @@
                   title="median decode over the intelligence run ({{ m.intelligence.decode_samples }} questions); no dedicated benchmark on record">
               {{ m.best_speed }} <span class="text-slate-500 text-[9px] sm:text-[10px]">t/s</span>
               <span class="text-[8px] ml-0.5 px-0.5 rounded bg-slate-700 text-slate-300 hidden sm:inline">iq</span>
+              {% if m.speed_batched %}
+                {# The suite sends several questions at once and this server
+                   answered them together, so each request saw only its share
+                   of the batch. Suite t/s is the comparable figure. #}
+                <span class="text-[8px] ml-0.5 px-0.5 rounded bg-amber-900/70 text-amber-200"
+                      title="batched: this server answered the suite's concurrent questions together, so each request's speed is its share of the batch — see Suite t/s for what it delivered">batched</span>
+              {% endif %}
             </span>
           {% else %}<span class="text-slate-500">—</span>{% endif %}
         </td>
@@ -474,6 +483,12 @@
         <td class="px-2 py-1.5 text-center hidden lg:table-cell">
           {% if m.iq_duration %}
             <span class="font-mono text-slate-300" data-color="iqdur">{{ m.iq_duration }}s</span>
+          {% else %}<span class="text-slate-500">—</span>{% endif %}
+        </td>
+        <td class="px-2 py-1.5 text-center hidden lg:table-cell">
+          {% if m.suite_tps %}
+            <span class="font-mono text-slate-300" data-color="suite"
+                  title="tokens generated per second of IQ-suite wall clock; includes prefill, so it understates pure decode, equally for every model">{{ m.suite_tps }} <span class="text-slate-500 text-[9px]">t/s</span></span>
           {% else %}<span class="text-slate-500">—</span>{% endif %}
         </td>
         <td class="px-1.5 sm:px-2 py-1.5 text-center">
@@ -949,7 +964,7 @@ function sortTestTable() {
       const tbody = this.$refs.tbody;
       if (!tbody) return;
       const rows = Array.from(tbody.querySelectorAll('tr[data-model]'));
-      const isNum = ['size','speed','spec','iq','iqdur','eff','ctx','vram'].includes(this.col);
+      const isNum = ['size','speed','spec','iq','iqdur','suite','eff','ctx','vram'].includes(this.col);
       const col = this.col, asc = this.asc;
       rows.sort((a, b) => {
         let va = a.dataset[col] || '', vb = b.dataset[col] || '';
@@ -960,7 +975,7 @@ function sortTestTable() {
         return 0;
       });
       rows.forEach(r => tbody.appendChild(r));
-      colorizeColumns(tbody, [{col:'speed'},{col:'spec'},{col:'iq'},{col:'iqdur',invert:true},{col:'eff'}]);
+      colorizeColumns(tbody, [{col:'speed'},{col:'spec'},{col:'iq'},{col:'iqdur',invert:true},{col:'suite'},{col:'eff'}]);
     },
     sort(c) {
       if (this.col === c) { this.asc = !this.asc; } else { this.col = c; this.asc = c === 'model' || c === 'quant'; }

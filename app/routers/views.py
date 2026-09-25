@@ -519,6 +519,10 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
         speed_from_iq = not best_speed and bool(iq_tps)
         if speed_from_iq:
             best_speed = iq_tps
+        # Work per second of suite wall clock: comparable across every model,
+        # whether or not the server batches the suite's concurrent questions.
+        suite_tps = tester.suite_throughput(iq_res)
+        speed_batched = speed_from_iq and tester.batched_speed(iq_res)
 
         models.append({
             "model_id": r.model_id,
@@ -556,6 +560,8 @@ def testing(request: Request, refresh: int = 0) -> HTMLResponse:
             "current_backend_id": current_backend_id,
             "best_speed": best_speed,
             "speed_from_iq": speed_from_iq,
+            "speed_batched": speed_batched,
+            "suite_tps": suite_tps,
             "speed_spec": spec,
             "intelligence": iq,
             "iq_duration": iq_dur,
