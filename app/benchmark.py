@@ -263,6 +263,13 @@ def auto_bench_backends(model_id: str) -> list[str]:
     Spec-capable = backend has non-empty default_flags OR caps contains 'mtp'/'draft'/'gemma4-assistant'.
     """
     try:
+        from . import swap_config as _sc
+        _cmd = str(((_sc.load().get("models") or {}).get(model_id) or {}).get("cmd") or "")
+        if _sc._is_foreign_runner(_cmd):
+            return ["container"]
+    except Exception:
+        pass
+    try:
         rec = reg_mod.get(model_id)
         br = BackendsRegistry()
         compat = br.compatible(rec) if rec is not None else br.list_all()
@@ -410,30 +417,43 @@ def _run_benchmark_locked(
     results: list[dict] = []
 
     # Determine whether to restore (avoid unnecessary restart if last backend == original)
-    should_restore = bool(original_backend) and (not backend_ids or original_backend != backend_ids[-1])
+    # A model run by something other than llama-server (halogen's container,
+    # an NPU runner) has no backends: switch_model_backend refuses it, and a
+    # llama-swap restart per arm would only kill and cold-start it. Measure it
+    # once, exactly as configured — the same pp/gen tests every other model
+    # gets, so its speed lands in the ranking by the same method.
+    foreign = swap_config._is_foreign_runner(_ORIGINAL_CMD_SNAPSHOT or "")
+    if foreign:
+        # One arm, labelled for what it is: a "vulkan" label picked in the UI
+        # would file a container measurement under a backend it never ran.
+        backend_ids = ["container"]
+
+    should_restore = (not foreign) and bool(original_backend) and (
+        not backend_ids or original_backend != backend_ids[-1])
 
     try:
         for backend_id in backend_ids:
             log.info("benchmark: switching %s to backend %s", model_id, backend_id)
             vram_start = _read_vram_bytes()
 
-            _restore_cmd_snapshot()
-            try:
-                swap_config.switch_model_backend(model_id, backend_id)
-            except Exception as exc:
-                log.error("benchmark: switch to %s failed: %s", backend_id, exc)
-                _add_error_records(results, backend_id, str(exc))
-                continue
+            if not foreign:
+                _restore_cmd_snapshot()
+                try:
+                    swap_config.switch_model_backend(model_id, backend_id)
+                except Exception as exc:
+                    log.error("benchmark: switch to %s failed: %s", backend_id, exc)
+                    _add_error_records(results, backend_id, str(exc))
+                    continue
 
-            # Restart llama-swap and wait for it to be healthy
-            try:
-                from . import system
-                system.restart_swap()
-                system.wait_swap_healthy(timeout_s=60.0)
-            except Exception as exc:
-                log.error("benchmark: llama-swap restart failed for backend %s: %s", backend_id, exc)
-                _add_error_records(results, backend_id, f"restart failed: {exc}")
-                continue
+                # Restart llama-swap and wait for it to be healthy
+                try:
+                    from . import system
+                    system.restart_swap()
+                    system.wait_swap_healthy(timeout_s=60.0)
+                except Exception as exc:
+                    log.error("benchmark: llama-swap restart failed for backend %s: %s", backend_id, exc)
+                    _add_error_records(results, backend_id, f"restart failed: {exc}")
+                    continue
 
             # Warmup — force model load. If this fails, skip PP/GEN to avoid wasting time
             # on a backend that can't load the model.
@@ -460,7 +480,8 @@ def _run_benchmark_locked(
             _append_speed_history(model_id, gen_record)
 
     finally:
-        _restore_cmd_snapshot()
+        if not foreign:
+            _restore_cmd_snapshot()
         if should_restore:
             try:
                 log.info("benchmark: restoring original backend %s for %s", original_backend, model_id)

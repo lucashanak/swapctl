@@ -366,7 +366,9 @@
       {% for m in models %}
       {% set iq_score = m.intelligence.score if m.intelligence else 0 %}
       {% set eff = m.effectivity or 0 %}
-      {% set is_small = (m.size_bytes or 0) < small_threshold %}
+      {# Unknown size is not "small": a model with no recorded size (a
+         container, a runner swapctl did not install) was hidden as one. #}
+      {% set is_small = m.size_bytes and m.size_bytes < small_threshold %}
       <tr id="test-row-{{ m.model_id }}"
           data-model="{{ m.model_id }}"
           data-size="{{ m.size_bytes or 0 }}"
