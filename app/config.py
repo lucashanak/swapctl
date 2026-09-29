@@ -218,8 +218,11 @@ _JUDGE_MODEL_FILE = Path("/var/lib/swapctl/judge_model")
 
 # The judge grades a failed answer against the expected one, so what it needs
 # is strict instruction-following, not the highest overall score: it has to
-# answer in the demanded shape every time. qwen3.8-27b is at 100 on that axis.
-DEFAULT_JUDGE_MODEL = "qwen3.8-27b"
+# answer in the demanded shape every time. qwen3.8-27b is at 100 on that axis;
+# since 2026-09-29 it is served by gufo (the llama.cpp copy was deleted). A
+# deleted default no longer breaks the suite silently: tester.resolve_judge
+# falls through to a servable candidate and the result records which one.
+DEFAULT_JUDGE_MODEL = "gufo-qwen3.8-27b"
 
 
 def get_judge_model() -> str:

@@ -582,6 +582,46 @@ def JUDGE_MODEL(under_test: str | None = None) -> str:
     from .config import judge_model_for
     return judge_model_for(under_test)
 
+
+def _servable_names() -> set[str] | None:
+    """Every name llama-swap will route: model ids plus their aliases.
+
+    Aliases matter — the fallback judge `qwen3.8-flash-next` is one, and a
+    registry-only check would call it missing. None when the config cannot be
+    read, which callers treat as "cannot tell".
+    """
+    from . import swap_config
+    try:
+        models = swap_config.load().get("models") or {}
+    except Exception:
+        return None
+    names: set[str] = set()
+    for mid, blk in models.items():
+        names.add(str(mid))
+        for alias in ((blk or {}).get("aliases") or []):
+            names.add(str(alias))
+    return names
+
+
+def resolve_judge(under_test: str | None) -> str | None:
+    """The judge a run should use, or None when no judge can be served.
+
+    The configured judge has now been deleted out from under the suite twice
+    (gpt-oss-120b, then qwen3.8-27b). The warm-up then failed and judging was
+    skipped with nothing but a log line, so the stored score was judge-free
+    and looked like any other. This picks the first candidate llama-swap can
+    actually serve and that is not the model under test.
+    """
+    from .config import DEFAULT_JUDGE_MODEL, FALLBACK_JUDGE_MODEL, judge_model_for
+    names = _servable_names()
+    first = judge_model_for(under_test)
+    if names is None:
+        return first
+    for cand in dict.fromkeys((first, FALLBACK_JUDGE_MODEL, DEFAULT_JUDGE_MODEL)):
+        if cand and cand != under_test and cand in names:
+            return cand
+    return None
+
 _JUDGE_PROMPT = """You are a strict exam grader. Evaluate if the student's response correctly answers the question.
 
 Question: {question}
@@ -598,7 +638,8 @@ Rules:
 Reply with exactly one word: PASS or FAIL"""
 
 
-def _llm_judge(endpoint: str, question: dict, response: str, under_test: str | None = None) -> bool:
+def _llm_judge(endpoint: str, question: dict, response: str, under_test: str | None = None,
+               judge: str | None = None) -> bool:
     extracted = _extract_answer(response)
     judge_response = extracted[:500] if extracted != response else response[-800:]
     prompt = _JUDGE_PROMPT.format(
@@ -607,7 +648,7 @@ def _llm_judge(endpoint: str, question: dict, response: str, under_test: str | N
         response=judge_response,
     )
     try:
-        data = _chat(endpoint, JUDGE_MODEL(under_test), prompt, 10, timeout=60.0)
+        data = _chat(endpoint, judge or JUDGE_MODEL(under_test), prompt, 10, timeout=60.0)
         msg = data["choices"][0]["message"]
         verdict = (msg.get("content") or "").strip().upper()
         return "PASS" in verdict
@@ -961,13 +1002,24 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         if not passed and not errored and content.strip():
             failed_indices.append(i)
 
+    # Recorded in the result so a score always says who graded it, and a
+    # judge-free score can never pass for a judged one.
+    judge_used: str | None = None
     if failed_indices:
-        log.info("LLM judge: reviewing %d failed answers for %s", len(failed_indices), model_id)
-        try:
-            _chat(endpoint, JUDGE_MODEL(), "Say OK", 5, timeout=120.0)
-        except Exception:
-            log.warning("could not load judge model %s", JUDGE_MODEL())
+        judge_used = resolve_judge(model_id)
+        if judge_used is None:
+            log.warning("LLM judge: no servable judge for %s; %d failed answers left unreviewed",
+                        model_id, len(failed_indices))
             failed_indices = []
+        else:
+            log.info("LLM judge: %s reviewing %d failed answers for %s",
+                     judge_used, len(failed_indices), model_id)
+            try:
+                _chat(endpoint, judge_used, "Say OK", 5, timeout=120.0)
+            except Exception:
+                log.warning("could not load judge model %s", judge_used)
+                judge_used = None
+                failed_indices = []
 
         n_failed = len(failed_indices)
         for ji, i in enumerate(failed_indices):
@@ -979,7 +1031,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
                     if j is not None:
                         j["progress"] = {"step": "judging", "current": ji, "total": n_failed, "percent": round(ji / n_failed * 100, 1)}
             q, content, _, _ = responses[i]
-            verdict = _llm_judge(endpoint, q, content, under_test=model_id)
+            verdict = _llm_judge(endpoint, q, content, under_test=model_id, judge=judge_used)
             details[i]["judge"] = "pass" if verdict else "fail"
             if verdict:
                 details[i]["passed"] = True
@@ -1082,6 +1134,7 @@ def _run_intelligence_test(model_id: str, job_id: str = "", only_failed: bool = 
         # slow question with a long prefill drags a mean where it does not drag a
         # median.
         **_speed_summary(tg_speeds),
+        "judge_model": judge_used,
         "tested_at": _now(),
         "categories": cat_scores,
         "difficulties": diff_scores,
