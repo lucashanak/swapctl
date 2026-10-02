@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from huggingface_hub import HfApi, hf_hub_url
+from huggingface_hub import HfApi, get_token, hf_hub_url
 from huggingface_hub.errors import HfHubHTTPError
 
 from . import DownloadError
@@ -441,7 +441,10 @@ def _download_throttled(
     from .config import get_dl_speed_limit
 
     url = hf_hub_url(repo_id=repo_id, filename=filename)
-    token = HfApi().token
+    # HfApi().token is only the constructor argument (None here), not the saved
+    # login, so gated repos got no Authorization header and 401'd. get_token()
+    # resolves HF_TOKEN and the cached token the same way hf_hub_download does.
+    token = get_token()
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
