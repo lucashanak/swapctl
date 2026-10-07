@@ -330,6 +330,9 @@ def test_rebuild_matrix_lets_npu_models_join_any_gpu_set(tmp_path: Path, monkeyp
         twin = mx["sets"][f"solo_{sc[gpu]}_npu"]
         assert twin == f"({sc[gpu]}) & {any_npu}"
 
+    # combos get no twin (llama-swap caps expanded combinations at 1000)
+    assert not any(n.startswith("combo_") and n.endswith("_npu") for n in mx["sets"])
+
     # NPU models are never paired with each other (one flm process at a time)
     for name, dsl in mx["sets"].items():
         if name.startswith("solo_") and str(dsl) in (sc["npu/qwen3:1.7b"], sc["npu/whisper-v3:turbo"]):
@@ -341,3 +344,22 @@ def test_rebuild_matrix_without_npu_models_adds_no_twins(cfg_path: Path, monkeyp
     swap_config.rebuild_matrix(cfg_path)
     sets = swap_config.load(cfg_path)["matrix"]["sets"]
     assert not any(name.endswith("_npu") for name in sets)
+
+
+def test_rebuild_matrix_npu_twins_stay_under_expansion_limit(tmp_path: Path, monkeypatch) -> None:
+    """Twins stop before the expanded set count passes the combo limit."""
+    models = "".join(
+        f"  m{i}:\n    cmd: /usr/local/bin/llama-server --model /models/m{i}/x.gguf --port {9300 + i}\n"
+        f"    proxy: http://127.0.0.1:{9300 + i}\n" for i in range(60))
+    npus = "".join(
+        f"  npu/n{i}:\n    cmd: flm serve n{i} --port {9400 + i}\n    proxy: http://127.0.0.1:{9400 + i}\n"
+        for i in range(20))
+    path = tmp_path / "config.yaml"
+    path.write_text("models:\n" + models + npus)
+    monkeypatch.setattr(swap_config, "_model_sizes", lambda *a, **k: {})
+    monkeypatch.setattr(swap_config, "_COMBO_LIMIT", 500)
+    swap_config.rebuild_matrix(path)
+    sets = swap_config.load(path)["matrix"]["sets"]
+    expanded = sum(20 if n.endswith("_npu") else 1 for n in sets)
+    assert expanded <= 500
+    assert any(n.endswith("_npu") for n in sets)

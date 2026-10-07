@@ -321,12 +321,16 @@ def rebuild_matrix(path: Path | None = None, max_group_size: int = 3) -> None:
         name = "combo_" + "_".join(scs)
         sets_d[name] = " & ".join(scs)
     if npu_models:
+        # Twins only for single GPU models: llama-swap expands every
+        # alternative of a set and refuses a config past 1000 expansions, and
+        # twinning every combo too came to 1001 on the live fleet (2026-10-07).
         any_npu = "(" + " | ".join(shortcuts[m] for m in npu_models) + ")"
-        npu_scs = {shortcuts[m] for m in npu_models}
-        for name, dsl in list(sets_d.items()):
-            if dsl in npu_scs:
-                continue
-            sets_d[f"{name}_npu"] = f"({dsl}) & {any_npu}"
+        budget = _COMBO_LIMIT - len(sets_d)
+        for m in declared:
+            if budget < len(npu_models):
+                break
+            sets_d[f"solo_{shortcuts[m]}_npu"] = f"({shortcuts[m]}) & {any_npu}"
+            budget -= len(npu_models)
 
     matrix = CommentedMap()
     matrix["vars"] = CommentedMap({k: vars_d[k] for k in sorted(vars_d)})
