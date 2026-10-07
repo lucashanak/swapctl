@@ -137,5 +137,6 @@ def test_api_docs_npu_section_shows_live_models(authed_client):
     assert resp.status_code == 200
     assert "NPU up right now" in body
     assert "decider-0.8b, qwen3-embedding-0.6b" in body
-    assert f"{settings.npu_lan_base}/v1/systemone" in body
+    for ep in ("systemone", "embeddings", "rerank", "moderations"):
+        assert f"{settings.npu_lan_base}/v1/{ep}" in body
     assert "halogen is not loaded" not in body

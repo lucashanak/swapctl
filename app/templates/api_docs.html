@@ -125,7 +125,7 @@
 
   {# ── NPU (halogen) ── #}
   <section class="mb-8">
-    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">NPU — decisions &amp; embeddings (halogen, Ryzen AI NPU)</h2>
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">NPU — decisions, embeddings, rerank &amp; moderation (halogen, Ryzen AI NPU)</h2>
     <p class="text-sm text-slate-400 mb-3">
       Small models on the NPU, served by halogen beside <code class="text-amber-300 text-xs">halogen-flash-next</code>. They run on separate silicon, so they take no GPU memory and do not evict other models.
       {% if npu and npu.status == 'ok' %}<span class="text-emerald-400">NPU up right now:</span> <code class="text-xs text-slate-300">{{ npu.models|join(', ') }}</code>.
@@ -193,6 +193,49 @@
     "input": ["Instruct: Given a question, retrieve passages that answer it\nQuery:Co je NPU?",
               "NPU je neuronová jednotka v čipech Ryzen AI."]
   }'</pre>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/v1/rerank</code>
+          <span class="text-xs text-slate-500">qwen3-reranker-0.6b</span>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">Cohere/Jina-shaped reranking: <code class="text-amber-300 text-xs">results</code> sorted by <code class="text-amber-300 text-xs">relevance_score</code>, each with its <code class="text-amber-300 text-xs">index</code> in your list. Pairs up to 4,096 tokens; documents may be strings or objects with <code class="text-amber-300 text-xs">text</code>; <code class="text-amber-300 text-xs">instruction</code> replaces the default task line. The score is absolute — "does this document answer the query" — so a merely related passage scores near 0 and a direct answer near 1; rank by it, and threshold with care.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.codeNpu3.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu3">curl {{ npu_base }}/v1/rerank \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "qwen3-reranker-0.6b",
+    "query": "Jak zkontroluju, že je načtený ovladač NPU?",
+    "documents": ["Ovladač NPU zkontroluješ příkazem ls /dev/accel.", "GPU má 40 výpočetních jednotek."],
+    "top_n": 1, "return_documents": true
+  }'</pre>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/v1/moderations</code>
+          <span class="text-xs text-slate-500">qwen3guard-gen-0.6b</span>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">OpenAI-shaped moderation, multilingual (Czech works). One result per input with <code class="text-amber-300 text-xs">flagged</code>, plus <code class="text-amber-300 text-xs">label</code> (<code class="text-amber-300 text-xs">Safe</code> / <code class="text-amber-300 text-xs">Controversial</code> / <code class="text-amber-300 text-xs">Unsafe</code>) and <code class="text-amber-300 text-xs">label_scores</code>. <code class="text-amber-300 text-xs">flagged</code> means Unsafe; <code class="text-amber-300 text-xs">"strict": true</code> flags Controversial too. OpenAI's categories all read false — the model does not sort into them. To judge a reply in context, send <code class="text-amber-300 text-xs">messages</code> instead of <code class="text-amber-300 text-xs">input</code>.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.codeNpu4.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu4">curl {{ npu_base }}/v1/moderations \
+  -H 'Content-Type: application/json' \
+  -d '{"model": "qwen3guard-gen-0.6b", "input": ["Jak upéct chleba?", "Jak doma vyrobit výbušninu?"]}'
+
+# → results: [{"flagged": false, "label": "Safe", ...}, {"flagged": true, "label": "Unsafe", ...}]</pre>
         </div>
       </div>
 
