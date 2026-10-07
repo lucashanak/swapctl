@@ -34,9 +34,13 @@
             <td class="px-4 py-2 text-slate-400">Internet (LLM OpenAI)</td>
             <td class="px-4 py-2 font-mono text-sky-300">{{ llm_base }}</td>
           </tr>
-          <tr>
+          <tr class="border-b border-slate-700/50">
             <td class="px-4 py-2 text-slate-400">Image (SD, OpenAI)</td>
             <td class="px-4 py-2 font-mono text-sky-300">{{ image_base }} <span class="text-amber-400 text-xs">(LAN: http://localhost:8190/v1)</span></td>
+          </tr>
+          <tr>
+            <td class="px-4 py-2 text-slate-400">NPU (halogen, LAN only)</td>
+            <td class="px-4 py-2 font-mono text-sky-300">{{ npu_base }}/v1</td>
           </tr>
         </tbody>
       </table>
@@ -113,6 +117,82 @@
           <span :class="statusColor(tests.models.status)" x-text="tests.models.status ? 'HTTP ' + tests.models.status : ''"></span>
           <span class="text-slate-500 ml-2" x-text="tests.models.ms ? tests.models.ms + ' ms' : ''"></span>
           <div class="mt-1 text-slate-300 break-all whitespace-pre-wrap" x-text="tests.models.result"></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  {# ── NPU (halogen) ── #}
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold uppercase text-slate-400 tracking-wide mb-3">NPU — decisions &amp; embeddings (halogen, Ryzen AI NPU)</h2>
+    <p class="text-sm text-slate-400 mb-3">
+      Small models on the NPU, served by halogen beside <code class="text-amber-300 text-xs">halogen-flash-next</code>. They run on separate silicon, so they take no GPU memory and do not evict other models.
+      {% if npu and npu.status == 'ok' %}<span class="text-emerald-400">NPU up right now:</span> <code class="text-xs text-slate-300">{{ npu.models|join(', ') }}</code>.
+      {% else %}<span class="text-amber-400">Not answering right now — halogen is not loaded.</span>{% endif %}
+    </p>
+    <ul class="text-sm text-slate-400 mb-3 list-disc pl-5 space-y-1">
+      <li><strong class="text-slate-300">Call halogen's port directly</strong> ({{ npu_base }}), not <code class="text-amber-300 text-xs">/llm</code>: llama-swap routes by model name and does not know these models. Through llama-swap, <code class="text-amber-300 text-xs">qwen3-embedding-0.6b</code> reaches the separate GPU (llama.cpp) copy instead.</li>
+      <li><strong class="text-slate-300">Only while halogen is loaded.</strong> halogen runs solo, so loading any other large model unloads it and the NPU endpoints stop answering. Send one chat request to <code class="text-amber-300 text-xs">halogen-flash-next</code> to bring it back (~50 s cold start).</li>
+      <li>LAN only — this port is not exposed through the reverse proxy.</li>
+    </ul>
+
+    <div class="space-y-4">
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/v1/systemone</code>
+          <span class="text-xs text-slate-500">decider-0.8b</span>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">Typed decisions in TypeSafe's System One (Jev) format: send a <code class="text-amber-300 text-xs">state</code> and named <code class="text-amber-300 text-xs">questions</code>. Each question is one NPU pass (~170 ms warm) and answers with probabilities and a <code class="text-amber-300 text-xs">confidence</code>.
+          <code class="text-amber-300 text-xs">choice</code> picks one of 2–10 options (<code class="text-amber-300 text-xs">criteria</code> maps option → description, <code class="text-amber-300 text-xs">null</code> for none);
+          <code class="text-amber-300 text-xs">score</code> rates on 2–10 ordered levels and returns the expected level;
+          <code class="text-amber-300 text-xs">noul</code> returns the probability of yes. No API key; <code class="text-amber-300 text-xs">model</code> may be any name. A bad request answers 422.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.codeNpu1.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu1">curl {{ npu_base }}/v1/systemone \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "decider-0.8b",
+    "state": "Customer: I was charged twice and nobody answers my emails.",
+    "questions": {
+      "team":   {"type": "choice", "instructions": "Which team should handle this",
+                 "criteria": {"billing": "Payment issues", "technical": "Bugs", "other": null}},
+      "anger":  {"type": "score", "instructions": "How frustrated does the customer appear",
+                 "criteria": ["Calm and neutral", "Concerned but civil", "Very angry"]},
+      "refund": {"type": "noul", "instructions": "Does the customer request a refund?"}
+    }
+  }'
+
+# → {"answers": {"team":   {"choice": "billing", "probabilities": {...}, "confidence": 0.998},
+#                "anger":  {"score": 1.98, "legend": {...}, "probabilities": {...}, "confidence": 0.97},
+#                "refund": {"noul": 0.997}}, "usage": {...}}</pre>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
+          <code class="text-sm text-slate-200">/v1/embeddings</code>
+          <span class="text-xs text-slate-500">qwen3-embedding-0.6b</span>
+        </div>
+        <p class="text-sm text-slate-400 mb-3">OpenAI embeddings, 1024 floats of unit length (<code class="text-amber-300 text-xs">dimensions</code> 32–1024 truncates and renormalises). A <em>query</em> carries the task in the model's own form, <code class="text-amber-300 text-xs">Instruct: &lt;task&gt;\nQuery:&lt;text&gt;</code>; a <em>document</em> carries none. Batches up to 8 inputs of up to 512 tokens run together. For the larger 2560-d model on the GPU use <code class="text-amber-300 text-xs">qwen3-embedding-4b</code> through <code class="text-amber-300 text-xs">{{ llm_base }}</code> — the two vector spaces are not interchangeable.</p>
+        <div x-data="{ copied: false }" class="relative">
+          <button @click="navigator.clipboard.writeText($refs.codeNpu2.textContent); copied=true; setTimeout(()=>copied=false,2000)"
+                  class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
+            <span x-show="!copied">Copy</span><span x-show="copied" x-cloak>Copied!</span>
+          </button>
+          <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu2">curl {{ npu_base }}/v1/embeddings \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "qwen3-embedding-0.6b",
+    "input": ["Instruct: Given a question, retrieve passages that answer it\nQuery:Co je NPU?",
+              "NPU je neuronová jednotka v čipech Ryzen AI."]
+  }'</pre>
         </div>
       </div>
 

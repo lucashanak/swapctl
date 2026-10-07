@@ -103,6 +103,11 @@ class Settings:
     llm_public_prefix: str = field(default_factory=lambda: "/" + _env("SWAPCTL_LLM_PUBLIC_PREFIX", "llm").strip("/"))
     image_endpoint: str = field(default_factory=lambda: _env("SWAPCTL_IMAGE_ENDPOINT", "http://127.0.0.1:8190").rstrip("/"))
     image_public_prefix: str = field(default_factory=lambda: "/" + _env("SWAPCTL_IMAGE_PUBLIC_PREFIX", "image").strip("/"))
+    # halogen-flash-server serves the NPU models (decisions, embeddings) on its own
+    # port: llama-swap routes by model name and does not know them. npu_endpoint is
+    # what swapctl probes; npu_lan_base is what the docs tell clients to call.
+    npu_endpoint: str = field(default_factory=lambda: _env("SWAPCTL_NPU_ENDPOINT", "http://127.0.0.1:9135").rstrip("/"))
+    npu_lan_base: str = field(default_factory=lambda: _env("SWAPCTL_NPU_LAN_BASE", "http://192.168.1.94:9135").rstrip("/"))
 
 
 _DL_SPEED_FILE = Path("/var/lib/swapctl/dl_speed_limit")

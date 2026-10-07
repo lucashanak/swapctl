@@ -52,15 +52,15 @@ def _mock_llama_swap(model_ids):
 
 def test_api_docs_renders_live_data(authed_client):
     """Model count, example model and voices come from live sources."""
-    with _mock_llama_swap(["gemma-x", "qwen3-coder-test", "other-model"]), \
+    with _mock_llama_swap(["gemma-x", "gufo-ornith-1.5-q6dense", "other-model"]), \
          patch("app.tts.list_voices", return_value=["cs_CZ-jirka-medium", "en_US-ryan-medium"]):
         resp = authed_client.get(_docs_path())
 
     assert resp.status_code == 200
     body = resp.text
-    # live model count + example model preference for qwen3-coder
+    # live model count + example model preference for the everyday default
     assert "3 models" in body
-    assert "qwen3-coder-test" in body
+    assert '"model": "gufo-ornith-1.5-q6dense"' in body
     # voices count + example voice
     assert "2</strong> currently installed" in body
     assert "cs_CZ-jirka-medium" in body
@@ -103,4 +103,39 @@ def test_api_docs_degrades_when_llama_swap_down(authed_client):
     assert resp.status_code == 200
     assert "llama-swap unreachable" in resp.text
     # falls back to the static example model
-    assert "qwen3-coder-30b-a3b-instruct-ud-q4-k-xl" in resp.text
+    assert '"model": "gufo-ornith-1.5-q6dense"' in resp.text
+    # NPU section still renders, flagged as not answering
+    assert "halogen is not loaded" in resp.text
+
+
+def test_api_docs_example_model_falls_back_to_first_live_model(authed_client):
+    """Without a preferred model in the live list the first one is shown."""
+    with _mock_llama_swap(["aaa-model", "zzz-model"]), \
+         patch("app.tts.list_voices", return_value=[]):
+        resp = authed_client.get(_docs_path())
+    assert '"model": "aaa-model"' in resp.text
+
+
+def test_api_docs_npu_section_shows_live_models(authed_client):
+    """With halogen up, the NPU section lists its models and the direct port."""
+    from app.config import settings
+
+    fake_resp = MagicMock()
+    fake_resp.raise_for_status.return_value = None
+    fake_resp.json.return_value = {
+        "data": [{"id": "halogen-flash-next"}],
+        "npu": {"status": "ok", "models": ["decider-0.8b", "qwen3-embedding-0.6b"]},
+    }
+    fake_client = MagicMock()
+    fake_client.__enter__.return_value.get.return_value = fake_resp
+    fake_client.__exit__.return_value = False
+    with patch("httpx.Client", return_value=fake_client), \
+         patch("app.tts.list_voices", return_value=[]):
+        resp = authed_client.get(_docs_path())
+
+    body = resp.text
+    assert resp.status_code == 200
+    assert "NPU up right now" in body
+    assert "decider-0.8b, qwen3-embedding-0.6b" in body
+    assert f"{settings.npu_lan_base}/v1/systemone" in body
+    assert "halogen is not loaded" not in body

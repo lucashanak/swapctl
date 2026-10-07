@@ -697,9 +697,24 @@ def api_docs(request: Request) -> HTMLResponse:
     except Exception:
         llm_models = None
 
-    example_model = "qwen3-coder-30b-a3b-instruct-ud-q4-k-xl"
+    # The everyday default first, then the hard-work default; qwen3-coder, the old
+    # pick, was deleted on 2026-09-23 and left the example pointing at nothing.
+    preferred = ("gufo-ornith-1.5-q6dense", "halogen-flash-next")
+    example_model = preferred[0]
     if llm_models:
-        example_model = next((m for m in llm_models if "qwen3-coder" in m), llm_models[0])
+        example_model = next((m for m in preferred if m in llm_models), llm_models[0])
+
+    # NPU models live inside halogen and answer only while halogen is loaded.
+    npu: dict | None = None
+    try:
+        with httpx.Client(timeout=2.0) as c:
+            r = c.get(settings.npu_endpoint + "/health")
+            r.raise_for_status()
+            info = r.json().get("npu")
+            if isinstance(info, dict):
+                npu = {"status": info.get("status"), "models": list(info.get("models") or [])}
+    except Exception:
+        npu = None
 
     try:
         voices = sorted(tts_mod.list_voices())
@@ -762,6 +777,8 @@ def api_docs(request: Request) -> HTMLResponse:
             "image_models": image_models,
             "image_model": image_model,
             "image_steps": 8,
+            "npu": npu,
+            "npu_base": settings.npu_lan_base,
         },
     )
 
