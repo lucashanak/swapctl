@@ -297,3 +297,47 @@ def test_main_gguf_falls_back_to_largest_for_single_file(tmp_path: Path, monkeyp
     monkeypatch.setattr(swap_config, "settings",
                         SimpleNamespace(models_dir=tmp_path))
     assert swap_config._main_gguf("solo").name == "weights.gguf"
+
+
+NPU_YAML = SEED_YAML + """\
+  npu/qwen3:1.7b:
+    cmd: flm serve qwen3:1.7b --port 9201 --host 127.0.0.1
+    proxy: http://127.0.0.1:9201
+  npu/whisper-v3:turbo:
+    cmd: flm serve whisper-v3:turbo --port 9205 --host 127.0.0.1 --asr 1
+    proxy: http://127.0.0.1:9205
+"""
+
+
+def test_rebuild_matrix_lets_npu_models_join_any_gpu_set(tmp_path: Path, monkeypatch) -> None:
+    """An NPU model can load beside any GPU set instead of evicting it."""
+    path = tmp_path / "config.yaml"
+    path.write_text(NPU_YAML)
+    monkeypatch.setattr(swap_config, "_model_sizes", lambda *a, **k: {})
+    swap_config.rebuild_matrix(path)
+    mx = swap_config.load(path)["matrix"]
+    sc = {str(m): str(s) for s, m in mx["vars"].items()}
+
+    # both NPU models get a shortcut, a cost and a solo set
+    for m in ("npu/qwen3:1.7b", "npu/whisper-v3:turbo"):
+        assert m in sc
+        assert sc[m] in mx["evict_costs"]
+        assert mx["sets"][f"solo_{sc[m]}"] == sc[m]
+
+    # every GPU solo set has an NPU twin naming both NPU models as alternatives
+    any_npu = f"({sc['npu/qwen3:1.7b']} | {sc['npu/whisper-v3:turbo']})"
+    for gpu in ("llama3-8b", "qwen3-4b"):
+        twin = mx["sets"][f"solo_{sc[gpu]}_npu"]
+        assert twin == f"({sc[gpu]}) & {any_npu}"
+
+    # NPU models are never paired with each other (one flm process at a time)
+    for name, dsl in mx["sets"].items():
+        if name.startswith("solo_") and str(dsl) in (sc["npu/qwen3:1.7b"], sc["npu/whisper-v3:turbo"]):
+            assert f"{name}_npu" not in mx["sets"]
+
+
+def test_rebuild_matrix_without_npu_models_adds_no_twins(cfg_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(swap_config, "_model_sizes", lambda *a, **k: {})
+    swap_config.rebuild_matrix(cfg_path)
+    sets = swap_config.load(cfg_path)["matrix"]["sets"]
+    assert not any(name.endswith("_npu") for name in sets)

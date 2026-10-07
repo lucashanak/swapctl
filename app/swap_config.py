@@ -294,10 +294,25 @@ def rebuild_matrix(path: Path | None = None, max_group_size: int = 3) -> None:
     combos = _auto_generate_combos(declared, budget_bytes, max_group_size,
                                    models_block=models_block)
 
-    vars_d = {shortcuts[m]: m for m in declared}
-    costs = {shortcuts[m]: _PRIORITY_TO_COST[priorities[m]] for m in declared}
+    # NPU models (flm) use no GPU memory. Left out of the matrix they were
+    # unknown to it, and llama-swap evicted every running model to load one, so
+    # starting an npu/* model unloaded halogen and its own NPU endpoints. They
+    # now get a shortcut, and every GPU set gets a twin that adds one of them.
+    # One at a time: each flm process claims NPU contexts of its own.
+    npu_models = sorted(m for m in models_block.keys() if _is_npu_block(models_block[m]))
+    for m in npu_models:
+        old_sc = old_vars.get(m)
+        sc = old_sc if old_sc and old_sc not in used_short else _shortcut_for(m, used_short)
+        shortcuts[m] = sc
+        used_short.add(sc)
+        priorities[m] = (_cost_to_priority(old_costs[old_sc])
+                         if old_sc and old_sc in old_costs else "medium")
+    every = declared + npu_models
+
+    vars_d = {shortcuts[m]: m for m in every}
+    costs = {shortcuts[m]: _PRIORITY_TO_COST[priorities[m]] for m in every}
     sets_d: dict[str, str] = {}
-    for m in declared:
+    for m in every:
         sets_d[f"solo_{shortcuts[m]}"] = shortcuts[m]
     for combo in combos:
         if not all(m in shortcuts for m in combo):
@@ -305,6 +320,13 @@ def rebuild_matrix(path: Path | None = None, max_group_size: int = 3) -> None:
         scs = [shortcuts[m] for m in combo]
         name = "combo_" + "_".join(scs)
         sets_d[name] = " & ".join(scs)
+    if npu_models:
+        any_npu = "(" + " | ".join(shortcuts[m] for m in npu_models) + ")"
+        npu_scs = {shortcuts[m] for m in npu_models}
+        for name, dsl in list(sets_d.items()):
+            if dsl in npu_scs:
+                continue
+            sets_d[f"{name}_npu"] = f"({dsl}) & {any_npu}"
 
     matrix = CommentedMap()
     matrix["vars"] = CommentedMap({k: vars_d[k] for k in sorted(vars_d)})
