@@ -243,8 +243,9 @@ def get_judge_model() -> str:
 
 # Used when the model being tested is itself the judge. Grading is a
 # single-shot PASS/FAIL classification, so flash-next's weak spot (multi-turn
-# tool loops) does not apply, and it is the highest-scoring model in the fleet.
-FALLBACK_JUDGE_MODEL = "qwen3.8-flash-next"
+# tool loops) does not apply; halogen serves it with `instruction` 100. It was
+# the llama.cpp copy (qwen3.8-flash-next) until that was deleted on 2026-10-08.
+FALLBACK_JUDGE_MODEL = "halogen-flash-next"
 
 
 def judge_model_for(under_test: str | None) -> str:

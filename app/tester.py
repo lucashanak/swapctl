@@ -586,8 +586,8 @@ def JUDGE_MODEL(under_test: str | None = None) -> str:
 def _servable_names() -> set[str] | None:
     """Every name llama-swap will route: model ids plus their aliases.
 
-    Aliases matter — the fallback judge `qwen3.8-flash-next` is one, and a
-    registry-only check would call it missing. None when the config cannot be
+    Aliases matter — a judge may be configured by its alias (e.g. `halogen`),
+    and a registry-only check would call it missing. None when the config cannot be
     read, which callers treat as "cannot tell".
     """
     from . import swap_config

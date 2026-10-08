@@ -23,28 +23,28 @@ def served(monkeypatch, tmp_path):
 
 def test_configured_judge_used_when_servable(served):
     config.set_judge_model("gufo-qwen3.8-27b")
-    served({"gufo-qwen3.8-27b", "qwen3.8-flash-next", "ornith"})
+    served({"gufo-qwen3.8-27b", config.FALLBACK_JUDGE_MODEL, "ornith"})
     assert tester.resolve_judge("ornith") == "gufo-qwen3.8-27b"
 
 
 def test_deleted_judge_falls_back_instead_of_silently_skipping(served):
     """What happened when qwen3.8-27b was removed in the UI."""
     config.set_judge_model("qwen3.8-27b")
-    served({"qwen3.8-flash-next", "ornith"})
+    served({config.FALLBACK_JUDGE_MODEL, "ornith"})
     assert tester.resolve_judge("ornith") == config.FALLBACK_JUDGE_MODEL
 
 
 def test_an_alias_counts_as_servable(served):
-    """The fallback judge is an alias; a registry-only check would miss it."""
-    config.set_judge_model("gone")
-    served({"qwen38-flash-next-agention", "qwen3.8-flash-next"})  # id and its alias
-    assert tester.resolve_judge("x") == "qwen3.8-flash-next"
+    """A judge configured by its alias resolves; a registry-only check would miss it."""
+    config.set_judge_model("halogen")
+    served({"halogen-flash-next", "halogen"})  # id and its alias
+    assert tester.resolve_judge("x") == "halogen"
 
 
 def test_never_the_model_under_test(served):
     config.set_judge_model("gufo-qwen3.8-27b")
-    served({"gufo-qwen3.8-27b", "qwen3.8-flash-next"})
-    assert tester.resolve_judge("gufo-qwen3.8-27b") == "qwen3.8-flash-next"
+    served({"gufo-qwen3.8-27b", config.FALLBACK_JUDGE_MODEL})
+    assert tester.resolve_judge("gufo-qwen3.8-27b") == config.FALLBACK_JUDGE_MODEL
 
 
 def test_nothing_servable_is_none_not_a_dead_name(served):
