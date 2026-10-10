@@ -132,7 +132,7 @@
       {% else %}<span class="text-amber-400">Not answering right now — halogen is not loaded.</span>{% endif %}
     </p>
     <ul class="text-sm text-slate-400 mb-3 list-disc pl-5 space-y-1">
-      <li><strong class="text-slate-300">Call halogen's port directly</strong> ({{ npu_base }}), not <code class="text-amber-300 text-xs">/llm</code>: llama-swap routes by model name and does not know these models. Through llama-swap, <code class="text-amber-300 text-xs">qwen3-embedding-0.6b</code> reaches the separate GPU (llama.cpp) copy instead.</li>
+      <li><strong class="text-slate-300">Call halogen's port directly</strong> ({{ npu_base }}), not <code class="text-amber-300 text-xs">/llm</code>: llama-swap routes by model name and does not know these models. Through llama-swap, <code class="text-amber-300 text-xs">qwen3-embedding-4b</code> reaches the GPU (llama.cpp) copy instead, which unloads halogen.</li>
       <li><strong class="text-slate-300">Only while halogen is loaded.</strong> halogen runs solo, so loading any other large model unloads it and the NPU endpoints stop answering. Send one chat request to <code class="text-amber-300 text-xs">halogen-flash-next</code> to bring it back (~50 s cold start).</li>
       <li>LAN only — this port is not exposed through the reverse proxy.</li>
     </ul>
@@ -143,9 +143,9 @@
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
           <code class="text-sm text-slate-200">/v1/systemone</code>
-          <span class="text-xs text-slate-500">decider-0.8b</span>
+          <span class="text-xs text-slate-500">decider-4b</span>
         </div>
-        <p class="text-sm text-slate-400 mb-3">Typed decisions in TypeSafe's System One (Jev) format: send a <code class="text-amber-300 text-xs">state</code> and named <code class="text-amber-300 text-xs">questions</code>. Each question is one NPU pass (~170 ms warm) and answers with probabilities and a <code class="text-amber-300 text-xs">confidence</code>.
+        <p class="text-sm text-slate-400 mb-3">Typed decisions in TypeSafe's System One (Jev) format: send a <code class="text-amber-300 text-xs">state</code> and named <code class="text-amber-300 text-xs">questions</code>. Each question is one NPU pass (~200 ms warm, ~4 s on the first call after halogen loads; 11/12 on our triage check) and answers with probabilities and a <code class="text-amber-300 text-xs">confidence</code>.
           <code class="text-amber-300 text-xs">choice</code> picks one of 2–10 options (<code class="text-amber-300 text-xs">criteria</code> maps option → description, <code class="text-amber-300 text-xs">null</code> for none);
           <code class="text-amber-300 text-xs">score</code> rates on 2–10 ordered levels and returns the expected level;
           <code class="text-amber-300 text-xs">noul</code> returns the probability of yes. No API key; <code class="text-amber-300 text-xs">model</code> may be any name. A bad request answers 422.</p>
@@ -157,7 +157,7 @@
           <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu1">curl {{ npu_base }}/v1/systemone \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "decider-0.8b",
+    "model": "decider-4b",
     "state": "Customer: I was charged twice and nobody answers my emails.",
     "questions": {
       "team":   {"type": "choice", "instructions": "Which team should handle this",
@@ -178,9 +178,9 @@
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
           <code class="text-sm text-slate-200">/v1/embeddings</code>
-          <span class="text-xs text-slate-500">qwen3-embedding-0.6b</span>
+          <span class="text-xs text-slate-500">qwen3-embedding-4b</span>
         </div>
-        <p class="text-sm text-slate-400 mb-3">OpenAI embeddings, 1024 floats of unit length (<code class="text-amber-300 text-xs">dimensions</code> 32–1024 truncates and renormalises). A <em>query</em> carries the task in the model's own form, <code class="text-amber-300 text-xs">Instruct: &lt;task&gt;\nQuery:&lt;text&gt;</code>; a <em>document</em> carries none. Batches up to 8 inputs of up to 512 tokens run together. For the larger 2560-d model on the GPU use <code class="text-amber-300 text-xs">qwen3-embedding-4b</code> through <code class="text-amber-300 text-xs">{{ llm_base }}</code> — the two vector spaces are not interchangeable.</p>
+        <p class="text-sm text-slate-400 mb-3">OpenAI embeddings, 2560 floats of unit length (<code class="text-amber-300 text-xs">dimensions</code> truncates and renormalises), ~1,100 tokens/s. A <em>query</em> carries the task in the model's own form, <code class="text-amber-300 text-xs">Instruct: &lt;task&gt;\nQuery:&lt;text&gt;</code>; a <em>document</em> carries none. Batches up to 8 inputs of up to 512 tokens run together. It is the same model as the GPU <code class="text-amber-300 text-xs">qwen3-embedding-4b</code> behind <code class="text-amber-300 text-xs">{{ llm_base }}</code> (cosine 0.997 on the same text), so vectors from either can share an index; the GPU copy is faster (~1,700 tokens/s) but evicts halogen.</p>
         <div x-data="{ copied: false }" class="relative">
           <button @click="navigator.clipboard.writeText($refs.codeNpu2.textContent); copied=true; setTimeout(()=>copied=false,2000)"
                   class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
@@ -189,7 +189,7 @@
           <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu2">curl {{ npu_base }}/v1/embeddings \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "qwen3-embedding-0.6b",
+    "model": "qwen3-embedding-4b",
     "input": ["Instruct: Given a question, retrieve passages that answer it\nQuery:Co je NPU?",
               "NPU je neuronová jednotka v čipech Ryzen AI."]
   }'</pre>
@@ -200,9 +200,9 @@
         <div class="flex items-center gap-3 mb-2">
           <span class="text-xs font-mono bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">POST</span>
           <code class="text-sm text-slate-200">/v1/rerank</code>
-          <span class="text-xs text-slate-500">qwen3-reranker-0.6b</span>
+          <span class="text-xs text-slate-500">qwen3-reranker-4b</span>
         </div>
-        <p class="text-sm text-slate-400 mb-3">Cohere/Jina-shaped reranking: <code class="text-amber-300 text-xs">results</code> sorted by <code class="text-amber-300 text-xs">relevance_score</code>, each with its <code class="text-amber-300 text-xs">index</code> in your list. Pairs up to 4,096 tokens; documents may be strings or objects with <code class="text-amber-300 text-xs">text</code>; <code class="text-amber-300 text-xs">instruction</code> replaces the default task line. The score is absolute — "does this document answer the query" — so a merely related passage scores near 0 and a direct answer near 1; rank by it, and threshold with care.</p>
+        <p class="text-sm text-slate-400 mb-3">Cohere/Jina-shaped reranking: <code class="text-amber-300 text-xs">results</code> sorted by <code class="text-amber-300 text-xs">relevance_score</code>, each with its <code class="text-amber-300 text-xs">index</code> in your list. Pairs up to 4,096 tokens; documents may be strings or objects with <code class="text-amber-300 text-xs">text</code>; <code class="text-amber-300 text-xs">instruction</code> replaces the default task line. The score is absolute — "does this document answer the query": a direct answer scores near 1 (0.96 in our check), unrelated text near 0. ~4 s for the first call after halogen loads.</p>
         <div x-data="{ copied: false }" class="relative">
           <button @click="navigator.clipboard.writeText($refs.codeNpu3.textContent); copied=true; setTimeout(()=>copied=false,2000)"
                   class="absolute top-2 right-2 text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">
@@ -211,7 +211,7 @@
           <pre class="bg-slate-900 border border-slate-700 rounded p-3 text-xs text-slate-300 overflow-x-auto pr-16" x-ref="codeNpu3">curl {{ npu_base }}/v1/rerank \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "qwen3-reranker-0.6b",
+    "model": "qwen3-reranker-4b",
     "query": "Jak zkontroluju, že je načtený ovladač NPU?",
     "documents": ["Ovladač NPU zkontroluješ příkazem ls /dev/accel.", "GPU má 40 výpočetních jednotek."],
     "top_n": 1, "return_documents": true
