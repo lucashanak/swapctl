@@ -396,7 +396,7 @@
         </td>
         <td class="px-2 py-1.5 hidden md:table-cell">
           {% if m.quant %}
-            <span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono">{{ m.quant }}</span>
+            <span class="inline-block max-w-[16rem] truncate align-middle px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono cursor-help" title="{{ m.quant }}">{{ m.quant }}</span>
           {% else %}-{% endif %}
         </td>
         <td class="px-2 py-1.5 text-slate-300 hidden md:table-cell">
@@ -1097,7 +1097,7 @@ function sortTestTable() {
         <tr>
           <td class="px-2 sm:px-3 py-1.5 font-mono text-[11px] sm:text-xs {% if m.loaded %}text-emerald-300{% endif %} whitespace-nowrap" title="{{ m.name }}">{{ m.name }}</td>
           <td class="px-2 py-1.5 text-slate-300 hidden sm:table-cell">{{ m.params }}</td>
-          <td class="px-2 py-1.5 hidden md:table-cell"><span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono">{{ m.quant }}</span></td>
+          <td class="px-2 py-1.5 hidden md:table-cell"><span class="inline-block max-w-[16rem] truncate align-middle px-1.5 py-0.5 rounded bg-slate-700 text-slate-100 font-mono cursor-help" title="{{ m.quant }}">{{ m.quant }}</span></td>
           <td class="px-2 py-1.5 text-right text-slate-300 hidden md:table-cell">{{ "%.1f"|format(m.size_gb) }}G</td>
           <td class="px-2 py-1.5 text-right font-mono text-slate-400 hidden lg:table-cell">{{ "{:,}".format(m.ctx) }}</td>
           <td class="px-2 py-1.5 hidden lg:table-cell">
