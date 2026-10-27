@@ -132,3 +132,27 @@ def test_kv_bytes_per_token_returns_none_without_geometry(tmp_path: Path) -> Non
     gguf = tmp_path / "bare.gguf"
     _write_minimal_gguf(gguf, "llama")
     assert kv_bytes_per_token(gguf) is None
+
+
+def test_read_gguf_metadata_is_cached_until_the_file_changes(tmp_path: Path, monkeypatch) -> None:
+    import os
+    from app import gguf_meta
+
+    gguf = tmp_path / "model.gguf"
+    _write_minimal_gguf(gguf, "llama")
+    calls = []
+    real = gguf_meta._read_gguf_metadata
+    monkeypatch.setattr(gguf_meta, "_read_gguf_metadata",
+                        lambda p, k: calls.append(p) or real(p, k))
+
+    keys = ("general.architecture",)
+    first = gguf_meta.read_gguf_metadata(gguf, keys)
+    first["general.architecture"] = "mutated"
+    assert gguf_meta.read_gguf_metadata(gguf, keys) == {"general.architecture": "llama"}
+    assert len(calls) == 1
+
+    _write_minimal_gguf(gguf, "qwen35")
+    st = gguf.stat()
+    os.utime(gguf, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))
+    assert gguf_meta.read_gguf_metadata(gguf, keys) == {"general.architecture": "qwen35"}
+    assert len(calls) == 2

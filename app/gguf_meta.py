@@ -51,7 +51,26 @@ def _read_value(f, value_type: int):
     raise ValueError(f"unknown GGUF value type {value_type}")
 
 
+# Header reads keyed by (path, mtime, size, keys). The background snapshot asks for
+# every model's VRAM keys every 5 s, and string arrays (a tokenizer's vocabulary)
+# cannot be skipped by size: uncached, that was about 1 s of CPU per snapshot.
+_META_CACHE: dict[tuple, dict] = {}
+
+
 def read_gguf_metadata(path: Path, interesting_keys: tuple = ("context_length",)) -> dict:
+    """Cached `_read_gguf_metadata`; an updated file re-reads."""
+    try:
+        st = Path(path).stat()
+    except OSError:
+        return {}
+    ck = (str(path), st.st_mtime_ns, st.st_size, tuple(interesting_keys))
+    cached = _META_CACHE.get(ck)
+    if cached is None:
+        cached = _META_CACHE[ck] = _read_gguf_metadata(path, interesting_keys)
+    return dict(cached)
+
+
+def _read_gguf_metadata(path: Path, interesting_keys: tuple) -> dict:
     """Parse GGUF metadata section; return a dict of key → value.
 
     Stops early once all `interesting_keys` (matched as suffix after the arch prefix) are found
